@@ -1,5 +1,17 @@
 // Dashboard functionality
 let allInvoices = [];
+let inventory = [];
+
+// Load inventory from localStorage
+function loadInventory() {
+    try {
+        const stored = localStorage.getItem('inventory');
+        inventory = stored ? JSON.parse(stored) : [];
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+        inventory = [];
+    }
+}
 
 // Load invoices from localStorage
 function loadInvoices() {
@@ -777,4 +789,67 @@ function importBackup(event) {
     
     reader.readAsText(file);
 }
+
+// ===== LOW STOCK ALERTS =====
+
+// Check and display low stock alerts
+function checkLowStockAlerts() {
+    const DEFAULT_THRESHOLD = 10;
+    
+    const outOfStock = inventory.filter(item => item.stock === 0);
+    const lowStock = inventory.filter(item => {
+        const threshold = item.lowStockThreshold || DEFAULT_THRESHOLD;
+        return item.stock > 0 && item.stock <= threshold;
+    });
+    
+    const alertItems = [...outOfStock, ...lowStock];
+    
+    if (alertItems.length === 0) {
+        document.getElementById('lowStockWidget').style.display = 'none';
+        return;
+    }
+    
+    // Sort by urgency (out of stock first, then by stock level)
+    alertItems.sort((a, b) => {
+        if (a.stock === 0 && b.stock > 0) return -1;
+        if (a.stock > 0 && b.stock === 0) return 1;
+        return a.stock - b.stock;
+    });
+    
+    const alertContent = document.getElementById('lowStockAlertContent');
+    alertContent.innerHTML = alertItems.map(item => {
+        const threshold = item.lowStockThreshold || DEFAULT_THRESHOLD;
+        const isCritical = item.stock === 0;
+        const icon = isCritical ? '🔴' : '🟡';
+        const statusText = isCritical ? 'OUT OF STOCK' : `Low Stock (${item.stock}/${threshold})`;
+        
+        return `
+            <div class="alert-item ${isCritical ? 'critical' : ''}">
+                <div class="alert-item-info">
+                    <div class="alert-item-name">${icon} ${item.name}</div>
+                    <div class="alert-item-stock">
+                        ${isCritical ? 
+                            '<strong>OUT OF STOCK</strong> - Cannot create invoices' : 
+                            `Only <strong>${item.stock} units</strong> remaining (Alert threshold: ${threshold})`
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('lowStockWidget').style.display = 'block';
+}
+
+// Initialize dashboard
+function initDashboard() {
+    loadInvoices();
+    loadInventory();
+    updateStats();
+    displayInvoices(allInvoices);
+    checkLowStockAlerts();
+}
+
+// Call init when page loads
+document.addEventListener('DOMContentLoaded', initDashboard);
 

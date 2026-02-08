@@ -13,11 +13,12 @@
     <div class="container">
         <header>
             <h1>📄 Create New Invoice</h1>
-            <div>
-                <button class="btn-secondary" onclick="window.location.href='inventory.html'">📦 Inventory</button>
-                <button class="btn-secondary" onclick="window.location.href='index.html'">← Back to Dashboard</button>
-            </div>
         </header>
+
+        <div class="nav-section">
+            <button class="btn-nav" onclick="window.location.href='index.html'">← Dashboard</button>
+            <button class="btn-nav" onclick="window.location.href='inventory.html'">📦 Inventory</button>
+        </div>
 
         <form id="invoiceForm" class="invoice-form">
             <div class="form-section">
@@ -59,30 +60,32 @@
                     </label>
                     <small style="color: #666; margin-left: 10px;">Rate inclusive pricing (0-50%)</small>
                 </div>
-                <table class="items-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 60px;">Sl No</th>
-                            <th>Description of Goods <span style="font-weight: normal; font-size: 11px;">(start typing to search inventory)</span></th>
-                            <th style="width: 120px;">Serial No <span style="font-weight: normal; font-size: 11px;">(Optional)</span></th>
-                            <th style="width: 100px;">Quantity</th>
-                            <th style="width: 140px;">Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
-                            <th style="width: 140px;">Amount (₹)</th>
-                            <th style="width: 80px;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="itemsTableBody">
-                        <tr class="item-row" data-row="1">
-                            <td>1</td>
-                            <td><input type="text" class="item-description" required></td>
-                            <td><input type="text" class="item-serial" placeholder="Optional"></td>
-                            <td><input type="number" class="item-quantity" min="1" value="1" required></td>
-                            <td><input type="number" class="item-rate" min="0" step="0.01" required></td>
-                            <td class="item-amount">0.00</td>
-                            <td><button type="button" class="btn-remove" onclick="removeItem(1)">✕</button></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-wrapper">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">Sl No</th>
+                                <th>Description of Goods <span style="font-weight: normal; font-size: 11px;">(start typing to search inventory)</span></th>
+                                <th style="width: 120px;">Serial No <span style="font-weight: normal; font-size: 11px;">(Optional)</span></th>
+                                <th style="width: 100px;">Quantity</th>
+                                <th style="width: 140px;">Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
+                                <th style="width: 140px;">Amount (₹)</th>
+                                <th style="width: 80px;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                            <tr class="item-row" data-row="1">
+                                <td>1</td>
+                                <td><input type="text" class="item-description" required></td>
+                                <td><input type="text" class="item-serial" placeholder="Optional"></td>
+                                <td><input type="number" class="item-quantity" min="1" value="1" required></td>
+                                <td><input type="number" class="item-rate" min="0" step="0.01" required></td>
+                                <td class="item-amount">0.00</td>
+                                <td><button type="button" class="btn-remove" onclick="removeItem(1)">✕</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
                 <button type="button" class="btn-secondary" onclick="addItem()">+ Add Item</button>
 
                 <div class="totals-section">

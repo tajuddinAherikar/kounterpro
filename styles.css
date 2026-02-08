@@ -416,10 +416,18 @@ h3 {
     border-color: #2845D6;
 }
 
+/* Table Wrapper for Responsive Scrolling */
+.table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-top: 15px;
+}
+
 .invoices-table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 15px;
+    min-width: 600px; /* Ensures table doesn't compress too much */
 }
 
 .invoices-table th,
@@ -427,6 +435,7 @@ h3 {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #eee;
+    white-space: nowrap; /* Prevents text wrapping in cells */
 }
 
 .invoices-table th {
@@ -545,6 +554,7 @@ textarea#termsConditions {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
+    min-width: 700px; /* Ensures usable width on mobile */
 }
 
 .items-table th,
@@ -567,6 +577,7 @@ textarea#termsConditions {
     border: 1px solid #ddd;
     border-radius: 3px;
     font-size: 14px;
+    min-width: 80px; /* Prevents inputs from becoming too narrow */
 }
 
 .items-table .item-amount {
@@ -687,8 +698,26 @@ textarea#termsConditions {
         align-items: stretch;
     }
     
+    /* Responsive Table Improvements */
+    .table-wrapper {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .invoices-table th,
+    .invoices-table td {
+        padding: 8px;
+        font-size: 12px;
+    }
+    
     .items-table {
         font-size: 12px;
+    }
+    
+    .items-table th,
+    .items-table td {
+        padding: 6px;
     }
     
     .items-table input {
@@ -726,9 +755,28 @@ textarea#termsConditions {
     border-bottom: 1px solid #f0f0f0;
 }
 
+.autocomplete-item.out-of-stock {
+    background-color: #ffebee;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.autocomplete-item.low-stock {
+    background-color: #fff8f0;
+    border-left: 3px solid #f68048;
+}
+
+.autocomplete-item.in-stock {
+    border-left: 3px solid #28a745;
+}
+
 .autocomplete-item:hover,
 .autocomplete-active {
     background-color: #e8f4f8;
+}
+
+.autocomplete-item.out-of-stock:hover {
+    background-color: #ffcdd2;
 }
 
 .autocomplete-item small {
@@ -921,4 +969,98 @@ textarea#termsConditions {
     font-size: 11px;
     font-weight: bold;
     margin-left: 8px;
+}
+
+/* Low Stock Alert Widget */
+.low-stock-widget {
+    margin: 20px 0;
+}
+
+.alert-banner {
+    background-color: #fff8f0;
+    border: 2px solid #f68048;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(246, 128, 72, 0.2);
+}
+
+.alert-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #f68048;
+}
+
+.alert-icon {
+    font-size: 24px;
+}
+
+.alert-header h3 {
+    flex: 1;
+    margin: 0;
+    color: #f68048;
+    font-size: 18px;
+}
+
+.btn-close-alert {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 30px;
+    text-align: center;
+}
+
+.btn-close-alert:hover {
+    color: #c62828;
+}
+
+.alert-content {
+    margin: 15px 0;
+}
+
+.alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    margin: 8px 0;
+    background-color: white;
+    border-radius: 4px;
+    border-left: 4px solid #f68048;
+}
+
+.alert-item.critical {
+    border-left-color: #c62828;
+    background-color: #ffebee;
+}
+
+.alert-item-info {
+    flex: 1;
+}
+
+.alert-item-name {
+    font-weight: 600;
+    color: #0D1A63;
+}
+
+.alert-item-stock {
+    font-size: 14px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.alert-item-stock strong {
+    color: #c62828;
+}
+
+.alert-actions {
+    margin-top: 15px;
+    text-align: center;
 }

@@ -146,18 +146,49 @@ function setupAutocomplete(input, rateInput, quantityInput) {
         if (matches.length === 0) return;
         
         matches.forEach(item => {
+            const DEFAULT_THRESHOLD = 10;
+            const threshold = item.lowStockThreshold || DEFAULT_THRESHOLD;
+            let stockBadge = '';
+            let stockClass = '';
+            
+            if (item.stock === 0) {
+                stockBadge = '<span style="color: #c62828; font-weight: bold;">🔴 OUT OF STOCK</span>';
+                stockClass = 'out-of-stock';
+            } else if (item.stock <= threshold) {
+                stockBadge = `<span style="color: #f68048; font-weight: bold;">🟡 LOW STOCK</span>`;
+                stockClass = 'low-stock';
+            } else {
+                stockBadge = `<span style="color: #28a745;">🟢 In Stock</span>`;
+                stockClass = 'in-stock';
+            }
+            
             const div = document.createElement('div');
-            div.className = 'autocomplete-item';
+            div.className = `autocomplete-item ${stockClass}`;
             div.innerHTML = `
                 <strong>${item.name}</strong>
                 ${item.description ? '<br><small>' + item.description + '</small>' : ''}
-                <br><small>Stock: ${item.stock} | Rate: ₹${item.rate.toFixed(2)}</small>
+                <br><small>${stockBadge} | Stock: ${item.stock} units | Rate: ₹${item.rate.toFixed(2)}</small>
             `;
             
             div.addEventListener('click', function() {
+                if (item.stock === 0) {
+                    alert(`❌ Cannot add "${item.name}" - Out of stock!\n\nPlease update inventory before creating invoice.`);
+                    return;
+                }
+                
                 input.value = item.name;
                 rateInput.value = item.rate.toFixed(2);
                 quantityInput.value = Math.min(1, item.stock); // Default to 1 or max stock
+                
+                // Show warning if low stock
+                if (item.stock <= threshold) {
+                    quantityInput.style.borderColor = '#f68048';
+                    quantityInput.style.backgroundColor = '#fff8f0';
+                } else {
+                    quantityInput.style.borderColor = '';
+                    quantityInput.style.backgroundColor = '';
+                }
+                
                 calculateAmounts();
                 closeAllLists();
             });

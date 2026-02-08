@@ -13,14 +13,15 @@
     <div class="container">
         <header>
             <h1>📦 Inventory Management</h1>
-            <div>
-                <button class="btn-secondary" onclick="window.location.href='index.html'">← Dashboard</button>
-                <button class="btn-primary" onclick="showAddItemModal()">+ Add New Item</button>
-                <button class="btn-backup" onclick="exportBackup()">💾 Backup</button>
-                <button class="btn-restore" onclick="document.getElementById('restoreFileInput').click()">📂 Restore</button>
-                <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
-            </div>
         </header>
+
+        <div class="nav-section">
+            <button class="btn-nav" onclick="window.location.href='index.html'">← Dashboard</button>
+            <button class="btn-nav btn-nav-primary" onclick="showAddItemModal()">+ Add New Item</button>
+            <button class="btn-nav btn-backup" onclick="exportBackup()">💾 Backup Data</button>
+            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()">📂 Restore Data</button>
+            <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+        </div>
 
         <div class="stats-container">
             <div class="stat-card">
@@ -54,23 +55,25 @@
 
         <div class="invoices-section">
             <h2>Inventory Items</h2>
-            <table class="invoices-table">
-                <thead>
-                    <tr>
-                        <th>Item Name</th>
-                        <th>Description</th>
-                        <th>Current Stock</th>
-                        <th>Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="inventoryTableBody">
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px;">No items in inventory. Add your first item!</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="table-wrapper">
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th>Item Name</th>
+                            <th>Description</th>
+                            <th>Current Stock</th>
+                            <th>Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">No items in inventory. Add your first item!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -106,6 +109,13 @@
                         Rate (GST Inclusive): <span class="required">*</span>
                         <input type="number" id="itemRate" required min="0.01" max="9999999" step="0.01" placeholder="Enter rate in ₹">
                     </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        Low Stock Alert Threshold: <span class="optional">(optional, default: 10)</span>
+                        <input type="number" id="itemLowStockThreshold" min="1" max="1000" step="1" placeholder="10" value="10">
+                    </label>
+                    <small style="color: #666;">Alert when stock falls to or below this number</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>

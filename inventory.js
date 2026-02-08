@@ -30,13 +30,33 @@ function saveInventory() {
     }
 }
 
+// Default low stock threshold
+const DEFAULT_LOW_STOCK_THRESHOLD = 10;
+
+// Get stock status for an item
+function getStockStatus(item) {
+    const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+    
+    if (item.stock === 0) {
+        return { status: 'out', label: 'Out of Stock', color: '#c62828', icon: '🔴' };
+    } else if (item.stock <= threshold) {
+        return { status: 'low', label: 'Low Stock', color: '#f68048', icon: '🟡' };
+    } else {
+        return { status: 'ok', label: 'In Stock', color: '#28a745', icon: '🟢' };
+    }
+}
+
 // Calculate statistics
 function calculateInventoryStats() {
     const totalItems = inventory.length;
     const totalStock = inventory.reduce((sum, item) => sum + item.stock, 0);
-    const lowStockCount = inventory.filter(item => item.stock < 10).length;
+    const outOfStock = inventory.filter(item => item.stock === 0).length;
+    const lowStockCount = inventory.filter(item => {
+        const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+        return item.stock > 0 && item.stock <= threshold;
+    }).length;
     
-    return { totalItems, totalStock, lowStockCount };
+    return { totalItems, totalStock, lowStockCount, outOfStock };
 }
 
 // Update statistics display
@@ -58,22 +78,32 @@ function displayInventory(items = inventory) {
     }
     
     tbody.innerHTML = items
-        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => {
+            // Sort by stock status (out of stock first, then low stock, then in stock)
+            const aStatus = getStockStatus(a);
+            const bStatus = getStockStatus(b);
+            const statusOrder = { out: 0, low: 1, ok: 2 };
+            if (statusOrder[aStatus.status] !== statusOrder[bStatus.status]) {
+                return statusOrder[aStatus.status] - statusOrder[bStatus.status];
+            }
+            return a.name.localeCompare(b.name);
+        })
         .map(item => {
-            const stockStatus = item.stock === 0 ? 'Out of Stock' : 
-                               item.stock < 10 ? 'Low Stock' : 
-                               'In Stock';
-            const statusClass = item.stock === 0 ? 'status-out' : 
-                               item.stock < 10 ? 'status-low' : 
-                               'status-ok';
+            const stockInfo = getStockStatus(item);
+            const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+            const stockDisplay = item.stock === 0 ? 
+                `<strong style="color: #c62828;">${item.stock} units</strong>` :
+                item.stock <= threshold ?
+                `<strong style="color: #f68048;">${item.stock} units</strong> <small style="color: #666;">(Alert: ≤${threshold})</small>` :
+                `${item.stock} units`;
             
             return `
-                <tr>
+                <tr style="${item.stock === 0 ? 'background-color: #ffebee;' : item.stock <= threshold ? 'background-color: #fff8f0;' : ''}">
                     <td><strong>${item.name}</strong></td>
                     <td>${item.description || '-'}</td>
-                    <td>${item.stock} units</td>
+                    <td>${stockDisplay}</td>
                     <td>₹${item.rate.toFixed(2)}</td>
-                    <td><span class="status-badge ${statusClass}">${stockStatus}</span></td>
+                    <td><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></td>
                     <td>
                         <a href="#" class="action-link" onclick="editItem('${item.id}')">Edit</a>
                         <a href="#" class="action-link" onclick="deleteItem('${item.id}')">Delete</a>
@@ -104,6 +134,7 @@ function editItem(itemId) {
     document.getElementById('itemDescription').value = item.description || '';
     document.getElementById('itemStock').value = item.stock;
     document.getElementById('itemRate').value = item.rate;
+    document.getElementById('itemLowStockThreshold').value = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
     document.getElementById('itemModal').style.display = 'flex';
 }
 
@@ -151,6 +182,7 @@ function handleFormSubmit(e) {
     const description = document.getElementById('itemDescription').value.trim();
     const stockInput = document.getElementById('itemStock').value;
     const rateInput = document.getElementById('itemRate').value;
+    const lowStockThresholdInput = document.getElementById('itemLowStockThreshold').value;
     
     // Validation
     if (!name || name.length < 2) {
@@ -208,6 +240,23 @@ function handleFormSubmit(e) {
         return;
     }
     
+    // Validate low stock threshold
+    let lowStockThreshold = parseInt(lowStockThresholdInput);
+    if (lowStockThresholdInput && (isNaN(lowStockThreshold) || lowStockThreshold < 0)) {
+        alert('❌ Low stock threshold must be a positive number');
+        document.getElementById('itemLowStockThreshold').focus();
+        return;
+    }
+    if (lowStockThreshold > 1000) {
+        alert('❌ Low stock threshold too large (maximum: 1000)');
+        document.getElementById('itemLowStockThreshold').focus();
+        return;
+    }
+    // Default to 10 if not set
+    if (!lowStockThreshold || lowStockThreshold === 0) {
+        lowStockThreshold = DEFAULT_LOW_STOCK_THRESHOLD;
+    }
+    
     // All validations passed, proceed with save
     if (editingItemId) {
         // Update existing item
@@ -217,6 +266,7 @@ function handleFormSubmit(e) {
             item.description = description;
             item.stock = stock;
             item.rate = rate;
+            item.lowStockThreshold = lowStockThreshold;
             item.updatedAt = new Date().toISOString();
         }
     } else {
@@ -227,6 +277,7 @@ function handleFormSubmit(e) {
             description,
             stock,
             rate,
+            lowStockThreshold,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
         };
