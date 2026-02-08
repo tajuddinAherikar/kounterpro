@@ -1,4 +1,4 @@
-# Keen Batteries - Billing Software Implementation
+# KounterPro - Billing Software Implementation
 
 ## ✅ Completed Features
 
@@ -29,7 +29,7 @@
 
 ### 3. PDF Generation
 - **Professional Invoice Layout**:
-  - Company details (Keen Batteries)
+  - Company details (Company Name)
   - Tax invoice header
   - Invoice number (auto-generated format: K####/MM/YY)
   - Date stamp

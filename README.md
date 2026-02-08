@@ -1,4 +1,4 @@
-# Keen Batteries - Billing Software
+# KounterPro- Billing Software
 
 A simple, plain UI billing/invoicing software for managing sales and generating PDF invoices.
 
@@ -62,7 +62,7 @@ A simple, plain UI billing/invoicing software for managing sales and generating 
 
 ### Invoice Format
 - Professional tax invoice layout
-- Company details (Keen Batteries)
+- Company details (Dynamic)
 - Customer information
 - Itemized product list
 - GST calculation breakdown
@@ -91,7 +91,7 @@ Invoices are automatically numbered in the format: `K####/MM/YY`
 ### Changing Company Details
 Edit the company information in `billing.js` at line ~86:
 ```javascript
-pdf.text('KEEN BATTERIES', 15, y);
+pdf.text('Company Name', 15, y);
 pdf.text('Indra Auto Nagar, Rangeen Masjid Road Bijapur', 15, y);
 // etc.
 ```
