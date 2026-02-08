@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Management - Keen Batteries</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📦 Inventory Management</h1>
+            <div>
+                <button class="btn-secondary" onclick="window.location.href='index.html'">← Dashboard</button>
+                <button class="btn-primary" onclick="showAddItemModal()">+ Add New Item</button>
+            </div>
+        </header>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Total Items</h3>
+                <p class="stat-value" id="totalItems">0</p>
+                <span class="stat-label">In inventory</span>
+            </div>
+            <div class="stat-card">
+                <h3>Total Stock</h3>
+                <p class="stat-value" id="totalStock">0</p>
+                <span class="stat-label">Units</span>
+            </div>
+            <div class="stat-card">
+                <h3>Low Stock Items</h3>
+                <p class="stat-value" id="lowStockCount">0</p>
+                <span class="stat-label">Below 10 units</span>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h2>Search Inventory</h2>
+            <div class="filter-controls">
+                <label>
+                    Search:
+                    <input type="text" id="searchInput" placeholder="Search by name or description...">
+                </label>
+                <button class="btn-secondary" onclick="searchInventory()">Search</button>
+                <button class="btn-secondary" onclick="clearSearch()">Show All</button>
+            </div>
+        </div>
+
+        <div class="invoices-section">
+            <h2>Inventory Items</h2>
+            <table class="invoices-table">
+                <thead>
+                    <tr>
+                        <th>Item Name</th>
+                        <th>Description</th>
+                        <th>Current Stock</th>
+                        <th>Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="inventoryTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">No items in inventory. Add your first item!</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Add/Edit Item Modal -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Item</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="itemForm" class="modal-form">
+                <input type="hidden" id="editItemId">
+                <div class="form-row">
+                    <label>
+                        Item Name: <span class="required">*</span>
+                        <input type="text" id="itemName" required placeholder="e.g., ARCO 100AH">
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        Description: <span class="optional">(optional)</span>
+                        <textarea id="itemDescription" rows="2" placeholder="Additional details about the item"></textarea>
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        Stock Quantity: <span class="required">*</span>
+                        <input type="number" id="itemStock" required min="0" placeholder="Available quantity">
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        Rate (₹) <span style="font-weight: normal; font-size: 12px;">(incl. GST)</span>: <span class="required">*</span>
+                        <input type="number" id="itemRate" required min="0" step="0.01" placeholder="Selling price including GST">
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script src="inventory.js"></script>
+</body>
+</html>

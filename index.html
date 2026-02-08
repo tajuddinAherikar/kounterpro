@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Dashboard - Keen Batteries</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Billing Dashboard</h1>
+        </header>
+
+        <div class="nav-section">
+            <button class="btn-nav" onclick="window.location.href='inventory.html'">📦 Inventory</button>
+            <button class="btn-nav btn-nav-primary" onclick="window.location.href='create-bill.html'">+ Create New Bill</button>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Today's Sales</h3>
+                <p class="stat-value" id="todaySales">₹0.00</p>
+                <span class="stat-label" id="todayCount">0 invoices</span>
+            </div>
+            <div class="stat-card">
+                <h3>Total Units Sold</h3>
+                <p class="stat-value" id="todayUnits">0</p>
+                <span class="stat-label">Today</span>
+            </div>
+            <div class="stat-card">
+                <h3>All Time Sales</h3>
+                <p class="stat-value" id="totalSales">₹0.00</p>
+                <span class="stat-label" id="totalCount">0 invoices</span>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h2>Sales History</h2>
+            <div class="filter-controls">
+                <label>
+                    From Date:
+                    <input type="date" id="fromDate">
+                </label>
+                <label>
+                    To Date:
+                    <input type="date" id="toDate">
+                </label>
+                <button class="btn-secondary" onclick="filterSales()">Filter</button>
+                <button class="btn-secondary" onclick="clearFilter()">Clear</button>
+            </div>
+            <div class="report-controls">
+                <button class="btn-report" onclick="downloadSummaryReport()">📥 Summary Report</button>
+                <button class="btn-report" onclick="downloadDetailedReport()">📥 Detailed Report</button>
+            </div>
+        </div>
+
+        <div class="invoices-section">
+            <div class="section-header">
+                <h2>Recent Invoices</h2>
+                <div class="invoice-search">
+                    <input type="text" id="invoiceSearch" placeholder="🔍 Search invoices..." oninput="searchInvoices()">
+                </div>
+            </div>
+            <table class="invoices-table">
+                <thead>
+                    <tr>
+                        <th>Invoice No</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Units</th>
+                        <th>Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="invoicesTableBody">
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">No invoices yet. Create your first bill!</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

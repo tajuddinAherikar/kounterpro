@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo-placeholder">
+                <svg width="120" height="120" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Background gradient -->
+                    <defs>
+                        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style="stop-color:#5B8FD8;stop-opacity:1" />
+                            <stop offset="100%" style="stop-color:#0D1A63;stop-opacity:1" />
+                        </linearGradient>
+                    </defs>
+                    <rect width="200" height="200" rx="40" fill="url(#logoGrad)"/>
+                    <!-- K Letter -->
+                    <path d="M60 60 L60 140 M60 100 L120 60 M60 100 L120 140" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+                    <!-- Arrow -->
+                    <path d="M110 80 L140 50 L140 80 M140 50 L170 80" stroke="white" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M100 90 L130 60" stroke="#0D1A63" stroke-width="8" stroke-linecap="round"/>
+                </svg>
+            </div>
+            
+            <h1 style="color: #0D1A63; margin-bottom: 5px;">Kounter<span style="color: #F68048;">Pro</span></h1>
+            <p class="subtitle" style="color: #666; font-size: 13px; margin-bottom: 30px;">Dukaan ka Digital Manager</p>
+            
+            <form id="loginForm" class="login-form">
+                <div class="login-form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required autofocus>
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+                
+                <button type="submit" class="btn-login">Login</button>
+            </form>
+            
+            <div class="login-footer">
+                <small>Version 1.0 | © 2026 KounterPro</small>
+            </div>
+        </div>
+    </div>
+    
+    <script src="auth.js"></script>
+</body>
+</html>
