@@ -3,8 +3,14 @@ let allInvoices = [];
 
 // Load invoices from localStorage
 function loadInvoices() {
-    const stored = localStorage.getItem('invoices');
-    allInvoices = stored ? JSON.parse(stored) : [];
+    try {
+        const stored = localStorage.getItem('invoices');
+        allInvoices = stored ? JSON.parse(stored) : [];
+    } catch (error) {
+        console.error('Error loading invoices:', error);
+        alert('❌ Error loading invoices. Your data may be corrupted. Please restore from backup.');
+        allInvoices = [];
+    }
 }
 
 // Calculate statistics
@@ -179,11 +185,30 @@ function viewInvoice(invoiceNo) {
 
 // Delete invoice
 function deleteInvoice(invoiceNo) {
-    if (confirm(`Are you sure you want to delete invoice ${invoiceNo}?`)) {
-        allInvoices = allInvoices.filter(inv => inv.invoiceNo !== invoiceNo);
-        localStorage.setItem('invoices', JSON.stringify(allInvoices));
-        updateStats();
-        displayInvoices(allInvoices);
+    const invoice = allInvoices.find(inv => inv.invoiceNo === invoiceNo);
+    if (!invoice) {
+        alert('❌ Invoice not found');
+        return;
+    }
+    
+    const confirmMessage = `⚠️ Delete Invoice Confirmation\n\n` +
+        `Invoice No: ${invoiceNo}\n` +
+        `Customer: ${invoice.customerName}\n` +
+        `Amount: ₹${invoice.grandTotal.toFixed(2)}\n\n` +
+        `This action cannot be undone!\n\n` +
+        `Are you sure you want to delete this invoice?`;
+    
+    if (confirm(confirmMessage)) {
+        try {
+            allInvoices = allInvoices.filter(inv => inv.invoiceNo !== invoiceNo);
+            localStorage.setItem('invoices', JSON.stringify(allInvoices));
+            updateStats();
+            displayInvoices(allInvoices);
+            alert('✅ Invoice deleted successfully');
+        } catch (error) {
+            console.error('Error deleting invoice:', error);
+            alert('❌ Error deleting invoice. Please try again.');
+        }
     }
 }
 
@@ -624,3 +649,132 @@ function downloadDetailedReport() {
     const filename = `Sales_Detailed_${fromDate}_to_${toDate}.xlsx`;
     downloadExcel(filename, sheets);
 }
+
+// ===== BACKUP & RESTORE FUNCTIONALITY =====
+
+// Export all data as JSON backup
+function exportBackup() {
+    try {
+        // Gather all data from localStorage
+        const backupData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            exportDate: new Date().toLocaleString('en-IN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }),
+            data: {
+                invoices: JSON.parse(localStorage.getItem('invoices') || '[]'),
+                inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
+            },
+            stats: {
+                totalInvoices: JSON.parse(localStorage.getItem('invoices') || '[]').length,
+                totalProducts: JSON.parse(localStorage.getItem('inventory') || '[]').length
+            }
+        };
+
+        // Convert to JSON string
+        const jsonString = JSON.stringify(backupData, null, 2);
+        
+        // Create blob and download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.download = `KounterPro_Backup_${timestamp}.json`;
+        link.href = url;
+        link.click();
+        
+        // Cleanup
+        URL.revokeObjectURL(url);
+        
+        // Show success message
+        alert(`✅ Backup created successfully!\n\n📦 ${backupData.stats.totalInvoices} invoices\n📦 ${backupData.stats.totalProducts} products\n\nFile: ${link.download}`);
+        
+    } catch (error) {
+        console.error('Backup export failed:', error);
+        alert('❌ Error creating backup. Please try again.');
+    }
+}
+
+// Import and restore data from JSON backup
+function importBackup(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+        alert('❌ Invalid file type. Please select a JSON backup file.');
+        event.target.value = '';
+        return;
+    }
+    
+    // Confirm before overwriting data
+    const confirmRestore = confirm(
+        '⚠️ WARNING: Restore Data\n\n' +
+        'This will REPLACE all current data with the backup data.\n' +
+        'Current invoices and inventory will be overwritten.\n\n' +
+        'Are you sure you want to continue?'
+    );
+    
+    if (!confirmRestore) {
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const backupData = JSON.parse(e.target.result);
+            
+            // Validate backup structure
+            if (!backupData.version || !backupData.data) {
+                throw new Error('Invalid backup file format');
+            }
+            
+            if (!backupData.data.invoices || !backupData.data.inventory) {
+                throw new Error('Backup file is missing required data');
+            }
+            
+            // Restore data to localStorage
+            localStorage.setItem('invoices', JSON.stringify(backupData.data.invoices));
+            localStorage.setItem('inventory', JSON.stringify(backupData.data.inventory));
+            
+            // Show success message
+            alert(
+                `✅ Data restored successfully!\n\n` +
+                `📦 ${backupData.data.invoices.length} invoices restored\n` +
+                `📦 ${backupData.data.inventory.length} products restored\n` +
+                `📅 Backup created: ${backupData.exportDate || 'Unknown'}\n\n` +
+                `Page will reload to show restored data.`
+            );
+            
+            // Reload the page to reflect changes
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Backup import failed:', error);
+            alert('❌ Error restoring backup: ' + error.message + '\n\nPlease ensure you selected a valid KounterPro backup file.');
+        }
+        
+        // Reset file input
+        event.target.value = '';
+    };
+    
+    reader.onerror = function() {
+        alert('❌ Error reading backup file. Please try again.');
+        event.target.value = '';
+    };
+    
+    reader.readAsText(file);
+}
+

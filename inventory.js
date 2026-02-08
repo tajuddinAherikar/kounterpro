@@ -4,13 +4,30 @@ let editingItemId = null;
 
 // Load inventory from localStorage
 function loadInventory() {
-    const stored = localStorage.getItem('inventory');
-    inventory = stored ? JSON.parse(stored) : [];
+    try {
+        const stored = localStorage.getItem('inventory');
+        inventory = stored ? JSON.parse(stored) : [];
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+        alert('❌ Error loading inventory. Your data may be corrupted. Please restore from backup.');
+        inventory = [];
+    }
 }
 
 // Save inventory to localStorage
 function saveInventory() {
-    localStorage.setItem('inventory', JSON.stringify(inventory));
+    try {
+        localStorage.setItem('inventory', JSON.stringify(inventory));
+        return true;
+    } catch (error) {
+        console.error('Error saving inventory:', error);
+        if (error.name === 'QuotaExceededError') {
+            alert('❌ Storage limit exceeded! Please backup and clear old data.');
+        } else {
+            alert('❌ Error saving inventory. Please try again.');
+        }
+        return false;
+    }
 }
 
 // Calculate statistics
@@ -99,13 +116,25 @@ function closeModal() {
 // Delete item
 function deleteItem(itemId) {
     const item = inventory.find(i => i.id === itemId);
-    if (!item) return;
+    if (!item) {
+        alert('❌ Item not found');
+        return;
+    }
     
-    if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+    const confirmMessage = `⚠️ Delete Product Confirmation\n\n` +
+        `Product: ${item.name}\n` +
+        `Current Stock: ${item.stock} units\n` +
+        `Rate: ₹${item.rate}\n\n` +
+        `This action cannot be undone!\n\n` +
+        `Are you sure you want to delete this product?`;
+    
+    if (confirm(confirmMessage)) {
         inventory = inventory.filter(i => i.id !== itemId);
-        saveInventory();
-        updateStats();
-        displayInventory();
+        if (saveInventory()) {
+            updateStats();
+            displayInventory();
+            alert('✅ Product deleted successfully');
+        }
     }
 }
 
@@ -120,9 +149,66 @@ function handleFormSubmit(e) {
     
     const name = document.getElementById('itemName').value.trim();
     const description = document.getElementById('itemDescription').value.trim();
-    const stock = parseInt(document.getElementById('itemStock').value);
-    const rate = parseFloat(document.getElementById('itemRate').value);
+    const stockInput = document.getElementById('itemStock').value;
+    const rateInput = document.getElementById('itemRate').value;
     
+    // Validation
+    if (!name || name.length < 2) {
+        alert('❌ Product name must be at least 2 characters');
+        document.getElementById('itemName').focus();
+        return;
+    }
+    
+    if (name.length > 100) {
+        alert('❌ Product name must not exceed 100 characters');
+        document.getElementById('itemName').focus();
+        return;
+    }
+    
+    // Check for duplicate names (except when editing)
+    const duplicate = inventory.find(i => 
+        i.name.toLowerCase() === name.toLowerCase() && 
+        i.id !== editingItemId
+    );
+    if (duplicate) {
+        alert('❌ A product with this name already exists');
+        document.getElementById('itemName').focus();
+        return;
+    }
+    
+    if (description.length > 255) {
+        alert('❌ Description must not exceed 255 characters');
+        document.getElementById('itemDescription').focus();
+        return;
+    }
+    
+    const stock = parseInt(stockInput);
+    if (isNaN(stock) || stock < 0) {
+        alert('❌ Stock must be a positive number or zero');
+        document.getElementById('itemStock').focus();
+        return;
+    }
+    
+    if (stock > 999999) {
+        alert('❌ Stock value is too large (maximum: 999,999)');
+        document.getElementById('itemStock').focus();
+        return;
+    }
+    
+    const rate = parseFloat(rateInput);
+    if (isNaN(rate) || rate <= 0) {
+        alert('❌ Rate must be a positive number greater than 0');
+        document.getElementById('itemRate').focus();
+        return;
+    }
+    
+    if (rate > 9999999) {
+        alert('❌ Rate value is too large (maximum: 9,999,999)');
+        document.getElementById('itemRate').focus();
+        return;
+    }
+    
+    // All validations passed, proceed with save
     if (editingItemId) {
         // Update existing item
         const item = inventory.find(i => i.id === editingItemId);
@@ -147,10 +233,12 @@ function handleFormSubmit(e) {
         inventory.push(newItem);
     }
     
-    saveInventory();
-    updateStats();
-    displayInventory();
-    closeModal();
+    if (saveInventory()) {
+        updateStats();
+        displayInventory();
+        closeModal();
+        alert(editingItemId ? '✅ Product updated successfully' : '✅ Product added successfully');
+    }
 }
 
 // Search inventory
@@ -203,3 +291,131 @@ function initInventory() {
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', initInventory);
+
+// ===== BACKUP & RESTORE FUNCTIONALITY =====
+
+// Export all data as JSON backup
+function exportBackup() {
+    try {
+        // Gather all data from localStorage
+        const backupData = {
+            version: '1.0',
+            timestamp: new Date().toISOString(),
+            exportDate: new Date().toLocaleString('en-IN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }),
+            data: {
+                invoices: JSON.parse(localStorage.getItem('invoices') || '[]'),
+                inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
+            },
+            stats: {
+                totalInvoices: JSON.parse(localStorage.getItem('invoices') || '[]').length,
+                totalProducts: JSON.parse(localStorage.getItem('inventory') || '[]').length
+            }
+        };
+
+        // Convert to JSON string
+        const jsonString = JSON.stringify(backupData, null, 2);
+        
+        // Create blob and download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        
+        // Generate filename with timestamp
+        const timestamp = new Date().toISOString().slice(0, 10);
+        link.download = `KounterPro_Backup_${timestamp}.json`;
+        link.href = url;
+        link.click();
+        
+        // Cleanup
+        URL.revokeObjectURL(url);
+        
+        // Show success message
+        alert(`✅ Backup created successfully!\n\n📦 ${backupData.stats.totalInvoices} invoices\n📦 ${backupData.stats.totalProducts} products\n\nFile: ${link.download}`);
+        
+    } catch (error) {
+        console.error('Backup export failed:', error);
+        alert('❌ Error creating backup. Please try again.');
+    }
+}
+
+// Import and restore data from JSON backup
+function importBackup(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+        alert('❌ Invalid file type. Please select a JSON backup file.');
+        event.target.value = '';
+        return;
+    }
+    
+    // Confirm before overwriting data
+    const confirmRestore = confirm(
+        '⚠️ WARNING: Restore Data\n\n' +
+        'This will REPLACE all current data with the backup data.\n' +
+        'Current invoices and inventory will be overwritten.\n\n' +
+        'Are you sure you want to continue?'
+    );
+    
+    if (!confirmRestore) {
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+        try {
+            const backupData = JSON.parse(e.target.result);
+            
+            // Validate backup structure
+            if (!backupData.version || !backupData.data) {
+                throw new Error('Invalid backup file format');
+            }
+            
+            if (!backupData.data.invoices || !backupData.data.inventory) {
+                throw new Error('Backup file is missing required data');
+            }
+            
+            // Restore data to localStorage
+            localStorage.setItem('invoices', JSON.stringify(backupData.data.invoices));
+            localStorage.setItem('inventory', JSON.stringify(backupData.data.inventory));
+            
+            // Show success message
+            alert(
+                `✅ Data restored successfully!\n\n` +
+                `📦 ${backupData.data.invoices.length} invoices restored\n` +
+                `📦 ${backupData.data.inventory.length} products restored\n` +
+                `📅 Backup created: ${backupData.exportDate || 'Unknown'}\n\n` +
+                `Page will reload to show restored data.`
+            );
+            
+            // Reload the page to reflect changes
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Backup import failed:', error);
+            alert('❌ Error restoring backup: ' + error.message + '\n\nPlease ensure you selected a valid KounterPro backup file.');
+        }
+        
+        // Reset file input
+        event.target.value = '';
+    };
+    
+    reader.onerror = function() {
+        alert('❌ Error reading backup file. Please try again.');
+        event.target.value = '';
+    };
+    
+    reader.readAsText(file);
+}

@@ -18,6 +18,9 @@
         <div class="nav-section">
             <button class="btn-nav" onclick="window.location.href='inventory.html'">📦 Inventory</button>
             <button class="btn-nav btn-nav-primary" onclick="window.location.href='create-bill.html'">+ Create New Bill</button>
+            <button class="btn-nav btn-backup" onclick="exportBackup()">💾 Backup Data</button>
+            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()">📂 Restore Data</button>
+            <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
         </div>
 
         <div class="stats-container">
@@ -88,6 +91,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="validation.js"></script>
     <script src="auth.js"></script>
     <script src="dashboard.js"></script>
 </body>

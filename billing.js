@@ -4,13 +4,26 @@ let inventory = [];
 
 // Load inventory from localStorage
 function loadInventory() {
-    const stored = localStorage.getItem('inventory');
-    inventory = stored ? JSON.parse(stored) : [];
+    try {
+        const stored = localStorage.getItem('inventory');
+        inventory = stored ? JSON.parse(stored) : [];
+    } catch (error) {
+        console.error('Error loading inventory:', error);
+        alert('❌ Error loading inventory. Please refresh the page.');
+        inventory = [];
+    }
 }
 
 // Save inventory to localStorage
 function saveInventory() {
-    localStorage.setItem('inventory', JSON.stringify(inventory));
+    try {
+        localStorage.setItem('inventory', JSON.stringify(inventory));
+        return true;
+    } catch (error) {
+        console.error('Error saving inventory:', error);
+        alert('❌ Error updating inventory. Please try again.');
+        return false;
+    }
 }
 
 // Calculate item amounts and totals (Rate is GST-inclusive)
@@ -70,7 +83,7 @@ function addItem() {
 function removeItem(rowNumber) {
     const rows = document.querySelectorAll('.item-row');
     if (rows.length === 1) {
-        alert('At least one item is required');
+        alert('❌ At least one item is required in the invoice');
         return;
     }
     
@@ -222,17 +235,105 @@ function collectFormData() {
     const gstMultiplier = 1 + (gstRate / 100);
     const termsConditions = document.getElementById('termsConditions').value.trim();
     
+    // Validation
+    if (!customerName || customerName.length < 2) {
+        throw new Error('Customer name must be at least 2 characters');
+    }
+    
+    if (customerName.length > 100) {
+        throw new Error('Customer name must not exceed 100 characters');
+    }
+    
+    if (!customerAddress || customerAddress.length < 5) {
+        throw new Error('Customer address must be at least 5 characters');
+    }
+    
+    if (customerAddress.length > 255) {
+        throw new Error('Customer address must not exceed 255 characters');
+    }
+    
+    // Validate mobile number
+    if (!customerMobile) {
+        throw new Error('Mobile number is required');
+    }
+    
+    const cleanedMobile = customerMobile.replace(/[\s\-\+]/g, '');
+    if (cleanedMobile.length === 10 && /^[6-9]\d{9}$/.test(cleanedMobile)) {
+        // Valid 10-digit Indian mobile
+    } else if (cleanedMobile.length === 12 && /^91[6-9]\d{9}$/.test(cleanedMobile)) {
+        // Valid with country code
+    } else {
+        throw new Error('Please enter a valid 10-digit mobile number (starting with 6-9)');
+    }
+    
+    // Validate GST if provided
+    if (customerGST) {
+        const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        if (!gstRegex.test(customerGST.toUpperCase())) {
+            throw new Error('Invalid GST format. Example: 22AAAAA0000A1Z5');
+        }
+    }
+    
+    if (isNaN(gstRate) || gstRate < 0 || gstRate > 50) {
+        throw new Error('GST rate must be between 0 and 50');
+    }
+    
+    if (!termsConditions || termsConditions.length < 10) {
+        throw new Error('Terms and conditions must be at least 10 characters');
+    }
+    
     const items = [];
     const rows = document.querySelectorAll('.item-row');
     
+    if (rows.length === 0) {
+        throw new Error('At least one item is required');
+    }
+    
     let subtotal = 0;
     let grandTotal = 0;
+    let totalUnits = 0;
     
     rows.forEach((row, index) => {
         const description = row.querySelector('.item-description').value.trim();
         const serialNo = row.querySelector('.item-serial').value.trim();
-        const quantity = parseFloat(row.querySelector('.item-quantity').value);
-        const rateInclGST = parseFloat(row.querySelector('.item-rate').value);
+        const quantityInput = row.querySelector('.item-quantity').value;
+        const rateInput = row.querySelector('.item-rate').value;
+        
+        // Validate item fields
+        if (!description) {
+            throw new Error(`Item ${index + 1}: Description is required`);
+        }
+        
+        if (description.length > 100) {
+            throw new Error(`Item ${index + 1}: Description too long (max 100 characters)`);
+        }
+        
+        const quantity = parseFloat(quantityInput);
+        if (isNaN(quantity) || quantity <= 0) {
+            throw new Error(`Item ${index + 1}: Quantity must be greater than 0`);
+        }
+        
+        if (quantity > 9999) {
+            throw new Error(`Item ${index + 1}: Quantity too large (max 9999)`);
+        }
+        
+        const rateInclGST = parseFloat(rateInput);
+        if (isNaN(rateInclGST) || rateInclGST <= 0) {
+            throw new Error(`Item ${index + 1}: Rate must be greater than 0`);
+        }
+        
+        if (rateInclGST > 9999999) {
+            throw new Error(`Item ${index + 1}: Rate too large`);
+        }
+        
+        // Check stock availability
+        const product = inventory.find(item => 
+            item.name.toLowerCase() === description.toLowerCase()
+        );
+        
+        if (product && product.stock < quantity) {
+            throw new Error(`Insufficient stock for "${description}". Available: ${product.stock}, Required: ${quantity}`);
+        }
         
         // Calculate base rate (excluding GST)
         const rateExclGST = rateInclGST / gstMultiplier;
@@ -251,10 +352,10 @@ function collectFormData() {
         
         subtotal += amountExclGST;
         grandTotal += amountInclGST;
+        totalUnits += quantity;
     });
     
     const gstAmount = grandTotal - subtotal;
-    const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
     
     return {
         invoiceNo: generateInvoiceNumber(),
@@ -551,34 +652,59 @@ function deductStock(soldItems) {
 function handleFormSubmit(e) {
     e.preventDefault();
     
-    try {
-        const invoiceData = collectFormData();
-        
-        // Validate items
-        if (invoiceData.items.length === 0) {
-            alert('Please add at least one item');
-            return;
-        }
-        
-        // Generate PDF
-        generatePDF(invoiceData);
-        
-        // Save to localStorage
-        saveInvoice(invoiceData);
-        
-        // Show WhatsApp modal
-        document.getElementById('modalInvoiceNo').textContent = invoiceData.invoiceNo;
-        document.getElementById('whatsappModal').style.display = 'flex';
-        
-        // Setup WhatsApp button
-        document.getElementById('sendWhatsappBtn').onclick = () => {
-            sendViaWhatsApp(invoiceData);
-        };
-        
-    } catch (error) {
-        console.error('Error generating invoice:', error);
-        alert('Error generating invoice. Please check the console for details.');
+    // Create loading overlay if it doesn't exist
+    let loadingOverlay = document.getElementById('loadingOverlay');
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loadingOverlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingMessage">Generating invoice...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
     }
+    
+    // Show loading
+    loadingOverlay.style.display = 'flex';
+    
+    // Use setTimeout to allow UI to update
+    setTimeout(() => {
+        try {
+            const invoiceData = collectFormData();
+            
+            // Validate items
+            if (invoiceData.items.length === 0) {
+                throw new Error('Please add at least one item');
+            }
+            
+            // Generate PDF
+            generatePDF(invoiceData);
+            
+            // Save to localStorage
+            saveInvoice(invoiceData);
+            
+            // Hide loading
+            loadingOverlay.style.display = 'none';
+            
+            // Show WhatsApp modal
+            document.getElementById('modalInvoiceNo').textContent = invoiceData.invoiceNo;
+            document.getElementById('whatsappModal').style.display = 'flex';
+            
+            // Setup WhatsApp button
+            document.getElementById('sendWhatsappBtn').onclick = () => {
+                sendViaWhatsApp(invoiceData);
+            };
+            
+        } catch (error) {
+            // Hide loading
+            loadingOverlay.style.display = 'none';
+            
+            console.error('Error generating invoice:', error);
+            alert('\u274c ' + error.message);
+        }
+    }, 100); // Small delay to allow UI to update
 }
 
 // Initialize form

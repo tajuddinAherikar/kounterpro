@@ -16,6 +16,9 @@
             <div>
                 <button class="btn-secondary" onclick="window.location.href='index.html'">← Dashboard</button>
                 <button class="btn-primary" onclick="showAddItemModal()">+ Add New Item</button>
+                <button class="btn-backup" onclick="exportBackup()">💾 Backup</button>
+                <button class="btn-restore" onclick="document.getElementById('restoreFileInput').click()">📂 Restore</button>
+                <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
             </div>
         </header>
 
@@ -83,25 +86,25 @@
                 <div class="form-row">
                     <label>
                         Item Name: <span class="required">*</span>
-                        <input type="text" id="itemName" required placeholder="e.g., ARCO 100AH">
+                        <input type="text" id="itemName" required minlength="2" maxlength="100" placeholder="e.g., ARCO 100AH">
                     </label>
                 </div>
                 <div class="form-row">
                     <label>
                         Description: <span class="optional">(optional)</span>
-                        <textarea id="itemDescription" rows="2" placeholder="Additional details about the item"></textarea>
+                        <textarea id="itemDescription" rows="2" maxlength="255" placeholder="Additional details about the item"></textarea>
                     </label>
                 </div>
                 <div class="form-row">
                     <label>
                         Stock Quantity: <span class="required">*</span>
-                        <input type="number" id="itemStock" required min="0" placeholder="Available quantity">
+                        <input type="number" id="itemStock" required min="0" max="999999" step="1" value="0" placeholder="Enter quantity">
                     </label>
                 </div>
                 <div class="form-row">
                     <label>
-                        Rate (₹) <span style="font-weight: normal; font-size: 12px;">(incl. GST)</span>: <span class="required">*</span>
-                        <input type="number" id="itemRate" required min="0" step="0.01" placeholder="Selling price including GST">
+                        Rate (GST Inclusive): <span class="required">*</span>
+                        <input type="number" id="itemRate" required min="0.01" max="9999999" step="0.01" placeholder="Enter rate in ₹">
                     </label>
                 </div>
                 <div class="form-actions">
@@ -112,6 +115,7 @@
         </div>
     </div>
 
+    <script src="validation.js"></script>
     <script src="auth.js"></script>
     <script src="inventory.js"></script>
 </body>
