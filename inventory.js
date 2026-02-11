@@ -1,31 +1,73 @@
-// Inventory management functionality
+// Inventory management functionality with Supabase
 let inventory = [];
 let editingItemId = null;
 
-// Load inventory from localStorage
-function loadInventory() {
+// Load inventory from Supabase
+async function loadInventory() {
     try {
-        const stored = localStorage.getItem('inventory');
-        inventory = stored ? JSON.parse(stored) : [];
+        showLoading('Loading inventory...');
+        const result = await supabaseGetInventory();
+        hideLoading();
+        
+        if (result.success) {
+            // Convert Supabase format to local format
+            inventory = result.data.map(item => ({
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                stock: item.stock,
+                rate: parseFloat(item.rate),
+                lowStockThreshold: item.low_stock_threshold
+            }));
+            displayInventory();
+            updateStats();
+        } else {
+            console.error('Error loading inventory:', result.error);
+            alert('❌ Error loading inventory: ' + result.error);
+            inventory = [];
+        }
     } catch (error) {
+        hideLoading();
         console.error('Error loading inventory:', error);
-        alert('❌ Error loading inventory. Your data may be corrupted. Please restore from backup.');
+        alert('❌ Error loading inventory. Please try again.');
         inventory = [];
     }
 }
 
-// Save inventory to localStorage
-function saveInventory() {
+// Save inventory item to Supabase
+async function saveInventoryItem(item, isEdit = false) {
     try {
-        localStorage.setItem('inventory', JSON.stringify(inventory));
-        return true;
-    } catch (error) {
-        console.error('Error saving inventory:', error);
-        if (error.name === 'QuotaExceededError') {
-            alert('❌ Storage limit exceeded! Please backup and clear old data.');
+        showLoading(isEdit ? 'Updating item...' : 'Adding item...');
+        
+        const itemData = {
+            name: item.name,
+            description: item.description,
+            stock: item.stock,
+            rate: item.rate,
+            lowStockThreshold: item.lowStockThreshold
+        };
+        
+        let result;
+        if (isEdit) {
+            result = await supabaseUpdateInventoryItem(item.id, itemData);
         } else {
-            alert('❌ Error saving inventory. Please try again.');
+            result = await supabaseAddInventoryItem(itemData);
         }
+        
+        hideLoading();
+        
+        if (result.success) {
+            await loadInventory(); // Reload to get fresh data
+            return true;
+        } else {
+            console.error('Error saving inventory:', result.error);
+            alert('❌ Error saving item: ' + result.error);
+            return false;
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Error saving inventory:', error);
+        alert('❌ Error saving item. Please try again.');
         return false;
     }
 }
@@ -145,7 +187,7 @@ function closeModal() {
 }
 
 // Delete item
-function deleteItem(itemId) {
+async function deleteItem(itemId) {
     const item = inventory.find(i => i.id === itemId);
     if (!item) {
         alert('❌ Item not found');
@@ -160,11 +202,15 @@ function deleteItem(itemId) {
         `Are you sure you want to delete this product?`;
     
     if (confirm(confirmMessage)) {
-        inventory = inventory.filter(i => i.id !== itemId);
-        if (saveInventory()) {
-            updateStats();
-            displayInventory();
+        showLoading('Deleting item...');
+        const result = await supabaseDeleteInventoryItem(itemId);
+        hideLoading();
+        
+        if (result.success) {
+            await loadInventory(); // Reload to refresh list
             alert('✅ Product deleted successfully');
+        } else {
+            alert('❌ Error deleting product: ' + result.error);
         }
     }
 }
@@ -175,7 +221,7 @@ function generateId() {
 }
 
 // Handle form submission
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
     const name = document.getElementById('itemName').value.trim();
@@ -258,37 +304,29 @@ function handleFormSubmit(e) {
     }
     
     // All validations passed, proceed with save
+    const itemData = {
+        name,
+        description,
+        stock,
+        rate,
+        lowStockThreshold
+    };
+    
     if (editingItemId) {
         // Update existing item
-        const item = inventory.find(i => i.id === editingItemId);
-        if (item) {
-            item.name = name;
-            item.description = description;
-            item.stock = stock;
-            item.rate = rate;
-            item.lowStockThreshold = lowStockThreshold;
-            item.updatedAt = new Date().toISOString();
+        itemData.id = editingItemId;
+        const success = await saveInventoryItem(itemData, true);
+        if (success) {
+            closeModal();
+            alert('✅ Product updated successfully');
         }
     } else {
         // Add new item
-        const newItem = {
-            id: generateId(),
-            name,
-            description,
-            stock,
-            rate,
-            lowStockThreshold,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        inventory.push(newItem);
-    }
-    
-    if (saveInventory()) {
-        updateStats();
-        displayInventory();
-        closeModal();
-        alert(editingItemId ? '✅ Product updated successfully' : '✅ Product added successfully');
+        const success = await saveInventoryItem(itemData, false);
+        if (success) {
+            closeModal();
+            alert('✅ Product added successfully');
+        }
     }
 }
 
@@ -345,58 +383,13 @@ document.addEventListener('DOMContentLoaded', initInventory);
 
 // ===== BACKUP & RESTORE FUNCTIONALITY =====
 
-// Export all data as JSON backup
-function exportBackup() {
-    try {
-        // Gather all data from localStorage
-        const backupData = {
-            version: '1.0',
-            timestamp: new Date().toISOString(),
-            exportDate: new Date().toLocaleString('en-IN', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            }),
-            data: {
-                invoices: JSON.parse(localStorage.getItem('invoices') || '[]'),
-                inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
-            },
-            stats: {
-                totalInvoices: JSON.parse(localStorage.getItem('invoices') || '[]').length,
-                totalProducts: JSON.parse(localStorage.getItem('inventory') || '[]').length
-            }
-        };
-
-        // Convert to JSON string
-        const jsonString = JSON.stringify(backupData, null, 2);
-        
-        // Create blob and download
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        // Generate filename with timestamp
-        const timestamp = new Date().toISOString().slice(0, 10);
-        link.download = `KounterPro_Backup_${timestamp}.json`;
-        link.href = url;
-        link.click();
-        
-        // Cleanup
-        URL.revokeObjectURL(url);
-        
-        // Show success message
-        alert(`✅ Backup created successfully!\n\n📦 ${backupData.stats.totalInvoices} invoices\n📦 ${backupData.stats.totalProducts} products\n\nFile: ${link.download}`);
-        
-    } catch (error) {
-        console.error('Backup export failed:', error);
-        alert('❌ Error creating backup. Please try again.');
-    }
+// Export all data as JSON backup from Supabase
+async function exportBackup() {
+    await downloadSupabaseBackup();
 }
 
 // Import and restore data from JSON backup
-function importBackup(event) {
+async function importBackup(event) {
     const file = event.target.files[0];
     
     if (!file) {
@@ -410,63 +403,7 @@ function importBackup(event) {
         return;
     }
     
-    // Confirm before overwriting data
-    const confirmRestore = confirm(
-        '⚠️ WARNING: Restore Data\n\n' +
-        'This will REPLACE all current data with the backup data.\n' +
-        'Current invoices and inventory will be overwritten.\n\n' +
-        'Are you sure you want to continue?'
-    );
-    
-    if (!confirmRestore) {
-        event.target.value = '';
-        return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const backupData = JSON.parse(e.target.result);
-            
-            // Validate backup structure
-            if (!backupData.version || !backupData.data) {
-                throw new Error('Invalid backup file format');
-            }
-            
-            if (!backupData.data.invoices || !backupData.data.inventory) {
-                throw new Error('Backup file is missing required data');
-            }
-            
-            // Restore data to localStorage
-            localStorage.setItem('invoices', JSON.stringify(backupData.data.invoices));
-            localStorage.setItem('inventory', JSON.stringify(backupData.data.inventory));
-            
-            // Show success message
-            alert(
-                `✅ Data restored successfully!\n\n` +
-                `📦 ${backupData.data.invoices.length} invoices restored\n` +
-                `📦 ${backupData.data.inventory.length} products restored\n` +
-                `📅 Backup created: ${backupData.exportDate || 'Unknown'}\n\n` +
-                `Page will reload to show restored data.`
-            );
-            
-            // Reload the page to reflect changes
-            window.location.reload();
-            
-        } catch (error) {
-            console.error('Backup import failed:', error);
-            alert('❌ Error restoring backup: ' + error.message + '\n\nPlease ensure you selected a valid KounterPro backup file.');
-        }
-        
-        // Reset file input
-        event.target.value = '';
-    };
-    
-    reader.onerror = function() {
-        alert('❌ Error reading backup file. Please try again.');
-        event.target.value = '';
-    };
-    
-    reader.readAsText(file);
+    // Note: Restore from file not implemented for Supabase
+    alert('ℹ️ Backup restore from file is not yet available with Supabase.\n\nPlease use the Supabase Dashboard to manage your data.\n\nTo migrate localStorage data to Supabase, open console and run:\nmigrateLocalStorageToSupabase()');
+    event.target.value = '';
 }

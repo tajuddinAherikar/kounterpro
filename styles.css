@@ -571,13 +571,22 @@ textarea#termsConditions {
     font-size: 13px;
 }
 
-.items-table input {
+.items-table input,
+.items-table textarea {
     width: 100%;
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 3px;
     font-size: 14px;
     min-width: 80px; /* Prevents inputs from becoming too narrow */
+    font-family: 'Lato', sans-serif;
+}
+
+.items-table textarea {
+    resize: vertical;
+    min-height: 36px;
+    max-height: 120px;
+    line-height: 1.4;
 }
 
 .items-table .item-amount {
@@ -720,7 +729,8 @@ textarea#termsConditions {
         padding: 6px;
     }
     
-    .items-table input {
+    .items-table input,
+    .items-table textarea {
         padding: 5px;
         font-size: 12px;
     }

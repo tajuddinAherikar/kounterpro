@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="logo-placeholder">
+                <img src="../kounterpro/kounter-pro-logo-sm.png" alt="" style="width: 100px;">
+            </div>
+            <h1>Create Account</h1>
+            <p class="subtitle">Start managing your business today</p>
+            
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+            
+            <form id="signupForm" class="login-form">
+                <div class="login-form-group">
+                    <label for="businessName">Business Name</label>
+                    <input type="text" id="businessName" name="businessName" required 
+                           placeholder="Enter your business name" minlength="2" maxlength="100">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="mobile">Mobile Number</label>
+                    <input type="tel" id="mobile" name="mobile" required 
+                           placeholder="10-digit mobile number" pattern="[0-9]{10}" maxlength="10">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required 
+                           placeholder="Enter your email">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Minimum 6 characters" minlength="6">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required 
+                           placeholder="Re-enter your password" minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-login">Create Account</button>
+            </form>
+            
+            <div class="login-footer" style="margin-top: 20px;">
+                <p style="margin-bottom: 10px;">Already have an account? <a href="login.html" style="color: #2845D6; font-weight: 600; text-decoration: none;">Sign In</a></p>
+                <small>Version 1.0.1 | © 2026 KounterPro</small>
+            </div>
+        </div>
+    </div>
+    
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        // Handle signup form submission
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const businessName = document.getElementById('businessName').value.trim();
+            const mobile = document.getElementById('mobile').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            const errorMessage = document.getElementById('errorMessage');
+            
+            // Clear previous errors
+            errorMessage.style.display = 'none';
+            
+            // Validate business name
+            if (businessName.length < 2) {
+                errorMessage.textContent = 'Business name must be at least 2 characters';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Validate mobile number
+            if (!/^[0-9]{10}$/.test(mobile)) {
+                errorMessage.textContent = 'Please enter a valid 10-digit mobile number';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Validate password match
+            if (password !== confirmPassword) {
+                errorMessage.textContent = 'Passwords do not match';
+                errorMessage.style.display = 'block';
+                document.getElementById('confirmPassword').focus();
+                return;
+            }
+            
+            // Validate password strength
+            if (password.length < 6) {
+                errorMessage.textContent = 'Password must be at least 6 characters';
+                errorMessage.style.display = 'block';
+                return;
+            }
+            
+            // Show loading
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Creating account...';
+            submitBtn.disabled = true;
+            
+            // Sign up with Supabase
+            const result = await supabaseSignUp(email, password, businessName, mobile);
+            
+            if (result.success) {
+                // Show success message
+                alert('✅ Account created successfully!\n\nPlease check your email to verify your account (if email confirmation is enabled).\n\nYou can now sign in.');
+                
+                // Redirect to login
+                window.location.href = 'login.html';
+            } else {
+                // Show error
+                errorMessage.textContent = result.error || 'Failed to create account. Please try again.';
+                errorMessage.style.display = 'block';
+                
+                // Shake animation
+                const loginBox = document.querySelector('.login-box');
+                loginBox.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    loginBox.style.animation = '';
+                }, 500);
+                
+                // Reset button
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,42 +1,91 @@
-// Dashboard functionality
+// Dashboard functionality with Supabase
 let allInvoices = [];
 let inventory = [];
 
-// Load inventory from localStorage
-function loadInventory() {
+// Load inventory from Supabase
+async function loadInventory() {
     try {
-        const stored = localStorage.getItem('inventory');
-        inventory = stored ? JSON.parse(stored) : [];
+        const result = await supabaseGetInventory();
+        if (result.success) {
+            inventory = result.data.map(item => ({
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                stock: item.stock,
+                rate: parseFloat(item.rate),
+                lowStockThreshold: item.low_stock_threshold
+            }));
+        } else {
+            console.error('Error loading inventory:', result.error);
+            inventory = [];
+        }
     } catch (error) {
         console.error('Error loading inventory:', error);
         inventory = [];
     }
 }
 
-// Load invoices from localStorage
-function loadInvoices() {
+// Load invoices from Supabase
+async function loadInvoices() {
     try {
-        const stored = localStorage.getItem('invoices');
-        allInvoices = stored ? JSON.parse(stored) : [];
+        showLoading('Loading invoices...');
+        const result = await supabaseGetInvoices();
+        hideLoading();
+        
+        console.log('Load invoices result:', result); // Debug log
+        
+        if (result.success) {
+            console.log('Raw invoices from DB:', result.data); // Debug log
+            
+            // Convert Supabase format to local format
+            allInvoices = result.data.map(inv => ({
+                id: inv.id,
+                invoiceNumber: inv.invoice_number,
+                date: inv.created_at,
+                customerName: inv.customer_name,
+                mobile: inv.customer_mobile,
+                gstNumber: inv.customer_gst,
+                address: inv.customer_address,
+                items: inv.items,
+                subtotal: parseFloat(inv.subtotal),
+                gstAmount: parseFloat(inv.gst_amount),
+                gstRate: parseFloat(inv.gst_rate),
+                totalAmount: parseFloat(inv.total_amount),
+                grandTotal: parseFloat(inv.total_amount),
+                totalUnits: inv.total_units,
+                paymentMethod: inv.payment_method
+            }));
+            
+            console.log('Converted invoices:', allInvoices); // Debug log
+            
+            displayInvoices();
+            updateStats();
+            checkLowStockAlerts();
+        } else {
+            console.error('Error loading invoices:', result.error);
+            alert('❌ Error loading invoices: ' + result.error);
+            allInvoices = [];
+        }
     } catch (error) {
+        hideLoading();
         console.error('Error loading invoices:', error);
-        alert('❌ Error loading invoices. Your data may be corrupted. Please restore from backup.');
+        alert('❌ Error loading invoices. Please refresh the page.');
         allInvoices = [];
     }
 }
 
 // Calculate statistics
-function calculateStats(invoices) {
+function calculateStats(invoices = allInvoices) {
     const today = new Date().toDateString();
     
     const todayInvoices = invoices.filter(inv => 
         new Date(inv.date).toDateString() === today
     );
     
-    const todaySales = todayInvoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
-    const todayUnits = todayInvoices.reduce((sum, inv) => sum + inv.totalUnits, 0);
+    const todaySales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
+    const todayUnits = todayInvoices.reduce((sum, inv) => sum + (inv.totalUnits || 0), 0);
     
-    const totalSales = invoices.reduce((sum, inv) => sum + inv.grandTotal, 0);
+    const totalSales = invoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
     
     return {
         todaySales,
@@ -59,7 +108,7 @@ function updateStats() {
 }
 
 // Display invoices in table
-function displayInvoices(invoices) {
+function displayInvoices(invoices = allInvoices) {
     const tbody = document.getElementById('invoicesTableBody');
     
     if (invoices.length === 0) {
@@ -71,15 +120,15 @@ function displayInvoices(invoices) {
         .sort((a, b) => new Date(b.date) - new Date(a.date))
         .map(invoice => `
             <tr class="invoice-row">
-                <td>${invoice.invoiceNo}</td>
+                <td>${invoice.invoiceNumber}</td>
                 <td>${formatDate(invoice.date)}</td>
                 <td>${invoice.customerName}</td>
                 <td>${invoice.totalUnits}</td>
                 <td>₹${invoice.grandTotal.toFixed(2)}</td>
                 <td>
-                    <a href="#" class="action-link" onclick="viewInvoice('${invoice.invoiceNo}')">View</a>
-                    <a href="#" class="action-link" onclick="downloadInvoicePDF('${invoice.invoiceNo}')">Download</a>
-                    <a href="#" class="action-link" onclick="deleteInvoice('${invoice.invoiceNo}')">Delete</a>
+                    <a href="#" class="action-link" onclick="viewInvoice('${invoice.id}')">View</a>
+                    <a href="#" class="action-link" onclick="downloadInvoicePDF('${invoice.id}')">Download</a>
+                    <a href="#" class="action-link" onclick="deleteInvoice('${invoice.id}')">Delete</a>
                 </td>
             </tr>
         `).join('');
@@ -100,7 +149,7 @@ function searchInvoices() {
         const amount = row.cells[4].textContent.toLowerCase();
         
         // Find the invoice data to search in serial numbers
-        const invoice = allInvoices.find(inv => inv.invoiceNo === row.cells[0].textContent);
+        const invoice = allInvoices.find(inv => inv.invoiceNumber === row.cells[0].textContent);
         const serialNumbers = invoice ? invoice.items.map(item => (item.serialNo || '').toLowerCase()).join(' ') : '';
         
         const matches = invoiceNo.includes(searchTerm) ||
@@ -196,15 +245,15 @@ function viewInvoice(invoiceNo) {
 }
 
 // Delete invoice
-function deleteInvoice(invoiceNo) {
-    const invoice = allInvoices.find(inv => inv.invoiceNo === invoiceNo);
+async function deleteInvoice(invoiceId) {
+    const invoice = allInvoices.find(inv => inv.id === invoiceId);
     if (!invoice) {
         alert('❌ Invoice not found');
         return;
     }
     
     const confirmMessage = `⚠️ Delete Invoice Confirmation\n\n` +
-        `Invoice No: ${invoiceNo}\n` +
+        `Invoice No: ${invoice.invoiceNumber}\n` +
         `Customer: ${invoice.customerName}\n` +
         `Amount: ₹${invoice.grandTotal.toFixed(2)}\n\n` +
         `This action cannot be undone!\n\n` +
@@ -212,12 +261,18 @@ function deleteInvoice(invoiceNo) {
     
     if (confirm(confirmMessage)) {
         try {
-            allInvoices = allInvoices.filter(inv => inv.invoiceNo !== invoiceNo);
-            localStorage.setItem('invoices', JSON.stringify(allInvoices));
-            updateStats();
-            displayInvoices(allInvoices);
-            alert('✅ Invoice deleted successfully');
+            showLoading('Deleting invoice...');
+            const result = await supabaseDeleteInvoice(invoiceId);
+            hideLoading();
+            
+            if (result.success) {
+                await loadInvoices(); // Reload to refresh list
+                alert('✅ Invoice deleted successfully');
+            } else {
+                alert('❌ Error deleting invoice: ' + result.error);
+            }
         } catch (error) {
+            hideLoading();
             console.error('Error deleting invoice:', error);
             alert('❌ Error deleting invoice. Please try again.');
         }
@@ -430,10 +485,9 @@ function formatDateForPDF(dateString) {
 }
 
 // Initialize dashboard
-function initDashboard() {
-    loadInvoices();
-    updateStats();
-    displayInvoices(allInvoices);
+async function initDashboard() {
+    await loadInventory();
+    await loadInvoices();
     
     // Set default date range to current month
     const today = new Date();
@@ -665,57 +719,13 @@ function downloadDetailedReport() {
 // ===== BACKUP & RESTORE FUNCTIONALITY =====
 
 // Export all data as JSON backup
-function exportBackup() {
-    try {
-        // Gather all data from localStorage
-        const backupData = {
-            version: '1.0',
-            timestamp: new Date().toISOString(),
-            exportDate: new Date().toLocaleString('en-IN', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            }),
-            data: {
-                invoices: JSON.parse(localStorage.getItem('invoices') || '[]'),
-                inventory: JSON.parse(localStorage.getItem('inventory') || '[]')
-            },
-            stats: {
-                totalInvoices: JSON.parse(localStorage.getItem('invoices') || '[]').length,
-                totalProducts: JSON.parse(localStorage.getItem('inventory') || '[]').length
-            }
-        };
-
-        // Convert to JSON string
-        const jsonString = JSON.stringify(backupData, null, 2);
-        
-        // Create blob and download
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        
-        // Generate filename with timestamp
-        const timestamp = new Date().toISOString().slice(0, 10);
-        link.download = `KounterPro_Backup_${timestamp}.json`;
-        link.href = url;
-        link.click();
-        
-        // Cleanup
-        URL.revokeObjectURL(url);
-        
-        // Show success message
-        alert(`✅ Backup created successfully!\n\n📦 ${backupData.stats.totalInvoices} invoices\n📦 ${backupData.stats.totalProducts} products\n\nFile: ${link.download}`);
-        
-    } catch (error) {
-        console.error('Backup export failed:', error);
-        alert('❌ Error creating backup. Please try again.');
-    }
+// Export backup from Supabase
+async function exportBackup() {
+    await downloadSupabaseBackup();
 }
 
 // Import and restore data from JSON backup
-function importBackup(event) {
+async function importBackup(event) {
     const file = event.target.files[0];
     
     if (!file) {
@@ -729,65 +739,9 @@ function importBackup(event) {
         return;
     }
     
-    // Confirm before overwriting data
-    const confirmRestore = confirm(
-        '⚠️ WARNING: Restore Data\n\n' +
-        'This will REPLACE all current data with the backup data.\n' +
-        'Current invoices and inventory will be overwritten.\n\n' +
-        'Are you sure you want to continue?'
-    );
-    
-    if (!confirmRestore) {
-        event.target.value = '';
-        return;
-    }
-    
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-        try {
-            const backupData = JSON.parse(e.target.result);
-            
-            // Validate backup structure
-            if (!backupData.version || !backupData.data) {
-                throw new Error('Invalid backup file format');
-            }
-            
-            if (!backupData.data.invoices || !backupData.data.inventory) {
-                throw new Error('Backup file is missing required data');
-            }
-            
-            // Restore data to localStorage
-            localStorage.setItem('invoices', JSON.stringify(backupData.data.invoices));
-            localStorage.setItem('inventory', JSON.stringify(backupData.data.inventory));
-            
-            // Show success message
-            alert(
-                `✅ Data restored successfully!\n\n` +
-                `📦 ${backupData.data.invoices.length} invoices restored\n` +
-                `📦 ${backupData.data.inventory.length} products restored\n` +
-                `📅 Backup created: ${backupData.exportDate || 'Unknown'}\n\n` +
-                `Page will reload to show restored data.`
-            );
-            
-            // Reload the page to reflect changes
-            window.location.reload();
-            
-        } catch (error) {
-            console.error('Backup import failed:', error);
-            alert('❌ Error restoring backup: ' + error.message + '\n\nPlease ensure you selected a valid KounterPro backup file.');
-        }
-        
-        // Reset file input
-        event.target.value = '';
-    };
-    
-    reader.onerror = function() {
-        alert('❌ Error reading backup file. Please try again.');
-        event.target.value = '';
-    };
-    
-    reader.readAsText(file);
+    // Note: Restore from file not implemented for Supabase
+    alert('ℹ️ Backup restore from file is not yet available with Supabase.\n\nPlease use the Supabase Dashboard to manage your data.\n\nTo migrate localStorage data to Supabase, open console and run:\nmigrateLocalStorageToSupabase()');
+    event.target.value = '';
 }
 
 // ===== LOW STOCK ALERTS =====
@@ -840,16 +794,4 @@ function checkLowStockAlerts() {
     
     document.getElementById('lowStockWidget').style.display = 'block';
 }
-
-// Initialize dashboard
-function initDashboard() {
-    loadInvoices();
-    loadInventory();
-    updateStats();
-    displayInvoices(allInvoices);
-    checkLowStockAlerts();
-}
-
-// Call init when page loads
-document.addEventListener('DOMContentLoaded', initDashboard);
 

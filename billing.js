@@ -1,12 +1,26 @@
-// Billing functionality
+// Billing functionality with Supabase
 let itemCounter = 1;
 let inventory = [];
 
-// Load inventory from localStorage
-function loadInventory() {
+// Load inventory from Supabase
+async function loadInventory() {
     try {
-        const stored = localStorage.getItem('inventory');
-        inventory = stored ? JSON.parse(stored) : [];
+        const result = await supabaseGetInventory();
+        if (result.success) {
+            // Convert Supabase format to local format
+            inventory = result.data.map(item => ({
+                id: item.id,
+                name: item.name,
+                description: item.description,
+                stock: item.stock,
+                rate: parseFloat(item.rate),
+                lowStockThreshold: item.low_stock_threshold
+            }));
+        } else {
+            console.error('Error loading inventory:', result.error);
+            alert('❌ Error loading inventory: ' + result.error);
+            inventory = [];
+        }
     } catch (error) {
         console.error('Error loading inventory:', error);
         alert('❌ Error loading inventory. Please refresh the page.');
@@ -14,14 +28,16 @@ function loadInventory() {
     }
 }
 
-// Save inventory to localStorage
-function saveInventory() {
+// Update stock in Supabase after sale
+async function updateStockAfterSale(itemName, quantitySold) {
     try {
-        localStorage.setItem('inventory', JSON.stringify(inventory));
-        return true;
+        const result = await supabaseUpdateStock(itemName, quantitySold);
+        if (!result.success) {
+            console.error('Error updating stock:', result.error);
+        }
+        return result.success;
     } catch (error) {
-        console.error('Error saving inventory:', error);
-        alert('❌ Error updating inventory. Please try again.');
+        console.error('Error updating stock:', error);
         return false;
     }
 }
@@ -38,6 +54,16 @@ function calculateAmounts() {
     rows.forEach(row => {
         const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
         const rateInclGST = parseFloat(row.querySelector('.item-rate').value) || 0;
+        
+        // Update serial number placeholder based on quantity
+        const serialTextarea = row.querySelector('.item-serial');
+        if (quantity > 1) {
+            serialTextarea.placeholder = `Enter ${quantity} serial numbers (one per line)`;
+            serialTextarea.rows = Math.min(quantity, 5); // Max 5 rows visible
+        } else {
+            serialTextarea.placeholder = 'Optional';
+            serialTextarea.rows = 1;
+        }
         
         // Calculate base rate (excluding GST from the entered rate)
         const rateExclGST = rateInclGST / gstMultiplier;
@@ -67,7 +93,7 @@ function addItem() {
     newRow.innerHTML = `
         <td>${itemCounter}</td>
         <td><input type="text" class="item-description" required></td>
-        <td><input type="text" class="item-serial" placeholder="Optional"></td>
+        <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
         <td><input type="number" class="item-quantity" min="1" value="1" required></td>
         <td><input type="number" class="item-rate" min="0" step="0.01" required></td>
         <td class="item-amount">0.00</td>
@@ -348,6 +374,14 @@ function collectFormData() {
             throw new Error(`Item ${index + 1}: Quantity too large (max 9999)`);
         }
         
+        // Validate serial numbers if provided
+        if (serialNo) {
+            const serialNumbers = serialNo.split('\n').map(s => s.trim()).filter(s => s);
+            if (quantity > 1 && serialNumbers.length > 0 && serialNumbers.length !== quantity) {
+                throw new Error(`Item ${index + 1}: Quantity is ${quantity} but ${serialNumbers.length} serial number(s) provided. Please provide ${quantity} serial numbers (one per line) or leave empty.`);
+            }
+        }
+        
         const rateInclGST = parseFloat(rateInput);
         if (isNaN(rateInclGST) || rateInclGST <= 0) {
             throw new Error(`Item ${index + 1}: Rate must be greater than 0`);
@@ -390,16 +424,21 @@ function collectFormData() {
     
     return {
         invoiceNo: generateInvoiceNumber(),
+        invoiceNumber: generateInvoiceNumber(), // Add this for Supabase compatibility
         date: new Date().toISOString(),
         customerName,
         customerAddress,
         customerMobile,
+        mobile: customerMobile, // Add alias for Supabase
+        address: customerAddress, // Add alias for Supabase
         customerGST,
+        gstNumber: customerGST, // Add alias for Supabase
         items,
         gstRate,
         subtotal,
         gstAmount,
         grandTotal,
+        totalAmount: grandTotal, // Add alias for Supabase
         totalUnits,
         termsConditions
     };
@@ -650,37 +689,32 @@ function formatDateForPDF(dateString) {
     return `${day}/${month}/${year}`;
 }
 
-// Save invoice to localStorage and update inventory
-function saveInvoice(invoiceData) {
-    const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    invoices.push(invoiceData);
-    localStorage.setItem('invoices', JSON.stringify(invoices));
+// Save invoice to Supabase and update inventory
+async function saveInvoice(invoiceData) {
+    // Save to Supabase
+    const result = await supabaseAddInvoice(invoiceData);
     
-    // Deduct stock from inventory
-    deductStock(invoiceData.items);
+    if (result.success) {
+        // Deduct stock from inventory
+        await deductStock(invoiceData.items);
+        return true;
+    } else {
+        console.error('Error saving invoice:', result.error);
+        alert('❌ Error saving invoice: ' + result.error);
+        return false;
+    }
 }
 
-// Deduct stock from inventory
-function deductStock(soldItems) {
-    soldItems.forEach(soldItem => {
-        // Find matching inventory item by name
-        const invItem = inventory.find(item => 
-            item.name.toLowerCase() === soldItem.description.toLowerCase()
-        );
-        
-        if (invItem) {
-            invItem.stock -= soldItem.quantity;
-            // Ensure stock doesn't go negative
-            if (invItem.stock < 0) invItem.stock = 0;
-            invItem.updatedAt = new Date().toISOString();
-        }
-    });
-    
-    saveInventory();
+// Deduct stock from inventory in Supabase
+async function deductStock(soldItems) {
+    for (const soldItem of soldItems) {
+        // Update stock in Supabase
+        await updateStockAfterSale(soldItem.description, soldItem.quantity);
+    }
 }
 
 // Handle form submission
-function handleFormSubmit(e) {
+async function handleFormSubmit(e) {
     e.preventDefault();
     
     // Create loading overlay if it doesn't exist
@@ -700,48 +734,46 @@ function handleFormSubmit(e) {
     // Show loading
     loadingOverlay.style.display = 'flex';
     
-    // Use setTimeout to allow UI to update
-    setTimeout(() => {
-        try {
-            const invoiceData = collectFormData();
-            
-            // Validate items
-            if (invoiceData.items.length === 0) {
-                throw new Error('Please add at least one item');
-            }
-            
-            // Generate PDF
-            generatePDF(invoiceData);
-            
-            // Save to localStorage
-            saveInvoice(invoiceData);
-            
-            // Hide loading
-            loadingOverlay.style.display = 'none';
-            
+    try {
+        const invoiceData = collectFormData();
+        
+        // Validate items
+        if (invoiceData.items.length === 0) {
+            throw new Error('Please add at least one item');
+        }
+        
+        // Generate PDF
+        generatePDF(invoiceData);
+        
+        // Save to Supabase
+        const saved = await saveInvoice(invoiceData);
+        
+        // Hide loading
+        loadingOverlay.style.display = 'none';
+        
+        if (saved) {
             // Show WhatsApp modal
-            document.getElementById('modalInvoiceNo').textContent = invoiceData.invoiceNo;
+            document.getElementById('modalInvoiceNo').textContent = invoiceData.invoiceNumber;
             document.getElementById('whatsappModal').style.display = 'flex';
             
             // Setup WhatsApp button
             document.getElementById('sendWhatsappBtn').onclick = () => {
                 sendViaWhatsApp(invoiceData);
             };
-            
-        } catch (error) {
-            // Hide loading
-            loadingOverlay.style.display = 'none';
-            
-            console.error('Error generating invoice:', error);
-            alert('\u274c ' + error.message);
         }
-    }, 100); // Small delay to allow UI to update
+    } catch (error) {
+        // Hide loading
+        loadingOverlay.style.display = 'none';
+        
+        console.error('Error generating invoice:', error);
+        alert('❌ ' + error.message);
+    }
 }
 
 // Initialize form
-function initForm() {
+async function initForm() {
     // Load inventory data
-    loadInventory();
+    await loadInventory();
     
     // Add event listeners to initial row
     const initialRow = document.querySelector('.item-row');
