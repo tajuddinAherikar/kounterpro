@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,10 +17,10 @@
         </header>
 
         <div class="nav-section">
-            <button class="btn-nav" onclick="window.location.href='index.html'">← Dashboard</button>
-            <button class="btn-nav btn-nav-primary" onclick="showAddItemModal()">+ Add New Item</button>
-            <button class="btn-nav btn-backup" onclick="exportBackup()">💾 Backup Data</button>
-            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()">📂 Restore Data</button>
+            <button class="btn-nav" onclick="window.location.href='index.html'"><span class="material-icons">arrow_back</span> Dashboard</button>
+            <button class="btn-nav btn-nav-primary" onclick="showAddItemModal()"><span class="material-icons">add_circle</span> Add New Item</button>
+            <button class="btn-nav btn-backup" onclick="exportBackup()"><span class="material-icons">cloud_download</span> Backup Data</button>
+            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()"><span class="material-icons">cloud_upload</span> Restore Data</button>
             <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
         </div>
 
@@ -41,20 +42,17 @@
             </div>
         </div>
 
-        <div class="filter-section">
-            <h2>Search Inventory</h2>
-            <div class="filter-controls">
-                <label>
-                    Search:
-                    <input type="text" id="searchInput" placeholder="Search by name or description...">
-                </label>
-                <button class="btn-secondary" onclick="searchInventory()">Search</button>
-                <button class="btn-secondary" onclick="clearSearch()">Show All</button>
-            </div>
-        </div>
-
         <div class="invoices-section">
-            <h2>Inventory Items</h2>
+            <div class="section-header">
+                <h2>Inventory Items</h2>
+                <div class="inventory-search">
+                    <div class="search-input-wrapper">
+                        <span class="material-icons search-icon">search</span>
+                        <input type="text" id="searchInput" placeholder="Search by name or description..." oninput="searchInventory()">
+                        <span class="material-icons search-clear" id="clearSearchIcon" onclick="clearSearch()" style="display: none;">cancel</span>
+                    </div>
+                </div>
+            </div>
             <div class="table-wrapper">
                 <table class="invoices-table">
                     <thead>
@@ -118,8 +116,8 @@
                     <small style="color: #666;">Alert when stock falls to or below this number</small>
                 </div>
                 <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">Save Item</button>
+                    <button type="button" class="btn-secondary" onclick="closeModal()"><span class="material-icons">cancel</span> Cancel</button>
+                    <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Item</button>
                 </div>
             </form>
         </div>

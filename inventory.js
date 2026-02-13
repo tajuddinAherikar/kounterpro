@@ -80,11 +80,11 @@ function getStockStatus(item) {
     const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
     
     if (item.stock === 0) {
-        return { status: 'out', label: 'Out of Stock', color: '#c62828', icon: '🔴' };
+        return { status: 'out', label: 'Out of Stock', color: '#c62828', icon: '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">cancel</span>' };
     } else if (item.stock <= threshold) {
-        return { status: 'low', label: 'Low Stock', color: '#f68048', icon: '🟡' };
+        return { status: 'low', label: 'Low Stock', color: '#f68048', icon: '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">warning</span>' };
     } else {
-        return { status: 'ok', label: 'In Stock', color: '#28a745', icon: '🟢' };
+        return { status: 'ok', label: 'In Stock', color: '#28a745', icon: '<span class="material-icons" style="font-size: 16px; vertical-align: middle;">check_circle</span>' };
     }
 }
 
@@ -147,8 +147,12 @@ function displayInventory(items = inventory) {
                     <td>₹${item.rate.toFixed(2)}</td>
                     <td><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></td>
                     <td>
-                        <a href="#" class="action-link" onclick="editItem('${item.id}')">Edit</a>
-                        <a href="#" class="action-link" onclick="deleteItem('${item.id}')">Delete</a>
+                        <a href="#" class="action-link" onclick="editItem('${item.id}'); return false;">
+                            <span class="material-icons">edit</span> Edit
+                        </a>
+                        <a href="#" class="action-link" onclick="deleteItem('${item.id}'); return false;">
+                            <span class="material-icons">delete</span> Delete
+                        </a>
                     </td>
                 </tr>
             `;
@@ -333,6 +337,14 @@ async function handleFormSubmit(e) {
 // Search inventory
 function searchInventory() {
     const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    const clearIcon = document.getElementById('clearSearchIcon');
+    
+    // Show/hide clear icon
+    if (searchTerm) {
+        clearIcon.style.display = 'block';
+    } else {
+        clearIcon.style.display = 'none';
+    }
     
     if (!searchTerm) {
         displayInventory();
@@ -350,6 +362,7 @@ function searchInventory() {
 // Clear search
 function clearSearch() {
     document.getElementById('searchInput').value = '';
+    document.getElementById('clearSearchIcon').style.display = 'none';
     displayInventory();
 }
 

@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -16,8 +17,8 @@
         </header>
 
         <div class="nav-section">
-            <button class="btn-nav" onclick="window.location.href='index.html'">← Dashboard</button>
-            <button class="btn-nav" onclick="window.location.href='inventory.html'">📦 Inventory</button>
+            <button class="btn-nav" onclick="window.location.href='index.html'"><span class="material-icons">arrow_back</span> Dashboard</button>
+            <button class="btn-nav" onclick="window.location.href='inventory.html'"><span class="material-icons">inventory_2</span> Inventory</button>
         </div>
 
         <form id="invoiceForm" class="invoice-form">
@@ -115,7 +116,7 @@
 
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
-                <button type="submit" class="btn-primary">Generate Invoice PDF</button>
+                <button type="submit" class="btn-primary"><span class="material-icons">picture_as_pdf</span> Generate Invoice PDF</button>
             </div>
         </form>
 

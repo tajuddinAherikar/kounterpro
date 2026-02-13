@@ -126,9 +126,12 @@ function displayInvoices(invoices = allInvoices) {
                 <td>${invoice.totalUnits}</td>
                 <td>₹${invoice.grandTotal.toFixed(2)}</td>
                 <td>
-                    <a href="#" class="action-link" onclick="viewInvoice('${invoice.id}')">View</a>
-                    <a href="#" class="action-link" onclick="downloadInvoicePDF('${invoice.id}')">Download</a>
-                    <a href="#" class="action-link" onclick="deleteInvoice('${invoice.id}')">Delete</a>
+                    <a href="#" class="action-link" onclick="viewInvoice('${invoice.id}'); return false;">
+                        <span class="material-icons">visibility</span> View
+                    </a>
+                    <a href="#" class="action-link" onclick="deleteInvoice('${invoice.id}'); return false;">
+                        <span class="material-icons">delete</span> Delete
+                    </a>
                 </td>
             </tr>
         `).join('');
@@ -137,7 +140,15 @@ function displayInvoices(invoices = allInvoices) {
 // Search invoices in real-time
 function searchInvoices() {
     const searchTerm = document.getElementById('invoiceSearch').value.toLowerCase();
+    const clearIcon = document.getElementById('clearInvoiceSearch');
     const rows = document.querySelectorAll('.invoice-row');
+    
+    // Show/hide clear icon
+    if (searchTerm) {
+        clearIcon.style.display = 'block';
+    } else {
+        clearIcon.style.display = 'none';
+    }
     
     let visibleCount = 0;
     
@@ -190,6 +201,13 @@ function searchInvoices() {
     }
 }
 
+// Clear invoice search
+function clearInvoiceSearch() {
+    document.getElementById('invoiceSearch').value = '';
+    document.getElementById('clearInvoiceSearch').style.display = 'none';
+    searchInvoices();
+}
+
 // Format date for display
 function formatDate(dateString) {
     const date = new Date(dateString);
@@ -229,19 +247,318 @@ function clearFilter() {
 }
 
 // View invoice details
-function viewInvoice(invoiceNo) {
-    const invoice = allInvoices.find(inv => inv.invoiceNo === invoiceNo);
-    if (invoice) {
-        // Store the invoice temporarily for viewing
-        sessionStorage.setItem('viewInvoice', JSON.stringify(invoice));
-        alert('Invoice Details:\n\n' +
-              `Invoice No: ${invoice.invoiceNo}\n` +
-              `Date: ${formatDate(invoice.date)}\n` +
-              `Customer: ${invoice.customerName}\n` +
-              `Total Units: ${invoice.totalUnits}\n` +
-              `Grand Total: ₹${invoice.grandTotal.toFixed(2)}\n\n` +
-              'PDF regeneration feature can be added if needed.');
+let currentInvoiceForPDF = null;
+
+function viewInvoice(invoiceId) {
+    const invoice = allInvoices.find(inv => inv.id === invoiceId);
+    if (!invoice) {
+        alert('❌ Invoice not found');
+        return;
     }
+    
+    currentInvoiceForPDF = invoice;
+    generatePDFPreview(invoice);
+}
+
+// Generate PDF and show in modal
+function generatePDFPreview(invoiceData) {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    let y = 20;
+    
+    // Header
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('TAX INVOICE', 105, y, { align: 'center' });
+    
+    y += 10;
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 150, y);
+    pdf.text(`Date: ${formatDateForPDF(invoiceData.date)}`, 150, y + 5);
+    
+    // Company Details
+    y += 10;
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('KEEN BATTERIES', 15, y);
+    
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text('Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
+    y += 4;
+    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    y += 4;
+    pdf.text('Email: keenbatteries@gmail.com', 15, y);
+    y += 4;
+    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    
+    // Bill To
+    y += 10;
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Bill To:', 15, y);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text(invoiceData.customerName, 15, y);
+    y += 5;
+    
+    if (invoiceData.address) {
+        const addressLines = pdf.splitTextToSize(invoiceData.address, 80);
+        addressLines.forEach(line => {
+            pdf.text(line, 15, y);
+            y += 5;
+        });
+    }
+    
+    if (invoiceData.gstNumber) {
+        pdf.text(`GST No: ${invoiceData.gstNumber}`, 15, y);
+        y += 5;
+    }
+    
+    if (invoiceData.mobile) {
+        pdf.text(`Mobile: ${invoiceData.mobile}`, 15, y);
+        y += 5;
+    }
+    
+    // Items Table
+    y += 5;
+    const tableStartY = y;
+    
+    // Table Headers
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('S.No', 15, y);
+    pdf.text('Description', 35, y);
+    pdf.text('Serial No', 100, y);
+    pdf.text('Qty', 135, y);
+    pdf.text('Rate', 155, y);
+    pdf.text('Amount', 180, y);
+    
+    // Table line
+    y += 2;
+    pdf.line(15, y, 200, y);
+    y += 5;
+    
+    // Items
+    pdf.setFont(undefined, 'normal');
+    invoiceData.items.forEach((item, index) => {
+        if (y > 270) {
+            pdf.addPage();
+            y = 20;
+        }
+        
+        pdf.text(`${index + 1}`, 15, y);
+        const descLines = pdf.splitTextToSize(item.description || item.name, 60);
+        pdf.text(descLines[0], 35, y);
+        pdf.text(item.serialNo || '-', 100, y);
+        pdf.text(`${item.quantity}`, 135, y);
+        pdf.text(`${parseFloat(item.rate).toFixed(2)}`, 155, y);
+        pdf.text(`${(item.quantity * parseFloat(item.rate)).toFixed(2)}`, 180, y);
+        y += 6;
+    });
+    
+    // Totals
+    y += 5;
+    pdf.line(15, y, 200, y);
+    y += 6;
+    
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Subtotal:', 155, y, { align: 'right' });
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${invoiceData.subtotal.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    y += 6;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`GST (${invoiceData.gstRate}%):`, 155, y, { align: 'right' });
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`${invoiceData.gstAmount.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    y += 6;
+    pdf.line(155, y, 200, y);
+    y += 6;
+    
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(11);
+    pdf.text('Grand Total:', 155, y, { align: 'right' });
+    pdf.text(`${invoiceData.grandTotal.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    // Footer
+    y += 15;
+    pdf.setFontSize(8);
+    pdf.setFont(undefined, 'italic');
+    pdf.text('Thank you for your business!', 105, y, { align: 'center' });
+    
+    // Render PDF to canvas
+    const pdfDataUrl = pdf.output('dataurlstring');
+    displayPDFInModal(pdfDataUrl);
+}
+
+// Display PDF in modal
+function displayPDFInModal(pdfDataUrl) {
+    const modal = document.getElementById('pdfModal');
+    
+    // Create an iframe to display the PDF
+    const pdfFrame = document.createElement('iframe');
+    pdfFrame.style.width = '100%';
+    pdfFrame.style.height = '600px';
+    pdfFrame.style.border = 'none';
+    pdfFrame.src = pdfDataUrl;
+    
+    // Replace modal body content with iframe
+    const modalBody = document.querySelector('.pdf-modal-body');
+    modalBody.innerHTML = '';
+    modalBody.appendChild(pdfFrame);
+    
+    modal.classList.add('show');
+}
+
+// Close PDF modal
+function closePDFModal() {
+    const modal = document.getElementById('pdfModal');
+    modal.classList.remove('show');
+    currentInvoiceForPDF = null;
+}
+
+// Download current PDF
+function downloadCurrentPDF() {
+    if (currentInvoiceForPDF) {
+        generatePDFDownload(currentInvoiceForPDF);
+    }
+}
+
+// Generate and download PDF
+function generatePDFDownload(invoiceData) {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    
+    let y = 20;
+    
+    // Header
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('TAX INVOICE', 105, y, { align: 'center' });
+    
+    y += 10;
+    pdf.setFontSize(10);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 150, y);
+    pdf.text(`Date: ${formatDateForPDF(invoiceData.date)}`, 150, y + 5);
+    
+    // Company Details
+    y += 10;
+    pdf.setFontSize(14);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('KEEN BATTERIES', 15, y);
+    
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text('Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
+    y += 4;
+    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    y += 4;
+    pdf.text('Email: keenbatteries@gmail.com', 15, y);
+    y += 4;
+    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    
+    // Bill To
+    y += 10;
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Bill To:', 15, y);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text(invoiceData.customerName, 15, y);
+    y += 5;
+    
+    if (invoiceData.address) {
+        const addressLines = pdf.splitTextToSize(invoiceData.address, 80);
+        addressLines.forEach(line => {
+            pdf.text(line, 15, y);
+            y += 5;
+        });
+    }
+    
+    if (invoiceData.gstNumber) {
+        pdf.text(`GST No: ${invoiceData.gstNumber}`, 15, y);
+        y += 5;
+    }
+    
+    if (invoiceData.mobile) {
+        pdf.text(`Mobile: ${invoiceData.mobile}`, 15, y);
+        y += 5;
+    }
+    
+    // Items Table
+    y += 5;
+    
+    // Table Headers
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('S.No', 15, y);
+    pdf.text('Description', 35, y);
+    pdf.text('Serial No', 100, y);
+    pdf.text('Qty', 135, y);
+    pdf.text('Rate', 155, y);
+    pdf.text('Amount', 180, y);
+    
+    y += 2;
+    pdf.line(15, y, 200, y);
+    y += 5;
+    
+    // Items
+    pdf.setFont(undefined, 'normal');
+    invoiceData.items.forEach((item, index) => {
+        if (y > 270) {
+            pdf.addPage();
+            y = 20;
+        }
+        
+        pdf.text(`${index + 1}`, 15, y);
+        const descLines = pdf.splitTextToSize(item.description || item.name, 60);
+        pdf.text(descLines[0], 35, y);
+        pdf.text(item.serialNo || '-', 100, y);
+        pdf.text(`${item.quantity}`, 135, y);
+        pdf.text(`₹${parseFloat(item.rate).toFixed(2)}`, 155, y);
+        pdf.text(`₹${(item.quantity * parseFloat(item.rate)).toFixed(2)}`, 180, y);
+        y += 6;
+    });
+    
+    // Totals
+    y += 5;
+    pdf.line(15, y, 200, y);
+    y += 6;
+    
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Subtotal:', 155, y, { align: 'right' });
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`₹${invoiceData.subtotal.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    y += 6;
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`GST (${invoiceData.gstRate}%):`, 155, y, { align: 'right' });
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`₹${invoiceData.gstAmount.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    y += 6;
+    pdf.line(155, y, 200, y);
+    y += 6;
+    
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(11);
+    pdf.text('Grand Total:', 155, y, { align: 'right' });
+    pdf.text(`₹${invoiceData.grandTotal.toFixed(2)}`, 195, y, { align: 'right' });
+    
+    // Footer
+    y += 15;
+    pdf.setFontSize(8);
+    pdf.setFont(undefined, 'italic');
+    pdf.text('Thank you for your business!', 105, y, { align: 'center' });
+    
+    // Download
+    pdf.save(`Invoice_${invoiceData.invoiceNumber}.pdf`);
+    closePDFModal();
 }
 
 // Delete invoice
@@ -774,7 +1091,7 @@ function checkLowStockAlerts() {
     alertContent.innerHTML = alertItems.map(item => {
         const threshold = item.lowStockThreshold || DEFAULT_THRESHOLD;
         const isCritical = item.stock === 0;
-        const icon = isCritical ? '🔴' : '🟡';
+        const icon = isCritical ? '<span class="material-icons" style="font-size: 18px; vertical-align: middle; color: #c62828;">cancel</span>' : '<span class="material-icons" style="font-size: 18px; vertical-align: middle; color: #f68048;">warning</span>';
         const statusText = isCritical ? 'OUT OF STOCK' : `Low Stock (${item.stock}/${threshold})`;
         
         return `

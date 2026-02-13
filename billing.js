@@ -150,10 +150,19 @@ function addItemEventListeners(row) {
 function setupAutocomplete(input, rateInput, quantityInput) {
     let currentFocus = -1;
     
-    // Create autocomplete container
+    // Create autocomplete container with fixed positioning
     const autocompleteContainer = document.createElement('div');
     autocompleteContainer.className = 'autocomplete-items';
-    input.parentNode.appendChild(autocompleteContainer);
+    autocompleteContainer.style.position = 'fixed';
+    document.body.appendChild(autocompleteContainer);
+    
+    // Function to position dropdown
+    function positionDropdown() {
+        const rect = input.getBoundingClientRect();
+        autocompleteContainer.style.top = (rect.bottom) + 'px';
+        autocompleteContainer.style.left = rect.left + 'px';
+        autocompleteContainer.style.width = rect.width + 'px';
+    }
     
     // Input event - show suggestions
     input.addEventListener('input', function() {
@@ -163,6 +172,7 @@ function setupAutocomplete(input, rateInput, quantityInput) {
         if (!val || val.length < 1) return;
         
         currentFocus = -1;
+        positionDropdown();
         
         const matches = inventory.filter(item => 
             item.name.toLowerCase().includes(val) ||
@@ -170,6 +180,8 @@ function setupAutocomplete(input, rateInput, quantityInput) {
         );
         
         if (matches.length === 0) return;
+        
+        autocompleteContainer.style.display = 'block';
         
         matches.forEach(item => {
             const DEFAULT_THRESHOLD = 10;
@@ -259,31 +271,69 @@ function setupAutocomplete(input, rateInput, quantityInput) {
     function closeAllLists() {
         autocompleteContainer.innerHTML = '';
         currentFocus = -1;
+        autocompleteContainer.style.display = 'none';
     }
+    
+    // Reposition on scroll and resize
+    window.addEventListener('scroll', () => {
+        if (autocompleteContainer.innerHTML) {
+            positionDropdown();
+        }
+    }, true);
+    window.addEventListener('resize', positionDropdown);
     
     // Close on click outside
     document.addEventListener('click', function(e) {
-        if (e.target !== input) {
+        if (e.target !== input && !autocompleteContainer.contains(e.target)) {
             closeAllLists();
         }
     });
 }
 
 // Generate invoice number
-function generateInvoiceNumber() {
-    const invoices = JSON.parse(localStorage.getItem('invoices') || '[]');
-    const lastInvoice = invoices.length > 0 ? invoices[invoices.length - 1] : null;
-    
-    if (lastInvoice) {
-        const lastNumber = parseInt(lastInvoice.invoiceNo.split('/')[0].replace('K', ''));
-        return `K${String(lastNumber + 1).padStart(4, '0')}/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+// Generate unique invoice number from Supabase data
+async function generateInvoiceNumber() {
+    try {
+        // Get all invoices from Supabase
+        const result = await supabaseGetInvoices();
+        
+        if (!result.success) {
+            console.error('Error fetching invoices:', result.error);
+            // Fallback to default if error
+            return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+        }
+        
+        const invoices = result.data || [];
+        
+        if (invoices.length === 0) {
+            return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+        }
+        
+        // Extract all invoice numbers and find the highest
+        let maxNumber = 0;
+        invoices.forEach(invoice => {
+            const invoiceNum = invoice.invoice_number || '';
+            const match = invoiceNum.match(/K(\d+)\//); // Extract number from K0001/2/26 format
+            if (match) {
+                const num = parseInt(match[1]);
+                if (num > maxNumber) {
+                    maxNumber = num;
+                }
+            }
+        });
+        
+        // Generate next number
+        const nextNumber = maxNumber + 1;
+        return `K${String(nextNumber).padStart(4, '0')}/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+        
+    } catch (error) {
+        console.error('Error generating invoice number:', error);
+        return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
     }
-    
-    return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
 }
 
 // Collect form data (Rate is GST-inclusive)
-function collectFormData() {
+async function collectFormData() {
     const customerName = document.getElementById('customerName').value.trim();
     const customerAddress = document.getElementById('customerAddress').value.trim();
     const customerMobile = document.getElementById('customerMobile').value.trim();
@@ -422,9 +472,12 @@ function collectFormData() {
     
     const gstAmount = grandTotal - subtotal;
     
+    // Generate invoice number once
+    const invoiceNumber = await generateInvoiceNumber();
+    
     return {
-        invoiceNo: generateInvoiceNumber(),
-        invoiceNumber: generateInvoiceNumber(), // Add this for Supabase compatibility
+        invoiceNo: invoiceNumber,
+        invoiceNumber: invoiceNumber, // For Supabase compatibility
         date: new Date().toISOString(),
         customerName,
         customerAddress,
@@ -735,7 +788,7 @@ async function handleFormSubmit(e) {
     loadingOverlay.style.display = 'flex';
     
     try {
-        const invoiceData = collectFormData();
+        const invoiceData = await collectFormData();
         
         // Validate items
         if (invoiceData.items.length === 0) {

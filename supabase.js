@@ -53,7 +53,8 @@ async function supabaseSignUp(email, password, businessName, mobile) {
                 data: {
                     business_name: businessName,
                     mobile: mobile
-                }
+                },
+                emailRedirectTo: window.location.origin
             }
         });
         

@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -52,12 +53,12 @@
                            placeholder="Re-enter your password" minlength="6">
                 </div>
                 
-                <button type="submit" class="btn-login">Create Account</button>
+                <button type="submit" class="btn-login"><span class="material-icons">person_add</span> Create Account</button>
             </form>
             
             <div class="login-footer" style="margin-top: 20px;">
                 <p style="margin-bottom: 10px;">Already have an account? <a href="login.html" style="color: #2845D6; font-weight: 600; text-decoration: none;">Sign In</a></p>
-                <small>Version 1.0.1 | © 2026 KounterPro</small>
+                <small>Version 1.0.3 | © 2026 KounterPro</small>
             </div>
         </div>
     </div>
@@ -119,7 +120,7 @@
             
             if (result.success) {
                 // Show success message
-                alert('✅ Account created successfully!\n\nPlease check your email to verify your account (if email confirmation is enabled).\n\nYou can now sign in.');
+                alert('✅ Account created successfully!\n\nYou can now sign in with your credentials.');
                 
                 // Redirect to login
                 window.location.href = 'login.html';
