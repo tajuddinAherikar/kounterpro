@@ -1512,3 +1512,391 @@
     bottom: 0;
 }
 
+/* ==================== Enhanced Mobile Responsiveness ==================== */
+
+/* Tablet and below */
+@media (max-width: 1024px) {
+    /* Inventory page */
+    .inventory-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    /* Profile page forms */
+    .profile-form .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Mobile devices */
+@media (max-width: 768px) {
+    /* Make tables horizontally scrollable */
+    .table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .modern-table {
+        min-width: 600px;
+    }
+    
+    /* Inventory table */
+    #inventoryTable {
+        min-width: 700px;
+    }
+    
+    /* Invoice table - make scrollable with fixed header */
+    .invoices-card .modern-table {
+        min-width: 800px;
+    }
+    
+    /* Form inputs full width */
+    .form-row input,
+    .form-row select,
+    .form-row textarea {
+        width: 100% !important;
+    }
+    
+    /* Buttons stack vertically */
+    .modal-footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-footer button {
+        width: 100%;
+    }
+    
+    /* Create bill page */
+    .bill-form-container {
+        padding: 12px;
+    }
+    
+    .bill-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .customer-info,
+    .invoice-info {
+        width: 100%;
+    }
+    
+    /* Items table on create bill */
+    .items-table-wrapper {
+        overflow-x: auto;
+    }
+    
+    .items-table {
+        min-width: 700px;
+    }
+    
+    /* Action buttons */
+    .action-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .action-buttons button {
+        width: 100%;
+    }
+    
+    /* Profile page */
+    .profile-container {
+        padding: 12px;
+    }
+    
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    /* Inventory stats */
+    .inventory-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .stat-box {
+        padding: 16px;
+    }
+    
+    /* Card headers with actions */
+    .card-header {
+        flex-direction: column;
+        gap: 12px;
+        align-items: flex-start;
+    }
+    
+    .card-actions {
+        width: 100%;
+    }
+    
+    /* Filter and report modals */
+    .modal-content {
+        width: 95%;
+        margin: 10px;
+    }
+    
+    /* Notification dropdown */
+    .notification-dropdown {
+        left: 10px;
+        right: 10px;
+        max-width: none;
+    }
+    
+    /* PDF modal */
+    .pdf-modal-content {
+        width: 95%;
+        max-height: 85vh;
+    }
+    
+    .pdf-modal-footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .pdf-modal-footer button {
+        width: 100%;
+    }
+}
+
+/* Small mobile devices */
+@media (max-width: 480px) {
+    /* Further reduce padding */
+    .main-content {
+        padding: 8px;
+    }
+    
+    .card {
+        margin-bottom: 16px;
+    }
+    
+    .card-body {
+        padding: 12px;
+    }
+    
+    /* Smaller text */
+    .page-title {
+        font-size: 18px;
+    }
+    
+    .page-subtitle {
+        font-size: 12px;
+    }
+    
+    /* Stats cards */
+    .stat-card-modern {
+        padding: 16px;
+    }
+    
+    .stat-card-value {
+        font-size: 22px;
+    }
+    
+    .stat-card-label {
+        font-size: 12px;
+    }
+    
+    /* Buttons */
+    .btn-primary,
+    .btn-secondary {
+        padding: 10px 16px;
+        font-size: 14px;
+    }
+    
+    /* Modal */
+    .modal-content {
+        width: 98%;
+        margin: 5px;
+    }
+    
+    .modal-header h2 {
+        font-size: 18px;
+    }
+    
+    /* Table text */
+    .modern-table {
+        font-size: 12px;
+    }
+    
+    .modern-table th,
+    .modern-table td {
+        padding: 8px 4px;
+    }
+    
+    /* Header actions wrap */
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .header-actions button,
+    .header-actions .search-input-wrapper {
+        width: 100%;
+    }
+    
+    .search-input-wrapper input {
+        width: 100% !important;
+    }
+    
+    /* Notification badge */
+    .notification-badge {
+        right: -5px;
+        top: -5px;
+        font-size: 10px;
+        min-width: 16px;
+        height: 16px;
+    }
+    
+    /* Activity feed */
+    .activity-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .activity-icon {
+        margin: 0 auto;
+    }
+}
+
+/* Create Bill Page Specific */
+@media (max-width: 768px) {
+    .bill-section {
+        margin-bottom: 20px;
+    }
+    
+    .form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .customer-section,
+    .invoice-details {
+        padding: 12px;
+    }
+    
+    /* Item rows */
+    .item-row {
+        padding: 12px 8px;
+    }
+    
+    .add-item-btn {
+        width: 100%;
+        margin-top: 12px;
+    }
+    
+    /* Totals section */
+    .totals-section {
+        padding: 16px 12px;
+    }
+    
+    .total-row {
+        font-size: 14px;
+    }
+    
+    .grand-total {
+        font-size: 18px;
+    }
+}
+
+/* Inventory Page Specific */
+@media (max-width: 768px) {
+    .inventory-header {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    .inventory-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .inventory-actions button {
+        width: 100%;
+    }
+    
+    #addItemBtn {
+        width: 100%;
+    }
+}
+
+/* Profile Page Specific */
+@media (max-width: 768px) {
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .profile-info h2 {
+        font-size: 20px;
+    }
+    
+    .form-section {
+        padding: 16px 12px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .form-actions button {
+        width: 100%;
+    }
+}
+
+/* Fix for invoice table scrolling on mobile */
+@media (max-width: 768px) {
+    /* Keep header fixed while body scrolls */
+    .invoices-card .modern-table thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: #f8f9fa;
+    }
+    
+    /* Ensure scrollbar is visible */
+    .invoices-card .modern-table tbody {
+        display: block;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .invoices-card .modern-table thead,
+    .invoices-card .modern-table tbody tr {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+}
+
+/* Landscape orientation optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Very small screens (older phones) */
+@media (max-width: 360px) {
+    .mobile-menu-toggle {
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+    
+    .stat-card-value {
+        font-size: 20px;
+    }
+    
+    .stat-card-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .stat-card-icon .material-icons {
+        font-size: 20px;
+    }
+}
