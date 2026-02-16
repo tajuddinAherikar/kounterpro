@@ -1,6 +1,24 @@
 // Dashboard functionality with Supabase
 let allInvoices = [];
 let inventory = [];
+let userProfile = null;
+
+// Load user profile for company details
+async function loadUserProfile() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) return null;
+        
+        const result = await supabaseGetUserProfile(user.id);
+        if (result.success) {
+            userProfile = result.data;
+        }
+        return userProfile;
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        return null;
+    }
+}
 
 // Load inventory from Supabase
 async function loadInventory() {
@@ -76,11 +94,22 @@ async function loadInvoices() {
 
 // Calculate statistics
 function calculateStats(invoices = allInvoices) {
-    const today = new Date().toDateString();
+    // Get today's date as YYYY-MM-DD
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    const todayInvoices = invoices.filter(inv => 
-        new Date(inv.date).toDateString() === today
-    );
+    const todayInvoices = invoices.filter(inv => {
+        const invDate = inv.date || inv.created_at;
+        // Handle both YYYY-MM-DD format and timestamp
+        if (invDate && invDate.length === 10) {
+            return invDate === todayStr;
+        } else {
+            // For timestamps, extract date part
+            const date = new Date(invDate);
+            const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+            return dateStr === todayStr;
+        }
+    });
     
     const todaySales = todayInvoices.reduce((sum, inv) => sum + (inv.grandTotal || 0), 0);
     const todayUnits = todayInvoices.reduce((sum, inv) => sum + (inv.totalUnits || 0), 0);
@@ -121,7 +150,7 @@ function displayInvoices(invoices = allInvoices) {
         .map(invoice => `
             <tr class="invoice-row">
                 <td>${invoice.invoiceNumber}</td>
-                <td>${formatDate(invoice.date)}</td>
+                <td>${formatDate(invoice.date || invoice.created_at)}</td>
                 <td>${invoice.customerName}</td>
                 <td>${invoice.totalUnits}</td>
                 <td>₹${invoice.grandTotal.toFixed(2)}</td>
@@ -210,6 +239,12 @@ function clearInvoiceSearch() {
 
 // Format date for display
 function formatDate(dateString) {
+    // Check if it's a simple date string (YYYY-MM-DD)
+    if (dateString && dateString.length === 10 && !dateString.includes('T')) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    // Otherwise treat as timestamp
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -278,22 +313,29 @@ function generatePDFPreview(invoiceData) {
     pdf.text(`Invoice No: ${invoiceData.invoiceNumber}`, 150, y);
     pdf.text(`Date: ${formatDateForPDF(invoiceData.date)}`, 150, y + 5);
     
-    // Company Details
+    // Company Details - Use dynamic profile data or fallback to defaults
     y += 10;
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'bold');
-    pdf.text('KEEN BATTERIES', 15, y);
+    const companyName = userProfile?.business_name || 'KEEN BATTERIES';
+    pdf.text(companyName.toUpperCase(), 15, y);
     
     pdf.setFontSize(9);
     pdf.setFont(undefined, 'normal');
     y += 5;
-    pdf.text('Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
+    pdf.text(userProfile?.business_address || 'Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
     y += 4;
-    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    const contact1 = userProfile?.contact_number_1 || '6361082439';
+    const contact2 = userProfile?.contact_number_2 || '8088573717';
+    pdf.text(`Contact No: ${contact1}, ${contact2}`, 15, y);
     y += 4;
-    pdf.text('Email: keenbatteries@gmail.com', 15, y);
+    pdf.text(`Email: ${userProfile?.business_email || 'keenbatteries@gmail.com'}`, 15, y);
     y += 4;
-    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    const companyGST = userProfile?.gst_number || '29AVLPA7490C1ZH';
+    if (companyGST) {
+        pdf.text(`Dealer GST: ${companyGST}`, 15, y);
+        y += 4;
+    }
     
     // Bill To
     y += 10;
@@ -450,18 +492,18 @@ function generatePDFDownload(invoiceData) {
     y += 10;
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'bold');
-    pdf.text('KEEN BATTERIES', 15, y);
+    pdf.text(userProfile?.business_name || 'KEEN BATTERIES', 15, y);
     
     pdf.setFontSize(9);
     pdf.setFont(undefined, 'normal');
     y += 5;
-    pdf.text('Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
+    pdf.text(userProfile?.business_address || 'Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
     y += 4;
-    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    pdf.text(`Contact No: ${userProfile?.contact_number_1 || '6361082439'}, ${userProfile?.contact_number_2 || '8088573717'}`, 15, y);
     y += 4;
-    pdf.text('Email: keenbatteries@gmail.com', 15, y);
+    pdf.text(`Email: ${userProfile?.business_email || 'keenbatteries@gmail.com'}`, 15, y);
     y += 4;
-    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    pdf.text(`Dealer GST: ${userProfile?.gst_number || '29AVLPA7490C1ZH'}`, 15, y);
     
     // Bill To
     y += 10;
@@ -629,18 +671,18 @@ function generatePDFFromInvoice(invoiceData) {
     y += 10;
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'bold');
-    pdf.text('KEEN BATTERIES', 15, y);
+    pdf.text(userProfile?.business_name || 'KEEN BATTERIES', 15, y);
     
     pdf.setFontSize(9);
     pdf.setFont(undefined, 'normal');
     y += 5;
-    pdf.text('Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
+    pdf.text(userProfile?.business_address || 'Indra Auto Nagar, Rangeen Maujid Road Bijapur', 15, y);
     y += 4;
-    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    pdf.text(`Contact No: ${userProfile?.contact_number_1 || '6361082439'}, ${userProfile?.contact_number_2 || '8088573717'}`, 15, y);
     y += 4;
-    pdf.text('Email: keenbatteries@gmail.com', 15, y);
+    pdf.text(`Email: ${userProfile?.business_email || 'keenbatteries@gmail.com'}`, 15, y);
     y += 4;
-    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    pdf.text(`Dealer GST: ${userProfile?.gst_number || '29AVLPA7490C1ZH'}`, 15, y);
     
     // Bill To
     y += 10;
@@ -742,8 +784,8 @@ function generatePDFFromInvoice(invoiceData) {
     }
     
     // Add UPI QR Code
-    const upiId = 'mahammad.aherikar@ybl';
-    const payeeName = 'Keen Batteries';
+    const upiId = userProfile?.upi_id || 'mahammad.aherikar@ybl';
+    const payeeName = userProfile?.business_name || 'KEEN BATTERIES';
     const amount = invoiceData.grandTotal.toFixed(2);
     const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Invoice ${invoiceData.invoiceNo}`;
     
@@ -772,7 +814,7 @@ function generatePDFFromInvoice(invoiceData) {
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'normal');
             pdf.text(`UPI ID: ${upiId}`, 52, y + 10);
-            pdf.text(`Amount: ₹${amount}`, 52, y + 15);
+            pdf.text(`Amount: ${amount}`, 52, y + 15);
             pdf.text('Scan QR to pay via any UPI app', 52, y + 25);
         }
         
@@ -794,6 +836,12 @@ function generatePDFFromInvoice(invoiceData) {
 
 // Format date for PDF
 function formatDateForPDF(dateString) {
+    // Check if it's a simple date string (YYYY-MM-DD)
+    if (dateString && dateString.length === 10 && !dateString.includes('T')) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    // Otherwise treat as timestamp
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -803,6 +851,7 @@ function formatDateForPDF(dateString) {
 
 // Initialize dashboard
 async function initDashboard() {
+    await loadUserProfile();
     await loadInventory();
     await loadInvoices();
     
@@ -886,7 +935,7 @@ function downloadSummaryReport() {
     
     // Build Summary Sheet
     const summaryData = [
-        ['KEEN BATTERIES - SALES SUMMARY REPORT'],
+        [`${userProfile?.business_name || 'KEEN BATTERIES'} - SALES SUMMARY REPORT`],
         [`Generated: ${new Date().toLocaleString()}`],
         [`Period: ${fromDate} to ${toDate}`],
         [],
@@ -962,7 +1011,7 @@ function downloadDetailedReport() {
     
     // Build detailed data
     const detailedData = [
-        ['KEEN BATTERIES - DETAILED SALES REPORT'],
+        [`${userProfile?.business_name || 'KEEN BATTERIES'} - DETAILED SALES REPORT`],
         [`Generated: ${new Date().toLocaleString()}`],
         [`Period: ${fromDate} to ${toDate}`],
         [],

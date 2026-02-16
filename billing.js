@@ -1,6 +1,24 @@
 // Billing functionality with Supabase
 let itemCounter = 1;
 let inventory = [];
+let userProfile = null;
+
+// Load user profile for company details
+async function loadUserProfile() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) return null;
+        
+        const result = await supabaseGetUserProfile(user.id);
+        if (result.success) {
+            userProfile = result.data;
+        }
+        return userProfile;
+    } catch (error) {
+        console.error('Error loading user profile:', error);
+        return null;
+    }
+}
 
 // Load inventory from Supabase
 async function loadInventory() {
@@ -297,23 +315,40 @@ async function generateInvoiceNumber() {
         // Get all invoices from Supabase
         const result = await supabaseGetInvoices();
         
+        // Calculate financial year
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+        
+        // Financial year logic: April (4) to March (3)
+        let fyStartYear, fyEndYear;
+        if (currentMonth >= 4) {
+            // April to December: FY is current year to next year
+            fyStartYear = currentYear.toString().slice(-2);
+            fyEndYear = (currentYear + 1).toString().slice(-2);
+        } else {
+            // January to March: FY is previous year to current year
+            fyStartYear = (currentYear - 1).toString().slice(-2);
+            fyEndYear = currentYear.toString().slice(-2);
+        }
+        
         if (!result.success) {
             console.error('Error fetching invoices:', result.error);
             // Fallback to default if error
-            return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+            return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         }
         
         const invoices = result.data || [];
         
         if (invoices.length === 0) {
-            return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+            return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         }
         
         // Extract all invoice numbers and find the highest
         let maxNumber = 0;
         invoices.forEach(invoice => {
             const invoiceNum = invoice.invoice_number || '';
-            const match = invoiceNum.match(/K(\d+)\//); // Extract number from K0001/2/26 format
+            const match = invoiceNum.match(/K(\d+)\//); // Extract number from K0001/... format
             if (match) {
                 const num = parseInt(match[1]);
                 if (num > maxNumber) {
@@ -324,11 +359,16 @@ async function generateInvoiceNumber() {
         
         // Generate next number
         const nextNumber = maxNumber + 1;
-        return `K${String(nextNumber).padStart(4, '0')}/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+        return `K${String(nextNumber).padStart(4, '0')}/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         
     } catch (error) {
         console.error('Error generating invoice number:', error);
-        return `K0001/${new Date().getMonth() + 1}/${new Date().getFullYear().toString().slice(-2)}`;
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const fyStartYear = currentMonth >= 4 ? currentYear.toString().slice(-2) : (currentYear - 1).toString().slice(-2);
+        const fyEndYear = currentMonth >= 4 ? (currentYear + 1).toString().slice(-2) : currentYear.toString().slice(-2);
+        return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
     }
 }
 
@@ -475,10 +515,17 @@ async function collectFormData() {
     // Generate invoice number once
     const invoiceNumber = await generateInvoiceNumber();
     
+    // Store date as YYYY-MM-DD string to avoid timezone issues
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
     return {
         invoiceNo: invoiceNumber,
         invoiceNumber: invoiceNumber, // For Supabase compatibility
-        date: new Date().toISOString(),
+        date: dateString,
         customerName,
         customerAddress,
         customerMobile,
@@ -515,25 +562,46 @@ function generatePDF(invoiceData) {
     pdf.text(`Invoice No: ${invoiceData.invoiceNo}`, 150, y);
     pdf.text(`Date: ${formatDateForPDF(invoiceData.date)}`, 150, y + 5);
     
-    // Company Details
+    // Company Details - Use dynamic profile data or fallback to defaults
     y += 10;
     pdf.setFontSize(14);
     pdf.setFont(undefined, 'bold');
-    pdf.text('KEEN BATTERIES', 15, y);
+    const companyName = userProfile?.business_name || 'KEEN BATTERIES';
+    pdf.text(companyName.toUpperCase(), 15, y);
     
     pdf.setFontSize(9);
     pdf.setFont(undefined, 'normal');
     y += 5;
-    pdf.text('Indra Auto Nagar, Rangeen Masjid Road Bijapur', 15, y);
+    
+    // Address
+    const companyAddress = userProfile?.business_address || 'Indra Auto Nagar, Rangeen Masjid Road Bijapur';
+    const addressLines = pdf.splitTextToSize(companyAddress, 100);
+    addressLines.forEach(line => {
+        pdf.text(line, 15, y);
+        y += 4;
+    });
+    
+    // Contact Numbers
+    const contact1 = userProfile?.contact_number_1 || '6361082439';
+    const contact2 = userProfile?.contact_number_2;
+    const contactText = contact2 ? `Contact No: ${contact1}, ${contact2}` : `Contact No: ${contact1}`;
+    pdf.text(contactText, 15, y);
     y += 4;
-    pdf.text('Contact No: 6361082439, 8088573717', 15, y);
+    
+    // Email
+    const companyEmail = userProfile?.business_email || 'keenbatteries@gmail.com';
+    pdf.text(`Email: ${companyEmail}`, 15, y);
     y += 4;
-    pdf.text('Email: keenbatteries@gmail.com', 15, y);
-    y += 4;
-    pdf.text('Dealer GST: 29AVLPA7490C1ZH', 15, y);
+    
+    // GST Number
+    const companyGST = userProfile?.gst_number || '29AVLPA7490C1ZH';
+    if (companyGST) {
+        pdf.text(`Dealer GST: ${companyGST}`, 15, y);
+        y += 4;
+    }
     
     // Bill To
-    y += 10;
+    y += 6;
     pdf.setFont(undefined, 'bold');
     pdf.text('Bill To:', 15, y);
     pdf.setFont(undefined, 'normal');
@@ -541,8 +609,8 @@ function generatePDF(invoiceData) {
     pdf.text(invoiceData.customerName, 15, y);
     y += 5;
     
-    const addressLines = pdf.splitTextToSize(invoiceData.customerAddress, 80);
-    addressLines.forEach(line => {
+    const customerAddressLines = pdf.splitTextToSize(invoiceData.customerAddress, 80);
+    customerAddressLines.forEach(line => {
         pdf.text(line, 15, y);
         y += 5;
     });
@@ -632,44 +700,60 @@ function generatePDF(invoiceData) {
         y = 20;
     }
     
-    // Add UPI QR Code
-    const upiId = 'mahammadtajuddin@ybl';
-    const payeeName = 'Keen Batteries';
+    // Add UPI QR Code (only if UPI ID is configured)
+    const upiId = userProfile?.upi_id || 'mahammadtajuddin@ybl';
+    const payeeName = userProfile?.business_name || 'Keen Batteries';
     const amount = invoiceData.grandTotal.toFixed(2);
-    const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Invoice ${invoiceData.invoiceNo}`;
     
-    // Generate QR code
-    const qrContainer = document.createElement('div');
-    qrContainer.style.display = 'none';
-    document.body.appendChild(qrContainer);
-    
-    const qr = new QRCode(qrContainer, {
-        text: upiString,
-        width: 120,
-        height: 120
-    });
-    
-    // Wait for QR code to be generated then add to PDF
-    setTimeout(() => {
-        const qrCanvas = qrContainer.querySelector('canvas');
-        if (qrCanvas) {
-            const qrImage = qrCanvas.toDataURL('image/png');
+    if (upiId) {
+        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Invoice ${invoiceData.invoiceNo}`;
+        
+        // Generate QR code
+        const qrContainer = document.createElement('div');
+        qrContainer.style.display = 'none';
+        document.body.appendChild(qrContainer);
+        
+        const qr = new QRCode(qrContainer, {
+            text: upiString,
+            width: 120,
+            height: 120
+        });
+        
+        // Wait for QR code to be generated then add to PDF
+        setTimeout(() => {
+            const qrCanvas = qrContainer.querySelector('canvas');
+            if (qrCanvas) {
+                const qrImage = qrCanvas.toDataURL('image/png');
+                
+                pdf.setFontSize(10);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Scan to Pay', 15, y);
+                pdf.addImage(qrImage, 'PNG', 15, y + 2, 35, 35);
+                
+                pdf.setFontSize(8);
+                pdf.setFont(undefined, 'normal');
+                pdf.text(`UPI ID: ${upiId}`, 52, y + 10);
+                pdf.text(`Amount: ${amount}`, 52, y + 15);
+                pdf.text('Scan QR to pay via any UPI app', 52, y + 25);
+            }
             
-            pdf.setFontSize(10);
-            pdf.setFont(undefined, 'bold');
-            pdf.text('Scan to Pay', 15, y);
-            pdf.addImage(qrImage, 'PNG', 15, y + 2, 35, 35);
+            document.body.removeChild(qrContainer);
             
+            // Stamp/Seal placeholder - moved to right side
+            pdf.setFontSize(9);
+            pdf.text('[Stamp/Seal]', 155, y + 15);
+            pdf.rect(150, y + 5, 40, 25);
+            
+            // Footer
             pdf.setFontSize(8);
-            pdf.setFont(undefined, 'normal');
-            pdf.text(`UPI ID: ${upiId}`, 52, y + 10);
-            pdf.text(`Amount: ${amount}`, 52, y + 15);
-            pdf.text('Scan QR to pay via any UPI app', 52, y + 25);
-        }
-        
-        document.body.removeChild(qrContainer);
-        
-        // Stamp/Seal placeholder - moved to right side
+            pdf.text('This copy is generated electronically and does not require a physical signature.| KounterPro', 105, 285, { align: 'center' });
+            
+            // Save PDF
+            pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
+        }, 100);
+    } else {
+        // No UPI ID configured, skip QR code and save PDF directly
+        // Stamp/Seal placeholder
         pdf.setFontSize(9);
         pdf.text('[Stamp/Seal]', 155, y + 15);
         pdf.rect(150, y + 5, 40, 25);
@@ -680,12 +764,13 @@ function generatePDF(invoiceData) {
         
         // Save PDF
         pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
-    }, 100);
+    }
 }
 
 // Format invoice data for WhatsApp message
 function formatWhatsAppMessage(invoiceData) {
-    let message = `*KEEN BATTERIES*\n`;
+    const companyName = userProfile?.business_name || 'KEEN BATTERIES';
+    let message = `*${companyName.toUpperCase()}*\n`;
     message += `Tax Invoice\n\n`;
     message += `📄 *Invoice No:* ${invoiceData.invoiceNo}\n`;
     message += `📅 *Date:* ${formatDateForPDF(invoiceData.date)}\n\n`;
@@ -711,6 +796,9 @@ function formatWhatsAppMessage(invoiceData) {
     message += `*GST (${invoiceData.gstRate}%):* ₹${invoiceData.gstAmount.toFixed(2)}\n`;
     message += `*Grand Total:* ₹${invoiceData.grandTotal.toFixed(2)}\n\n`;
     
+    message += `📄 *PDF Invoice attached*\n`;
+    message += `Please see the attached PDF document for the complete tax invoice.\n\n`;
+    
     message += `Thank you for your business! 🙏\n\n`;
     message += `_This is a computer generated invoice._`;
     
@@ -722,6 +810,9 @@ function sendViaWhatsApp(invoiceData) {
     const mobileNumber = invoiceData.customerMobile.replace(/\D/g, '');
     const countryCode = '91'; // India country code, change if needed
     const message = formatWhatsAppMessage(invoiceData);
+    
+    // Show instructions for attaching PDF
+    alert('📎 Important: After WhatsApp opens, manually attach the downloaded PDF invoice before sending the message.\n\nThe PDF file has been downloaded to your device.');
     
     const whatsappUrl = `https://wa.me/${countryCode}${mobileNumber}?text=${message}`;
     window.open(whatsappUrl, '_blank');
@@ -735,6 +826,12 @@ function closeWhatsappModal() {
 
 // Format date for PDF
 function formatDateForPDF(dateString) {
+    // Check if it's a simple date string (YYYY-MM-DD)
+    if (dateString && dateString.length === 10 && !dateString.includes('T')) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    }
+    // Otherwise treat as timestamp
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -766,9 +863,18 @@ async function deductStock(soldItems) {
     }
 }
 
-// Handle form submission
+// Store saved invoice data globally
+let savedInvoiceData = null;
+
+// Handle form submission - Save invoice first
 async function handleFormSubmit(e) {
     e.preventDefault();
+    
+    // Check if already saved and now generating PDF
+    if (savedInvoiceData) {
+        await generateAndShowPDF(savedInvoiceData);
+        return;
+    }
     
     // Create loading overlay if it doesn't exist
     let loadingOverlay = document.getElementById('loadingOverlay');
@@ -778,11 +884,15 @@ async function handleFormSubmit(e) {
         loadingOverlay.innerHTML = `
             <div class="loading-content">
                 <div class="spinner"></div>
-                <p id="loadingMessage">Generating invoice...</p>
+                <p id="loadingMessage">Saving invoice...</p>
             </div>
         `;
         document.body.appendChild(loadingOverlay);
     }
+    
+    // Update message
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (loadingMessage) loadingMessage.textContent = 'Saving invoice...';
     
     // Show loading
     loadingOverlay.style.display = 'flex';
@@ -795,16 +905,84 @@ async function handleFormSubmit(e) {
             throw new Error('Please add at least one item');
         }
         
-        // Generate PDF
-        generatePDF(invoiceData);
-        
-        // Save to Supabase
+        // Save to Supabase FIRST
         const saved = await saveInvoice(invoiceData);
         
         // Hide loading
         loadingOverlay.style.display = 'none';
         
         if (saved) {
+            // Store invoice data
+            savedInvoiceData = invoiceData;
+            
+            // Disable form inputs
+            disableFormInputs();
+            
+            // Change button to Generate PDF
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.innerHTML = '<span class="material-icons">picture_as_pdf</span> Generate Invoice PDF';
+            submitBtn.classList.add('btn-success');
+            
+            // Show success message
+            alert('✅ Invoice saved successfully! Click "Generate Invoice PDF" to create the PDF document.');
+        }
+    } catch (error) {
+        // Hide loading
+        loadingOverlay.style.display = 'none';
+        
+        console.error('Error saving invoice:', error);
+        alert('❌ ' + error.message);
+    }
+}
+
+// Disable form inputs after saving
+function disableFormInputs() {
+    const form = document.getElementById('invoiceForm');
+    const inputs = form.querySelectorAll('input, textarea, button:not(#submitBtn)');
+    inputs.forEach(input => {
+        input.disabled = true;
+        input.style.opacity = '0.6';
+    });
+    
+    // Disable add/remove item buttons
+    const addItemBtn = document.getElementById('addItemBtn');
+    if (addItemBtn) addItemBtn.disabled = true;
+    
+    const removeButtons = document.querySelectorAll('.btn-remove');
+    removeButtons.forEach(btn => btn.disabled = true);
+}
+
+// Generate PDF and show WhatsApp modal
+async function generateAndShowPDF(invoiceData) {
+    // Create loading overlay if it doesn't exist
+    let loadingOverlay = document.getElementById('loadingOverlay');
+    if (!loadingOverlay) {
+        loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loadingOverlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingMessage">Generating PDF...</p>
+            </div>
+        `;
+        document.body.appendChild(loadingOverlay);
+    }
+    
+    // Update message
+    const loadingMessage = document.getElementById('loadingMessage');
+    if (loadingMessage) loadingMessage.textContent = 'Generating PDF...';
+    
+    // Show loading
+    loadingOverlay.style.display = 'flex';
+    
+    try {
+        // Generate PDF
+        generatePDF(invoiceData);
+        
+        // Hide loading after a short delay (to let PDF generation complete)
+        setTimeout(() => {
+            loadingOverlay.style.display = 'none';
+            
             // Show WhatsApp modal
             document.getElementById('modalInvoiceNo').textContent = invoiceData.invoiceNumber;
             document.getElementById('whatsappModal').style.display = 'flex';
@@ -813,20 +991,35 @@ async function handleFormSubmit(e) {
             document.getElementById('sendWhatsappBtn').onclick = () => {
                 sendViaWhatsApp(invoiceData);
             };
-        }
+        }, 500);
     } catch (error) {
         // Hide loading
         loadingOverlay.style.display = 'none';
         
-        console.error('Error generating invoice:', error);
-        alert('❌ ' + error.message);
+        console.error('Error generating PDF:', error);
+        alert('❌ Error generating PDF: ' + error.message);
     }
 }
 
 // Initialize form
 async function initForm() {
-    // Load inventory data
+    // Load user profile and inventory data
+    await loadUserProfile();
     await loadInventory();
+    
+    // Load terms and conditions from profile (or use default)
+    const defaultTerms = `1. Payment should be made on delivery.
+2. Goods once sold will not be taken back or exchanged.
+3. Warranty on all peripherals/parts is as per manufacturer's policy and shall be got done no claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.
+4. Our responsibility ceases the moment goods leave our premises.
+5. No claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.`;
+    
+    const termsTextarea = document.getElementById('termsConditions');
+    if (userProfile && userProfile.terms_conditions) {
+        termsTextarea.value = userProfile.terms_conditions;
+    } else {
+        termsTextarea.value = defaultTerms;
+    }
     
     // Add event listeners to initial row
     const initialRow = document.querySelector('.item-row');

@@ -85,35 +85,42 @@
             <form id="itemForm" class="modal-form">
                 <input type="hidden" id="editItemId">
                 <div class="form-row">
-                    <label>
-                        Item Name: <span class="required">*</span>
-                        <input type="text" id="itemName" required minlength="2" maxlength="100" placeholder="e.g., ARCO 100AH">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">inventory_2</span>
+                        <span>Item Name <span class="required">*</span></span>
                     </label>
+                    <input type="text" id="itemName" required minlength="2" maxlength="100" placeholder="e.g., ARCO 100AH">
                 </div>
                 <div class="form-row">
-                    <label>
-                        Description: <span class="optional">(optional)</span>
-                        <textarea id="itemDescription" rows="2" maxlength="255" placeholder="Additional details about the item"></textarea>
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">description</span>
+                        <span>Description <span class="optional">(optional)</span></span>
                     </label>
+                    <textarea id="itemDescription" rows="3" maxlength="255" placeholder="Additional details about the item"></textarea>
                 </div>
-                <div class="form-row">
-                    <label>
-                        Stock Quantity: <span class="required">*</span>
-                        <input type="number" id="itemStock" required min="0" max="999999" step="1" value="0" placeholder="Enter quantity">
-                    </label>
-                </div>
-                <div class="form-row">
-                    <label>
-                        Rate (GST Inclusive): <span class="required">*</span>
+                <div class="form-row-group">
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">store</span>
+                            <span>Stock Quantity <span class="required">*</span></span>
+                        </label>
+                        <input type="number" id="itemStock" required min="0" max="999999" step="1" value="0" placeholder="0">
+                    </div>
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">payments</span>
+                            <span>Rate (GST Inclusive) <span class="required">*</span></span>
+                        </label>
                         <input type="number" id="itemRate" required min="0.01" max="9999999" step="0.01" placeholder="Enter rate in ₹">
-                    </label>
+                    </div>
                 </div>
                 <div class="form-row">
-                    <label>
-                        Low Stock Alert Threshold: <span class="optional">(optional, default: 10)</span>
-                        <input type="number" id="itemLowStockThreshold" min="1" max="1000" step="1" placeholder="10" value="10">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">warning</span>
+                        <span>Low Stock Alert Threshold <span class="optional">(optional, default: 10)</span></span>
                     </label>
-                    <small style="color: #666;">Alert when stock falls to or below this number</small>
+                    <input type="number" id="itemLowStockThreshold" min="1" max="1000" step="1" placeholder="10" value="10">
+                    <small class="form-hint">Alert when stock falls to or below this number</small>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="closeModal()"><span class="material-icons">cancel</span> Cancel</button>

@@ -116,7 +116,7 @@
 
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
-                <button type="submit" class="btn-primary"><span class="material-icons">picture_as_pdf</span> Generate Invoice PDF</button>
+                <button type="submit" class="btn-primary" id="submitBtn"><span class="material-icons">save</span> Save Invoice</button>
             </div>
         </form>
 
@@ -125,6 +125,12 @@
             <div class="modal-content">
                 <h2>✅ Invoice Generated Successfully!</h2>
                 <p>Invoice <strong id="modalInvoiceNo"></strong> has been created and downloaded.</p>
+                <div class="info-box" style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 12px; margin: 16px 0; border-radius: 4px;">
+                    <p style="margin: 0; font-size: 14px; color: #856404;">
+                        <span class="material-icons" style="vertical-align: middle; font-size: 18px; margin-right: 4px;">info</span>
+                        <strong>Note:</strong> The PDF has been downloaded. When you click "Send via WhatsApp", remember to manually attach the PDF file before sending.
+                    </p>
+                </div>
                 <div class="modal-actions">
                     <button class="btn-whatsapp" id="sendWhatsappBtn">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="white" style="vertical-align: middle; margin-right: 8px;">

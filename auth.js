@@ -81,31 +81,64 @@ async function logout() {
     }
 }
 
-// Add logout button to pages
-async function addLogoutButton() {
+// Add user profile dropdown to pages
+async function addUserProfileDropdown() {
     const currentPage = window.location.pathname.split('/').pop();
-    if (currentPage !== 'login.html') {
+    if (currentPage !== 'login.html' && currentPage !== 'signup.html') {
         const user = await supabaseGetCurrentUser();
         if (user) {
-            // Find header and add user info
+            // Get user profile for business name
+            const profileResult = await supabaseGetUserProfile(user.id);
+            const businessName = profileResult.success && profileResult.data?.business_name 
+                ? profileResult.data.business_name 
+                : 'Business Name';
+            
+            // Find header and add user profile dropdown
             const header = document.querySelector('header h1');
-            if (header && !header.parentElement.querySelector('.user-info')) {
-                const userInfo = document.createElement('div');
-                userInfo.className = 'user-info';
-                userInfo.style.cssText = 'display: flex; align-items: center; gap: 15px; font-size: 14px;';
-                userInfo.innerHTML = `
-                    <span style="color: #555;">Welcome, <strong>${user.email}</strong></span>
-                    <button class="btn-secondary" onclick="logout()" style="padding: 8px 15px;">Logout</button>
+            if (header && !header.parentElement.querySelector('.user-profile-dropdown')) {
+                const userProfileContainer = document.createElement('div');
+                userProfileContainer.className = 'user-profile-dropdown';
+                userProfileContainer.innerHTML = `
+                    <button class="user-profile-button" id="userProfileButton">
+                        <span class="user-profile-text">Welcome, ${businessName}</span>
+                        <div class="user-avatar">
+                            <span class="material-icons">account_circle</span>
+                        </div>
+                    </button>
+                    <div class="user-profile-menu" id="userProfileMenu">
+                        <a href="profile.html" class="profile-menu-item">
+                            <span class="material-icons">person</span>
+                            <span>Profile</span>
+                        </a>
+                        <a href="#" onclick="logout(); return false;" class="profile-menu-item">
+                            <span class="material-icons">logout</span>
+                            <span>Logout</span>
+                        </a>
+                    </div>
                 `;
-                header.parentElement.appendChild(userInfo);
+                header.parentElement.appendChild(userProfileContainer);
+                
+                // Add click handler for dropdown
+                const profileButton = document.getElementById('userProfileButton');
+                const profileMenu = document.getElementById('userProfileMenu');
+                
+                profileButton.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    profileMenu.classList.toggle('show');
+                });
+                
+                // Close dropdown when clicking outside
+                document.addEventListener('click', () => {
+                    profileMenu.classList.remove('show');
+                });
             }
         }
     }
 }
 
-// Initialize logout button on page load
+// Initialize user profile dropdown on page load
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', addLogoutButton);
+    document.addEventListener('DOMContentLoaded', addUserProfileDropdown);
 } else {
-    addLogoutButton();
+    addUserProfileDropdown();
 }

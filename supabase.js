@@ -144,6 +144,57 @@ async function supabaseGetSession() {
 }
 
 // ============================================
+// USER PROFILE FUNCTIONS
+// ============================================
+
+async function supabaseGetUserProfile(userId) {
+    try {
+        if (!supabaseClient) initSupabase();
+        if (!supabaseClient) throw new Error('Supabase client not initialized');
+        
+        const { data, error } = await supabaseClient
+            .from('user_profiles')
+            .select('*')
+            .eq('id', userId)
+            .single();
+        
+        if (error) throw error;
+        return { success: true, data: data };
+    } catch (error) {
+        console.error('Get user profile error:', error);
+        return { success: false, error: error.message, data: null };
+    }
+}
+
+async function supabaseUpdateUserProfile(userId, profileData) {
+    try {
+        if (!supabaseClient) initSupabase();
+        if (!supabaseClient) throw new Error('Supabase client not initialized');
+        
+        const { data, error } = await supabaseClient
+            .from('user_profiles')
+            .update({
+                business_name: profileData.business_name,
+                business_address: profileData.business_address,
+                contact_number_1: profileData.contact_number_1,
+                contact_number_2: profileData.contact_number_2,
+                business_email: profileData.business_email,
+                gst_number: profileData.gst_number,
+                upi_id: profileData.upi_id,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', userId)
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Update user profile error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================
 // INVENTORY FUNCTIONS
 // ============================================
 
@@ -287,6 +338,7 @@ async function supabaseAddInvoice(invoice) {
                 {
                     user_id: user.id,
                     invoice_number: invoice.invoiceNumber,
+                    date: invoice.date,
                     customer_name: invoice.customerName,
                     customer_mobile: invoice.mobile || null,
                     customer_gst: invoice.gstNumber || null,
