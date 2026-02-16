@@ -674,29 +674,61 @@
 .invoices-card .table-wrapper {
     position: relative;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.invoices-card .modern-table {
-    display: block;
+/* Desktop: scrollable tbody only */
+@media (min-width: 769px) {
+    .invoices-card .modern-table {
+        display: block;
+    }
+
+    .invoices-card .modern-table thead {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+
+    .invoices-card .modern-table tbody {
+        display: block;
+        max-height: 400px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .invoices-card .modern-table tbody tr {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
 }
 
-.invoices-card .modern-table thead {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-}
-
-.invoices-card .modern-table tbody {
-    display: block;
-    max-height: 400px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-.invoices-card .modern-table tbody tr {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
+/* Mobile: entire table scrolls horizontally */
+@media (max-width: 768px) {
+    .invoices-card .modern-table {
+        display: table;
+        width: 100%;
+        min-width: 800px;
+    }
+    
+    .invoices-card .modern-table thead {
+        display: table-header-group;
+    }
+    
+    .invoices-card .modern-table tbody {
+        display: table-row-group;
+        max-height: none;
+        overflow: visible;
+    }
+    
+    .invoices-card .modern-table tbody tr {
+        display: table-row;
+    }
+    
+    .invoices-card .modern-table th,
+    .invoices-card .modern-table td {
+        display: table-cell;
+    }
 }
 
 .header-actions {
@@ -1529,24 +1561,52 @@
 
 /* Mobile devices */
 @media (max-width: 768px) {
-    /* Make tables horizontally scrollable */
+    /* Make all table wrappers horizontally scrollable */
     .table-wrapper {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
-    .modern-table {
-        min-width: 600px;
+    /* Keep tables as tables, just make them scroll */
+    .modern-table,
+    .invoices-table,
+    .items-table,
+    #inventoryTable {
+        width: auto;
+        min-width: 100%;
+        border-collapse: collapse;
+    }
+    
+    /* Reduce padding in table cells */
+    .modern-table th,
+    .modern-table td {
+        padding: 10px 8px;
+        font-size: 13px;
+        white-space: nowrap;
     }
     
     /* Inventory table */
-    #inventoryTable {
-        min-width: 700px;
+    #inventoryTable th,
+    #inventoryTable td {
+        padding: 8px 6px;
+        font-size: 12px;
     }
     
-    /* Invoice table - make scrollable with fixed header */
-    .invoices-card .modern-table {
-        min-width: 800px;
+    /* Items table in create bill */
+    .items-table th,
+    .items-table td {
+        padding: 6px 4px;
+        font-size: 12px;
+    }
+    
+    .items-table input,
+    .items-table textarea {
+        padding: 5px;
+        font-size: 12px;
+        min-width: 80px;
     }
     
     /* Form inputs full width */
@@ -1579,15 +1639,6 @@
     .customer-info,
     .invoice-info {
         width: 100%;
-    }
-    
-    /* Items table on create bill */
-    .items-table-wrapper {
-        overflow-x: auto;
-    }
-    
-    .items-table {
-        min-width: 700px;
     }
     
     /* Action buttons */
@@ -1841,31 +1892,6 @@
     
     .form-actions button {
         width: 100%;
-    }
-}
-
-/* Fix for invoice table scrolling on mobile */
-@media (max-width: 768px) {
-    /* Keep header fixed while body scrolls */
-    .invoices-card .modern-table thead {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: #f8f9fa;
-    }
-    
-    /* Ensure scrollbar is visible */
-    .invoices-card .modern-table tbody {
-        display: block;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .invoices-card .modern-table thead,
-    .invoices-card .modern-table tbody tr {
-        display: table;
-        width: 100%;
-        table-layout: fixed;
     }
 }
 
