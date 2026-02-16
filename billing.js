@@ -3,6 +3,28 @@ let itemCounter = 1;
 let inventory = [];
 let userProfile = null;
 
+// Format number in Indian numbering system (e.g., 8,21,000)
+function formatIndianCurrency(amount) {
+    const num = parseFloat(amount).toFixed(2);
+    const [integerPart, decimalPart] = num.split('.');
+    
+    // Handle negative numbers
+    const isNegative = integerPart.startsWith('-');
+    const absInteger = isNegative ? integerPart.slice(1) : integerPart;
+    
+    // Indian format: last 3 digits, then groups of 2
+    let result = '';
+    if (absInteger.length <= 3) {
+        result = absInteger;
+    } else {
+        const lastThree = absInteger.slice(-3);
+        const remaining = absInteger.slice(0, -3);
+        result = remaining.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+    }
+    
+    return (isNegative ? '-' : '') + result + '.' + decimalPart;
+}
+
 // Load user profile for company details
 async function loadUserProfile() {
     try {
@@ -20,10 +42,31 @@ async function loadUserProfile() {
     }
 }
 
+// Show skeleton loaders for billing form
+function showSkeletonLoaders() {
+    // Add skeleton effect to first row item dropdown
+    const firstSelect = document.querySelector('.item-row select');
+    if (firstSelect) {
+        firstSelect.disabled = true;
+        firstSelect.style.opacity = '0.6';
+    }
+}
+
+// Hide skeleton loaders
+function hideSkeletonLoaders() {
+    const firstSelect = document.querySelector('.item-row select');
+    if (firstSelect) {
+        firstSelect.disabled = false;
+        firstSelect.style.opacity = '1';
+    }
+}
+
 // Load inventory from Supabase
 async function loadInventory() {
     try {
+        showSkeletonLoaders();
         const result = await supabaseGetInventory();
+        hideSkeletonLoaders();
         if (result.success) {
             // Convert Supabase format to local format
             inventory = result.data.map(item => ({
@@ -88,16 +131,16 @@ function calculateAmounts() {
         const amountExclGST = quantity * rateExclGST;
         const amountInclGST = quantity * rateInclGST;
         
-        row.querySelector('.item-amount').textContent = amountInclGST.toFixed(2);
+        row.querySelector('.item-amount').textContent = formatIndianCurrency(amountInclGST);
         subtotalExclGST += amountExclGST;
         grandTotal += amountInclGST;
     });
     
     const gstAmount = grandTotal - subtotalExclGST;
     
-    document.getElementById('subtotal').textContent = `₹${subtotalExclGST.toFixed(2)}`;
-    document.getElementById('gstAmount').textContent = `₹${gstAmount.toFixed(2)}`;
-    document.getElementById('grandTotal').textContent = `₹${grandTotal.toFixed(2)}`;
+    document.getElementById('subtotal').textContent = `₹${formatIndianCurrency(subtotalExclGST)}`;
+    document.getElementById('gstAmount').textContent = `₹${formatIndianCurrency(gstAmount)}`;
+    document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
     document.getElementById('displayGstRate').textContent = gstRate.toFixed(2);
 }
 
@@ -223,7 +266,7 @@ function setupAutocomplete(input, rateInput, quantityInput) {
             div.innerHTML = `
                 <strong>${item.name}</strong>
                 ${item.description ? '<br><small>' + item.description + '</small>' : ''}
-                <br><small>${stockBadge} | Stock: ${item.stock} units | Rate: ₹${item.rate.toFixed(2)}</small>
+                <br><small>${stockBadge} | Stock: ${item.stock} units | Rate: ₹${formatIndianCurrency(item.rate)}</small>
             `;
             
             div.addEventListener('click', function() {
@@ -653,8 +696,8 @@ function generatePDF(invoiceData) {
             pdf.text(serialText, 85, y + 5);
         }
         pdf.text(String(item.quantity), 115, y + 5);
-        pdf.text(item.rate.toFixed(2), 135, y + 5);
-        pdf.text(item.amount.toFixed(2), 165, y + 5);
+        pdf.text('Rs.' + formatIndianCurrency(item.rate), 135, y + 5);
+        pdf.text('Rs.' + formatIndianCurrency(item.amount), 165, y + 5);
         
         pdf.line(15, y + 8, 195, y + 8);
         y += 8;
@@ -663,17 +706,17 @@ function generatePDF(invoiceData) {
     // Totals
     y += 5;
     pdf.text('Subtotal:', 130, y);
-    pdf.text(`${invoiceData.subtotal.toFixed(2)}`, 165, y);
+    pdf.text(`Rs.${formatIndianCurrency(invoiceData.subtotal)}`, 165, y);
     
     y += 6;
     pdf.text(`GST (${invoiceData.gstRate}%)`, 130, y);
-    pdf.text(`${invoiceData.gstAmount.toFixed(2)}`, 165, y);
+    pdf.text(`Rs.${formatIndianCurrency(invoiceData.gstAmount)}`, 165, y);
     
     y += 6;
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(11);
     pdf.text('Grand Total:', 130, y);
-    pdf.text(`${invoiceData.grandTotal.toFixed(2)}`, 165, y);
+    pdf.text(`Rs.${formatIndianCurrency(invoiceData.grandTotal)}`, 165, y);
     
     // Terms & Conditions
     y += 15;
@@ -788,13 +831,13 @@ function formatWhatsAppMessage(invoiceData) {
     
     invoiceData.items.forEach(item => {
         message += `${item.description}\n`;
-        message += `  Qty: ${item.quantity} × ₹${item.rateInclGST.toFixed(2)} = ₹${(item.quantity * item.rateInclGST).toFixed(2)}\n`;
+        message += `  Qty: ${item.quantity} × ₹${formatIndianCurrency(item.rateInclGST)} = ₹${formatIndianCurrency(item.quantity * item.rateInclGST)}\n`;
     });
     
     message += `━━━━━━━━━━━━━━━━━━\n\n`;
-    message += `*Subtotal:* ₹${invoiceData.subtotal.toFixed(2)}\n`;
-    message += `*GST (${invoiceData.gstRate}%):* ₹${invoiceData.gstAmount.toFixed(2)}\n`;
-    message += `*Grand Total:* ₹${invoiceData.grandTotal.toFixed(2)}\n\n`;
+    message += `*Subtotal:* ₹${formatIndianCurrency(invoiceData.subtotal)}\n`;
+    message += `*GST (${invoiceData.gstRate}%):* ₹${formatIndianCurrency(invoiceData.gstAmount)}\n`;
+    message += `*Grand Total:* ₹${formatIndianCurrency(invoiceData.grandTotal)}\n\n`;
     
     message += `📄 *PDF Invoice attached*\n`;
     message += `Please see the attached PDF document for the complete tax invoice.\n\n`;

@@ -3,26 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management - Keen Batteries</title>
+    <title>Inventory Management - KounterPro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-new.css">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1>📦 Inventory Management</h1>
-        </header>
-
-        <div class="nav-section">
-            <button class="btn-nav" onclick="window.location.href='index.html'"><span class="material-icons">arrow_back</span> Dashboard</button>
-            <button class="btn-nav btn-nav-primary" onclick="showAddItemModal()"><span class="material-icons">add_circle</span> Add New Item</button>
-            <button class="btn-nav btn-backup" onclick="exportBackup()"><span class="material-icons">cloud_download</span> Backup Data</button>
-            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()"><span class="material-icons">cloud_upload</span> Restore Data</button>
-            <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <span class="material-icons">menu</span>
+            </button>
         </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item active">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title">Inventory Management</h1>
+                <p class="page-subtitle">Manage your products and stock levels</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="showAddItemModal()">
+                    <span class="material-icons">add_circle</span> Add New Item
+                </button>
+            </div>
+        </div>
+
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
 
         <div class="stats-container">
             <div class="stat-card">
@@ -131,9 +183,57 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="toast.js"></script>
     <script src="validation.js"></script>
     <script src="supabase.js"></script>
     <script src="auth.js"></script>
     <script src="inventory.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('collapsed');
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                });
+            }
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    sidebar.classList.add('show');
+                    if (overlay) overlay.classList.add('show');
+                });
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+            }
+            
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('show');
+                        if (overlay) overlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            if (window.innerWidth > 768) {
+                const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                if (isCollapsed) {
+                    sidebar.classList.add('collapsed');
+                }
+            }
+        });
+    </script>
 </body>
 </html>

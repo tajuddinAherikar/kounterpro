@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
 async function handleLogin(e) {
     e.preventDefault();
     
-    const username = document.getElementById('username').value.trim();
+    const usernameInput = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
     const errorMessage = document.getElementById('errorMessage');
     
@@ -45,15 +45,40 @@ async function handleLogin(e) {
     submitBtn.textContent = 'Signing in...';
     submitBtn.disabled = true;
     
-    // Sign in with Supabase
-    const result = await supabaseSignIn(username, password);
+    // Determine if input is mobile number (10 digits) or email
+    const isMobile = /^[0-9]{10}$/.test(usernameInput);
+    
+    // If mobile, we need to find the email from user_profiles table first
+    let emailToLogin = usernameInput;
+    
+    if (isMobile) {
+        // Query user_profiles to find email by mobile number
+        const { data, error } = await supabaseClient
+            .from('user_profiles')
+            .select('email')
+            .eq('mobile', usernameInput)
+            .single();
+        
+        if (error || !data) {
+            errorMessage.textContent = 'Mobile number not found. Please check and try again.';
+            errorMessage.style.display = 'block';
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+            return;
+        }
+        
+        emailToLogin = data.email;
+    }
+    
+    // Sign in with Supabase using email
+    const result = await supabaseSignIn(emailToLogin, password);
     
     if (result.success) {
         // Redirect to dashboard
         window.location.href = 'index.html';
     } else {
         // Show error
-        errorMessage.textContent = result.error || 'Invalid email or password';
+        errorMessage.textContent = 'Invalid mobile/email or password';
         errorMessage.style.display = 'block';
         
         // Shake animation
@@ -93,9 +118,9 @@ async function addUserProfileDropdown() {
                 ? profileResult.data.business_name 
                 : 'Business Name';
             
-            // Find header and add user profile dropdown
-            const header = document.querySelector('header h1');
-            if (header && !header.parentElement.querySelector('.user-profile-dropdown')) {
+            // Find header-right and add user profile dropdown
+            const headerRight = document.querySelector('.header-right');
+            if (headerRight && !document.getElementById('userProfileButton')) {
                 const userProfileContainer = document.createElement('div');
                 userProfileContainer.className = 'user-profile-dropdown';
                 userProfileContainer.innerHTML = `
@@ -116,7 +141,7 @@ async function addUserProfileDropdown() {
                         </a>
                     </div>
                 `;
-                header.parentElement.appendChild(userProfileContainer);
+                headerRight.appendChild(userProfileContainer);
                 
                 // Add click handler for dropdown
                 const profileButton = document.getElementById('userProfileButton');

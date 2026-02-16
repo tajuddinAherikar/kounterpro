@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Billing Dashboard - Keen Batteries</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><span class="material-icons" style="font-size: 2rem;">store</span>Billing Dashboard</h1>
+        </header>
+
+        <div class="nav-section">
+            <button class="btn-nav btn-nav-primary" onclick="window.location.href='create-bill.html'"><span class="material-icons">add_circle</span> Create New Bill</button>
+            <button class="btn-nav" onclick="window.location.href='inventory.html'"><span class="material-icons">inventory_2</span> Inventory</button>
+            <button class="btn-nav btn-backup" onclick="exportBackup()"><span class="material-icons">cloud_download</span> Backup Data</button>
+            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()"><span class="material-icons">cloud_upload</span> Restore Data</button>
+            <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Today's Sales</h3>
+                <p class="stat-value" id="todaySales">₹0.00</p>
+                <span class="stat-label" id="todayCount">0 invoices</span>
+            </div>
+            <div class="stat-card">
+                <h3>Total Units Sold</h3>
+                <p class="stat-value" id="todayUnits">0</p>
+                <span class="stat-label">Today</span>
+            </div>
+            <div class="stat-card">
+                <h3>All Time Sales</h3>
+                <p class="stat-value" id="totalSales">₹0.00</p>
+                <span class="stat-label" id="totalCount">0 invoices</span>
+            </div>
+        </div>
+
+           <div class="invoices-section">
+            <div class="section-header">
+                <h2>Recent Invoices</h2>
+                <div class="invoice-search">
+                    <div class="search-input-wrapper">
+                        <span class="material-icons search-icon">search</span>
+                        <input type="text" id="invoiceSearch" placeholder="Search invoices..." oninput="searchInvoices()">
+                        <span class="material-icons search-clear" id="clearInvoiceSearch" onclick="clearInvoiceSearch()" style="display: none;">cancel</span>
+                    </div>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice No</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Units</th>
+                            <th>Amount</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoicesTableBody">
+                        <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px;">No invoices yet. Create your first bill!</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <!-- Low Stock Alert Widget -->
+        <div class="low-stock-widget" id="lowStockWidget" style="display: none;">
+            <div class="alert-banner">
+                <div class="alert-header">
+                    <span class="material-icons alert-icon">warning</span>
+                    <h3>Stock Alerts</h3>
+                    <button class="btn-close-alert" onclick="document.getElementById('lowStockWidget').style.display='none'">&times;</button>
+                </div>
+                <div class="alert-content" id="lowStockAlertContent">
+                    <!-- Low stock items will be inserted here -->
+                </div>
+                <div class="alert-actions">
+                    <button class="btn-secondary" onclick="window.location.href='inventory.html'"><span class="material-icons">inventory_2</span> View Inventory</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <h2>Sales History</h2>
+            <div class="filter-controls">
+                <label>
+                    From Date:
+                    <input type="date" id="fromDate">
+                </label>
+                <label>
+                    To Date:
+                    <input type="date" id="toDate">
+                </label>
+                <button class="btn-secondary" onclick="filterSales()"><span class="material-icons">filter_alt</span> Filter</button>
+                <button class="btn-secondary" onclick="clearFilter()"><span class="material-icons">clear</span> Clear</button>
+            </div>
+            <div class="report-controls">
+                <button class="btn-report" onclick="downloadSummaryReport()"><span class="material-icons">description</span> Summary Report</button>
+                <button class="btn-report" onclick="downloadDetailedReport()"><span class="material-icons">assignment</span> Detailed Report</button>
+            </div>
+        </div>
+
+     
+    </div>
+
+    <!-- PDF Preview Modal -->
+    <div id="pdfModal" class="pdf-modal">
+        <div class="pdf-modal-content">
+            <div class="pdf-modal-header">
+                <h2><span class="material-icons">description</span> Invoice Preview</h2>
+                <button class="btn-close-modal" onclick="closePDFModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="pdf-modal-body">
+                <canvas id="pdfCanvas" style="width: 100%; border: 1px solid #ddd;"></canvas>
+            </div>
+            <div class="pdf-modal-footer">
+                <button class="btn-secondary" onclick="closePDFModal()">
+                    <span class="material-icons">cancel</span> Close
+                </button>
+                <button class="btn-primary" onclick="downloadCurrentPDF()">
+                    <span class="material-icons">download</span> Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="validation.js"></script>
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

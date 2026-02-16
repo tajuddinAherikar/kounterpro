@@ -228,15 +228,28 @@ function safeSetItem(key, value) {
  * Show error message to user
  */
 function showError(message) {
-    // For now, use alert. Can be replaced with toast notifications later
-    alert('❌ Error: ' + message);
+    // Use toast system if available, otherwise use original alert
+    if (typeof showToast === 'function') {
+        showToast('❌ Error: ' + message, 'error');
+    } else if (window.originalAlert) {
+        window.originalAlert('❌ Error: ' + message);
+    } else {
+        console.error('❌ Error:', message);
+    }
 }
 
 /**
  * Show success message to user
  */
 function showSuccess(message) {
-    alert('✅ Success: ' + message);
+    // Use toast system if available, otherwise use original alert
+    if (typeof showToast === 'function') {
+        showToast('✅ Success: ' + message, 'success');
+    } else if (window.originalAlert) {
+        window.originalAlert('✅ Success: ' + message);
+    } else {
+        console.log('✅ Success:', message);
+    }
 }
 
 /**

@@ -62,17 +62,26 @@ async function supabaseSignUp(email, password, businessName, mobile) {
         
         // Create user profile
         if (data.user) {
-            const { error: profileError } = await supabaseClient
-                .from('user_profiles')
-                .insert([
-                    {
-                        id: data.user.id,
-                        business_name: businessName,
-                        mobile: mobile
-                    }
-                ]);
-            
-            if (profileError) console.warn('Profile creation warning:', profileError);
+            try {
+                const { error: profileError } = await supabaseClient
+                    .from('user_profiles')
+                    .insert([
+                        {
+                            id: data.user.id,
+                            business_name: businessName,
+                            mobile: mobile
+                        }
+                    ]);
+                
+                if (profileError) {
+                    console.error('Profile creation failed:', profileError);
+                    // Don't fail the signup, as profile will be created on first login
+                    // if it doesn't exist (handled in supabaseGetUserProfile)
+                }
+            } catch (profileErr) {
+                console.error('Profile creation exception:', profileErr);
+                // Continue with signup even if profile creation fails
+            }
         }
         
         return { success: true, user: data.user };
@@ -152,17 +161,57 @@ async function supabaseGetUserProfile(userId) {
         if (!supabaseClient) initSupabase();
         if (!supabaseClient) throw new Error('Supabase client not initialized');
         
+        // Use maybeSingle() instead of single() to handle missing profiles gracefully
         const { data, error } = await supabaseClient
             .from('user_profiles')
             .select('*')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
         
         if (error) throw error;
+        
+        // If profile doesn't exist, create one with default values
+        if (!data) {
+            console.log('Profile not found, creating default profile for user:', userId);
+            
+            // Get user info from auth
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            
+            const defaultProfile = {
+                id: userId,
+                business_name: user?.user_metadata?.business_name || 'My Business',
+                mobile: user?.user_metadata?.mobile || ''
+            };
+            
+            // Create the profile
+            const { data: newProfile, error: insertError } = await supabaseClient
+                .from('user_profiles')
+                .insert([defaultProfile])
+                .select()
+                .single();
+            
+            if (insertError) {
+                console.error('Failed to create profile:', insertError);
+                // Return a default profile object even if insert fails
+                return { success: true, data: defaultProfile };
+            }
+            
+            return { success: true, data: newProfile };
+        }
+        
         return { success: true, data: data };
     } catch (error) {
         console.error('Get user profile error:', error);
-        return { success: false, error: error.message, data: null };
+        
+        // Return a default profile object to allow dashboard to continue
+        return { 
+            success: true, 
+            data: { 
+                id: userId, 
+                business_name: 'My Business', 
+                mobile: '' 
+            } 
+        };
     }
 }
 

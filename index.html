@@ -3,113 +3,248 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Billing Dashboard - Keen Batteries</title>
+    <title>Dashboard - KounterPro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-new.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1><span class="material-icons" style="font-size: 2rem;">store</span>Billing Dashboard</h1>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item active">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+        </nav>
+        
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title">Dashboard</h1>
+                <p class="page-subtitle">Welcome back! Here's your business overview</p>
+            </div>
+            <div class="header-right">
+                <button class="notification-btn" id="notificationBtn">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+            </div>
         </header>
 
-        <div class="nav-section">
-            <button class="btn-nav btn-nav-primary" onclick="window.location.href='create-bill.html'"><span class="material-icons">add_circle</span> Create New Bill</button>
-            <button class="btn-nav" onclick="window.location.href='inventory.html'"><span class="material-icons">inventory_2</span> Inventory</button>
-            <button class="btn-nav btn-backup" onclick="exportBackup()"><span class="material-icons">cloud_download</span> Backup Data</button>
-            <button class="btn-nav btn-restore" onclick="document.getElementById('restoreFileInput').click()"><span class="material-icons">cloud_upload</span> Restore Data</button>
-            <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
-        </div>
-
-        <div class="stats-container">
-            <div class="stat-card">
-                <h3>Today's Sales</h3>
-                <p class="stat-value" id="todaySales">₹0.00</p>
-                <span class="stat-label" id="todayCount">0 invoices</span>
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <button class="btn-text" onclick="markAllAsRead()">Mark all as read</button>
             </div>
-            <div class="stat-card">
-                <h3>Total Units Sold</h3>
-                <p class="stat-value" id="todayUnits">0</p>
-                <span class="stat-label">Today</span>
-            </div>
-            <div class="stat-card">
-                <h3>All Time Sales</h3>
-                <p class="stat-value" id="totalSales">₹0.00</p>
-                <span class="stat-label" id="totalCount">0 invoices</span>
-            </div>
-        </div>
-
-        <!-- Low Stock Alert Widget -->
-        <div class="low-stock-widget" id="lowStockWidget" style="display: none;">
-            <div class="alert-banner">
-                <div class="alert-header">
-                    <span class="material-icons alert-icon">warning</span>
-                    <h3>Stock Alerts</h3>
-                    <button class="btn-close-alert" onclick="document.getElementById('lowStockWidget').style.display='none'">&times;</button>
-                </div>
-                <div class="alert-content" id="lowStockAlertContent">
-                    <!-- Low stock items will be inserted here -->
-                </div>
-                <div class="alert-actions">
-                    <button class="btn-secondary" onclick="window.location.href='inventory.html'"><span class="material-icons">inventory_2</span> View Inventory</button>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-empty">
+                    <span class="material-icons">notifications_none</span>
+                    <p>No notifications</p>
                 </div>
             </div>
         </div>
 
-        <div class="filter-section">
-            <h2>Sales History</h2>
-            <div class="filter-controls">
-                <label>
-                    From Date:
-                    <input type="date" id="fromDate">
-                </label>
-                <label>
-                    To Date:
-                    <input type="date" id="toDate">
-                </label>
-                <button class="btn-secondary" onclick="filterSales()"><span class="material-icons">filter_alt</span> Filter</button>
-                <button class="btn-secondary" onclick="clearFilter()"><span class="material-icons">clear</span> Clear</button>
+        <!-- Stats Cards Grid -->
+        <div class="stats-grid">
+            <div class="stat-card-modern">
+                <div class="stat-card-icon blue">
+                    <span class="material-icons">payments</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">Today's Sales</span>
+                    <h2 class="stat-card-value" id="todaySales">₹0.00</h2>
+                    <div class="stat-card-status">
+                        <span class="stat-card-trend positive" id="todayTrend" style="display: none;">
+                            <span class="material-icons">trending_up</span>
+                            <span>+0%</span>
+                        </span>
+                        <span class="stat-card-status-text" id="todaySalesStatus">No activity yet</span>
+                    </div>
+                    <span class="stat-card-meta" id="todayCount">No invoices yet today</span>
+                </div>
             </div>
-            <div class="report-controls">
-                <button class="btn-report" onclick="downloadSummaryReport()"><span class="material-icons">description</span> Summary Report</button>
-                <button class="btn-report" onclick="downloadDetailedReport()"><span class="material-icons">assignment</span> Detailed Report</button>
+
+            <div class="stat-card-modern">
+                <div class="stat-card-icon orange">
+                    <span class="material-icons">shopping_cart</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">Units Sold Today</span>
+                    <h2 class="stat-card-value" id="todayUnits">0</h2>
+                    <div class="stat-card-status">
+                        <span class="stat-card-status-text">No activity yet</span>
+                    </div>
+                    <span class="stat-card-meta">Total units</span>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-card-icon green">
+                    <span class="material-icons">account_balance_wallet</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">All Time Sales</span>
+                    <h2 class="stat-card-value" id="totalSales">₹0.00</h2>
+                    <div class="stat-card-status">
+                        <span class="stat-card-trend positive" id="totalTrend" style="display: none;">
+                            <span class="material-icons">trending_up</span>
+                            <span>+0%</span>
+                        </span>
+                    </div>
+                    <span class="stat-card-meta" id="totalCount">0 invoices</span>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-card-icon red" id="lowStockIcon">
+                    <span class="material-icons">warning</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">Low Stock Alerts</span>
+                    <h2 class="stat-card-value" id="lowStockCount">0</h2>
+                    <div class="stat-card-status">
+                        <span class="stat-card-status-text warning" id="lowStockStatus">Action required</span>
+                        <a href="inventory.html" class="stat-card-link">View items</a>
+                    </div>
+                    <span class="stat-card-meta">Items need attention</span>
+                </div>
             </div>
         </div>
 
-        <div class="invoices-section">
-            <div class="section-header">
-                <h2>Recent Invoices</h2>
-                <div class="invoice-search">
+         <!-- Invoices Section -->
+        <div class="card invoices-card">
+            <div class="card-header">
+                <h3><span class="material-icons">receipt</span> Recent Invoices</h3>
+                <div class="header-actions">
                     <div class="search-input-wrapper">
                         <span class="material-icons search-icon">search</span>
-                        <input type="text" id="invoiceSearch" placeholder="Search invoices..." oninput="searchInvoices()">
-                        <span class="material-icons search-clear" id="clearInvoiceSearch" onclick="clearInvoiceSearch()" style="display: none;">cancel</span>
+                        <input type="text" id="invoiceSearch" placeholder="Search invoices..." style="padding: 8px 12px 8px 40px; border: 1px solid #ddd; border-radius: 6px; width: 200px;">
+                    </div>
+                    <button class="btn-secondary" onclick="showFilterModal()" style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons">filter_alt</span> Filter
+                    </button>
+                    <button class="btn-secondary" onclick="showReportModal()" style="display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons">description</span> Reports
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-wrapper">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice No</th>
+                                <th>Date</th>
+                                <th>Customer</th>
+                                <th>Units</th>
+                                <th>Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicesTableBody">
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                                    <span class="material-icons" style="font-size: 48px; color: #ddd;">receipt_long</span>
+                                    <p style="margin-top: 16px;">No invoices yet. Create your first invoice!</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Activity Row -->
+        <div class="content-grid">
+            <!-- Sales Trend Chart -->
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3><span class="material-icons">show_chart</span> Sales Trend</h3>
+                    <div class="card-actions">
+                        <select id="chartPeriod" class="period-select" onchange="updateChartPeriod()">
+                            <option value="7">Last 7 Days</option>
+                            <option value="30" selected>Last 30 Days</option>
+                            <option value="90">Last 90 Days</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="card activity-card">
+                <div class="card-header">
+                    <h3><span class="material-icons">history</span> Recent Activity</h3>
+                    <a href="#" class="view-all-link" onclick="document.querySelector('.invoices-section').scrollIntoView({behavior: 'smooth'}); return false;">View All</a>
+                </div>
+                <div class="card-body">
+                    <div class="activity-feed" id="activityFeed">
+                        <div class="activity-item">
+                            <div class="activity-icon blue">
+                                <span class="material-icons">info</span>
+                            </div>
+                            <div class="activity-content">
+                                <p class="activity-text">No recent activity</p>
+                                <span class="activity-time">Start creating invoices to see activity</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="table-wrapper">
-                <table class="invoices-table">
-                    <thead>
-                        <tr>
-                            <th>Invoice No</th>
-                            <th>Date</th>
-                            <th>Customer</th>
-                            <th>Units</th>
-                            <th>Amount</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="invoicesTableBody">
-                        <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px;">No invoices yet. Create your first bill!</td>
-                    </tr>
-                </tbody>
-            </table>
-            </div>
         </div>
+
+       
     </div>
 
     <!-- PDF Preview Modal -->
@@ -135,13 +270,86 @@
         </div>
     </div>
 
+    <!-- Filter Modal -->
+    <div id="filterModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><span class="material-icons">filter_alt</span> Filter Invoices</h2>
+                <button class="btn-close-modal" onclick="closeFilterModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label>
+                        From Date:
+                        <input type="date" id="filterFromDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    </label>
+                </div>
+                <div class="form-row">
+                    <label>
+                        To Date:
+                        <input type="date" id="filterToDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="clearDateFilter()">
+                    <span class="material-icons">clear</span> Clear Filter
+                </button>
+                <button class="btn-primary" onclick="applyDateFilter()">
+                    <span class="material-icons">check</span> Apply Filter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Report Modal -->
+    <div id="reportModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2><span class="material-icons">description</span> Download Reports</h2>
+                <button class="btn-close-modal" onclick="closeReportModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 20px; color: #666;">Choose the type of report you want to download:</p>
+                <button class="btn-primary" onclick="downloadSummaryReport()" style="width: 100%; margin-bottom: 12px; justify-content: center;">
+                    <span class="material-icons">description</span> Summary Report
+                </button>
+                <button class="btn-primary" onclick="downloadDetailedReport()" style="width: 100%; justify-content: center;">
+                    <span class="material-icons">assignment</span> Detailed Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Low Stock Alert Banner -->
+    <div id="lowStockBanner" class="low-stock-banner" style="display: none;">
+        <div class="banner-content">
+            <span class="material-icons banner-icon">warning</span>
+            <div class="banner-text">
+                <strong id="lowStockTitle">Low Stock Alert</strong>
+                <p id="lowStockMessage">Some items are running low</p>
+            </div>
+            <button class="btn-secondary" onclick="window.location.href='inventory.html'" style="margin-left: auto;">
+                View Inventory
+            </button>
+            <button class="btn-close-banner" onclick="document.getElementById('lowStockBanner').style.display='none'">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="toast.js"></script>
     <script src="validation.js"></script>
     <script src="supabase.js"></script>
     <script src="auth.js"></script>
-    <script src="dashboard.js"></script>
+    <script src="dashboard-modern.js"></script>
 </body>
 </html>

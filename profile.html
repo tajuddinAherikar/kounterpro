@@ -9,22 +9,67 @@
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-new.css">
 </head>
-<body>
-    <div class="container">
-        <header>
-            <h1><span class="material-icons" style="vertical-align: middle; font-size: 32px;">business</span> Business Profile</h1>
-        </header>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="profile.html" class="nav-item active">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+        </nav>
+    </aside>
 
-        <div class="nav-section">
-            <button class="btn-nav" onclick="window.location.href='index.html'"><span class="material-icons">arrow_back</span> Dashboard</button>
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title"><span class="material-icons" style="vertical-align: middle; margin-right: 8px;">business</span> Business Profile</h1>
+                <p class="page-subtitle">This information will appear on your invoices and documents</p>
+            </div>
         </div>
 
-        <div class="profile-container">
-            <div class="profile-header">
-                <h2>Business Information</h2>
-                <p class="profile-subtitle">This information will appear on your invoices and documents</p>
-            </div>
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
 
             <form id="profileForm" class="profile-form">
                 <div class="form-section">
@@ -120,14 +165,34 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="toast.js"></script>
     <script src="supabase.js"></script>
     <script src="auth.js"></script>
     <script>
         let currentUser = null;
 
+        // Show skeleton loaders
+        function showSkeletonLoaders() {
+            const inputs = document.querySelectorAll('#profileForm input, #profileForm textarea');
+            inputs.forEach(input => {
+                input.classList.add('skeleton');
+                input.disabled = true;
+            });
+        }
+
+        // Hide skeleton loaders
+        function hideSkeletonLoaders() {
+            const inputs = document.querySelectorAll('#profileForm input, #profileForm textarea');
+            inputs.forEach(input => {
+                input.classList.remove('skeleton');
+                input.disabled = false;
+            });
+        }
+
         // Load profile data
         async function loadProfile() {
             try {
+                showSkeletonLoaders();
                 currentUser = await supabaseGetCurrentUser();
                 if (!currentUser) {
                     window.location.href = 'login.html';
@@ -135,6 +200,7 @@
                 }
 
                 const result = await supabaseGetUserProfile(currentUser.id);
+                hideSkeletonLoaders();
                 
                 if (result.success && result.data) {
                     const profile = result.data;
@@ -148,6 +214,7 @@
                     document.getElementById('termsConditions').value = profile.terms_conditions || '';
                 }
             } catch (error) {
+                hideSkeletonLoaders();
                 console.error('Error loading profile:', error);
                 alert('❌ Error loading profile. Please refresh the page.');
             }
@@ -231,7 +298,53 @@
         });
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', loadProfile);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProfile();
+            
+            // Sidebar toggle functionality
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('collapsed');
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                });
+            }
+            
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    sidebar.classList.add('show');
+                    if (overlay) overlay.classList.add('show');
+                });
+            }
+            
+            if (overlay) {
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+            }
+            
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('show');
+                        if (overlay) overlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            if (window.innerWidth > 768) {
+                const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                if (isCollapsed) {
+                    sidebar.classList.add('collapsed');
+                }
+            }
+        });
     </script>
 </body>
 </html>

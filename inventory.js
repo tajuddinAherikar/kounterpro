@@ -2,12 +2,72 @@
 let inventory = [];
 let editingItemId = null;
 
+// Format number in Indian numbering system (e.g., 8,21,000)
+function formatIndianCurrency(amount) {
+    const num = parseFloat(amount).toFixed(2);
+    const [integerPart, decimalPart] = num.split('.');
+    
+    // Handle negative numbers
+    const isNegative = integerPart.startsWith('-');
+    const absInteger = isNegative ? integerPart.slice(1) : integerPart;
+    
+    // Indian format: last 3 digits, then groups of 2
+    let result = '';
+    if (absInteger.length <= 3) {
+        result = absInteger;
+    } else {
+        const lastThree = absInteger.slice(-3);
+        const remaining = absInteger.slice(0, -3);
+        result = remaining.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + lastThree;
+    }
+    
+    return (isNegative ? '-' : '') + result + '.' + decimalPart;
+}
+
+// Show skeleton loaders
+function showSkeletonLoaders() {
+    // Skeleton for stats
+    const totalItems = document.getElementById('totalItems');
+    const totalStock = document.getElementById('totalStock');
+    const lowStockCount = document.getElementById('lowStockCount');
+    
+    if (totalItems) totalItems.classList.add('skeleton');
+    if (totalStock) totalStock.classList.add('skeleton');
+    if (lowStockCount) lowStockCount.classList.add('skeleton');
+    
+    // Skeleton for table
+    const tbody = document.getElementById('inventoryTableBody');
+    if (tbody) {
+        tbody.innerHTML = Array(5).fill(0).map(() => `
+            <tr>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+                <td><div class="skeleton skeleton-text"></div></td>
+            </tr>
+        `).join('');
+    }
+}
+
+// Hide skeleton loaders
+function hideSkeletonLoaders() {
+    const totalItems = document.getElementById('totalItems');
+    const totalStock = document.getElementById('totalStock');
+    const lowStockCount = document.getElementById('lowStockCount');
+    
+    if (totalItems) totalItems.classList.remove('skeleton');
+    if (totalStock) totalStock.classList.remove('skeleton');
+    if (lowStockCount) lowStockCount.classList.remove('skeleton');
+}
+
 // Load inventory from Supabase
 async function loadInventory() {
     try {
-        showLoading('Loading inventory...');
+        showSkeletonLoaders();
         const result = await supabaseGetInventory();
-        hideLoading();
+        hideSkeletonLoaders();
         
         if (result.success) {
             // Convert Supabase format to local format
@@ -27,7 +87,7 @@ async function loadInventory() {
             inventory = [];
         }
     } catch (error) {
-        hideLoading();
+        hideSkeletonLoaders();
         console.error('Error loading inventory:', error);
         alert('❌ Error loading inventory. Please try again.');
         inventory = [];
@@ -144,7 +204,7 @@ function displayInventory(items = inventory) {
                     <td><strong>${item.name}</strong></td>
                     <td>${item.description || '-'}</td>
                     <td>${stockDisplay}</td>
-                    <td>₹${item.rate.toFixed(2)}</td>
+                    <td>₹${formatIndianCurrency(item.rate)}</td>
                     <td><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></td>
                     <td>
                         <a href="#" class="action-link" onclick="editItem('${item.id}'); return false;">
@@ -376,6 +436,9 @@ window.onclick = function(event) {
 
 // Initialize inventory page
 function initInventory() {
+    // Reset low stock banner flag when user visits inventory
+    sessionStorage.removeItem('lowStockBannerShown');
+    
     loadInventory();
     updateStats();
     displayInventory();
