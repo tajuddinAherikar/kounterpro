@@ -825,6 +825,7 @@ function setupSidebarToggle() {
     const sidebar = document.querySelector('.sidebar');
     const toggleBtn = document.getElementById('sidebarToggle');
     const mobileToggle = document.getElementById('mobileMenuToggle');
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
     const overlay = document.getElementById('sidebarOverlay');
     
     // Desktop toggle
@@ -835,11 +836,39 @@ function setupSidebarToggle() {
         });
     }
     
-    // Mobile toggle
+    // Mobile toggle (old button)
     if (mobileToggle) {
         mobileToggle.addEventListener('click', () => {
             sidebar.classList.add('show');
             if (overlay) overlay.classList.add('show');
+        });
+    }
+    
+    // Mobile menu button (new header)
+    if (mobileMenuBtn) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.add('show');
+            if (overlay) overlay.classList.add('show');
+        });
+    }
+    
+    // Sync mobile notification badges
+    const desktopBadge = document.getElementById('notificationBadge');
+    const mobileBadge = document.getElementById('mobileNotificationBadge');
+    if (desktopBadge && mobileBadge) {
+        const observer = new MutationObserver(() => {
+            mobileBadge.textContent = desktopBadge.textContent;
+            mobileBadge.style.display = desktopBadge.style.display;
+        });
+        observer.observe(desktopBadge, { childList: true, attributes: true });
+    }
+    
+    // Mobile notification button
+    const mobileNotificationBtn = document.getElementById('mobileNotificationBtn');
+    const notificationBtn = document.getElementById('notificationBtn');
+    if (mobileNotificationBtn && notificationBtn) {
+        mobileNotificationBtn.addEventListener('click', () => {
+            notificationBtn.click();
         });
     }
     
