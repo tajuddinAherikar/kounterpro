@@ -18,12 +18,16 @@ body {
     align-items: center;
     min-height: 100vh;
     background: linear-gradient(135deg, #0D1A63 0%, #2845D6 100%);
+    padding: 20px 10px;
+    overflow-x: hidden;
 }
 
 .login-container {
     width: 100%;
     max-width: 420px;
     padding: 20px;
+    position: relative;
+    z-index: 1;
 }
 
 .login-box {
@@ -628,6 +632,7 @@ textarea#termsConditions {
     font-weight: 600;
     font-size: 14px;
     color: #2C3E50;
+    text-align: left;
 }
 
 .form-label-with-icon {
@@ -907,6 +912,20 @@ textarea#termsConditions {
     
     .modal-actions {
         flex-direction: column;
+    }
+    
+    /* Login page mobile adjustments */
+    .login-container {
+        max-width: 100%;
+        padding: 15px;
+    }
+    
+    .login-box {
+        padding: 30px 25px;
+    }
+    
+    .login-box h1 {
+        font-size: 24px;
     }
 }
 
@@ -1385,7 +1404,7 @@ button .material-icons {
 }
 
 .form-section {
-    margin-bottom: 35px;
+    margin-bottom: 0px;
     padding: 25px;
     background: #f8f9fa;
     border-radius: 8px;
