@@ -730,6 +730,26 @@ img, video, canvas, svg {
         width: 100%;
         table-layout: fixed;
     }
+    
+    /* Add Item Button on desktop */
+    .add-item-section {
+        display: flex !important;
+        justify-content: flex-start !important;
+        padding: 0 !important;
+        margin: 0 0 20px 0 !important;
+    }
+    
+    .add-item-section .btn-primary {
+        width: auto !important;
+        max-width: none !important;
+        padding: 10px 20px !important;
+        font-size: 15px !important;
+    }
+    
+    /* Hide button in header-right on all screens */
+    .header-right {
+        display: none !important;
+    }
 }
 
 /* Mobile: entire table scrolls horizontally */
@@ -1079,6 +1099,25 @@ img, video, canvas, svg {
     /* Hide desktop notification button on mobile */
     .header-right {
         display: none !important;
+    }
+    
+    /* Add New Item Button Section */
+    .add-item-section {
+        display: flex !important;
+        justify-content: center !important;
+        padding: 12px 0 !important;
+        margin: 12px 0 !important;
+    }
+    
+    .add-item-section .btn-primary {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        width: 90% !important;
+        max-width: 300px !important;
+        padding: 12px 20px !important;
+        font-size: 14px !important;
     }
     
     /* Cards */

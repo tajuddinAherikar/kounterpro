@@ -88,9 +88,6 @@
                 <p class="page-subtitle">Manage your products and stock levels</p>
             </div>
             <div class="header-right">
-                <button class="btn-primary" onclick="showAddItemModal()" style="margin-right: 12px;">
-                    <span class="material-icons">add_circle</span> Add New Item
-                </button>
                 <button class="notification-btn" id="notificationBtn">
                     <span class="material-icons">notifications</span>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
@@ -113,6 +110,13 @@
         </div>
 
         <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+
+        <!-- Add New Item Button -->
+        <div class="add-item-section">
+            <button class="btn-primary" onclick="showAddItemModal()">
+                <span class="material-icons">add_circle</span> Add New Item
+            </button>
+        </div>
 
         <div class="stats-container">
             <div class="stat-card">
