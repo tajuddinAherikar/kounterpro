@@ -2,18 +2,15 @@
 
 // Initialize dark mode on page load
 function initializeDarkMode() {
-    // Check for saved preference or system preference
-    const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    const theme = savedTheme || (systemPrefersDark ? 'dark' : 'light');
+    // Check for saved preference only (don't use system preference)
+    const savedTheme = localStorage.getItem('theme') || 'light';
     
     // Apply theme instantly without transition
     document.documentElement.setAttribute('data-theme-changing', '');
-    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
     
     // Update toggle icon
-    updateDarkModeIcon(theme);
+    updateDarkModeIcon(savedTheme);
     
     // Remove changing attribute after a brief moment
     setTimeout(() => {

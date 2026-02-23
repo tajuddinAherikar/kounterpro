@@ -971,6 +971,7 @@ img, video, canvas, svg {
     gap: 8px;
 }
 
+.mobile-dark-mode-toggle,
 .mobile-notification-btn,
 .mobile-profile-btn {
     background: rgba(255, 255, 255, 0.1);
@@ -986,6 +987,7 @@ img, video, canvas, svg {
     position: relative;
 }
 
+.mobile-dark-mode-toggle:hover,
 .mobile-notification-btn:hover,
 .mobile-profile-btn:hover {
     background: rgba(255, 255, 255, 0.2);
@@ -993,10 +995,12 @@ img, video, canvas, svg {
     transform: scale(1.05);
 }
 
+.mobile-dark-mode-toggle .material-icons,
 .mobile-notification-btn .material-icons,
 .mobile-profile-btn .material-icons {
     font-size: 22px;
     transition: transform 0.3s ease;
+    margin: 0;
 }
 
 .mobile-notification-btn:hover .material-icons {
@@ -1036,6 +1040,56 @@ img, video, canvas, svg {
 
 .sidebar-overlay.show {
     display: block;
+}
+
+/* Search Container Styling */
+.search-container {
+    position: relative;
+    flex: 1;
+    max-width: 400px;
+}
+
+.search-container .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 20px;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.search-container input {
+    width: 100%;
+    padding: 10px 40px 10px 40px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Lato', sans-serif;
+    transition: border-color 0.3s;
+}
+
+.search-container input:focus {
+    outline: none;
+    border-color: #2845D6;
+}
+
+.search-container .clear-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #999;
+    font-size: 20px;
+    transition: color 0.3s;
+    user-select: none;
+    z-index: 1;
+}
+
+.search-container .clear-icon:hover {
+    color: #c62828;
 }
 
 /* ==================== Responsive Design ==================== */
@@ -1130,7 +1184,6 @@ img, video, canvas, svg {
     .page-title {
         font-size: 24px !important;
         margin-bottom: 8px !important;
-        color: #0D1A63 !important;
     }
     
     .page-subtitle {

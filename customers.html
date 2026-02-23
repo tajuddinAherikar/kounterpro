@@ -256,24 +256,49 @@
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
             const overlay = document.getElementById('sidebarOverlay');
             
-            function toggleSidebar() {
-                sidebar.classList.toggle('collapsed');
-                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('collapsed');
+                    localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+                });
             }
             
-            function toggleMobileSidebar() {
-                sidebar.classList.toggle('mobile-open');
-                overlay.classList.toggle('active');
+            if (mobileToggle) {
+                mobileToggle.addEventListener('click', () => {
+                    sidebar.classList.add('show');
+                    if (overlay) overlay.classList.add('show');
+                });
             }
             
-            if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
-            if (mobileToggle) mobileToggle.addEventListener('click', toggleMobileSidebar);
-            if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
-            if (overlay) overlay.addEventListener('click', toggleMobileSidebar);
+            if (mobileMenuBtn) {
+                mobileMenuBtn.addEventListener('click', () => {
+                    sidebar.classList.add('show');
+                    if (overlay) overlay.classList.add('show');
+                });
+            }
             
-            // Restore sidebar state
-            if (localStorage.getItem('sidebarCollapsed') === 'true') {
-                sidebar.classList.add('collapsed');
+            if (overlay) {
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+            }
+            
+            const navItems = document.querySelectorAll('.nav-item');
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('show');
+                        if (overlay) overlay.classList.remove('show');
+                    }
+                });
+            });
+            
+            if (window.innerWidth > 768) {
+                const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                if (isCollapsed) {
+                    sidebar.classList.add('collapsed');
+                }
             }
         });
 
