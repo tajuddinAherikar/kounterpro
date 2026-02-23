@@ -963,6 +963,7 @@ img, video, canvas, svg {
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 50%;
+    display: none; /* Hide title on mobile for cleaner look */
 }
 
 .mobile-header-right {
