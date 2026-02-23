@@ -10,6 +10,8 @@
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="styles-new.css">
+    <link rel="stylesheet" href="dark-mode.css">
+    <script src="dark-mode.js"></script>
 </head>
 <body class="modern-layout">
     <!-- Sidebar Navigation -->
@@ -36,6 +38,10 @@
             <a href="inventory.html" class="nav-item active">
                 <span class="material-icons">inventory_2</span>
                 <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
             </a>
             <a href="profile.html" class="nav-item">
                 <span class="material-icons">business</span>
@@ -65,6 +71,9 @@
         </div>
         <h1 class="mobile-header-title">Inventory</h1>
         <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
             <button class="mobile-notification-btn" id="mobileNotificationBtn">
                 <span class="material-icons">notifications</span>
                 <span class="notification-badge" id="mobileNotificationBadge" style="display: none;">0</span>
@@ -88,6 +97,9 @@
                 <p class="page-subtitle">Manage your products and stock levels</p>
             </div>
             <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
                 <button class="notification-btn" id="notificationBtn">
                     <span class="material-icons">notifications</span>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
@@ -116,7 +128,15 @@
             <button class="btn-primary" onclick="showAddItemModal()">
                 <span class="material-icons">add_circle</span> Add New Item
             </button>
+            <button class="btn-secondary" onclick="document.getElementById('csvFileInput').click()" style="margin-left: 12px;">
+                <span class="material-icons">upload_file</span> Import CSV
+            </button>
+            <button class="btn-secondary" onclick="downloadCSVTemplate()" style="margin-left: 12px;">
+                <span class="material-icons">download</span> Download Template
+            </button>
         </div>
+        
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
 
         <div class="stats-container">
             <div class="stat-card">
@@ -153,15 +173,19 @@
                         <tr>
                             <th>Item Name</th>
                             <th>Description</th>
+                            <th>Opening Stock</th>
                             <th>Current Stock</th>
-                            <th>Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
+                            <th>Consumed</th>
+                            <th>Purchase Price (₹)</th>
+                            <th>Sale Price (₹)</th>
+                            <th>Profit %</th>
                             <th>Status</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="inventoryTableBody">
                         <tr>
-                            <td colspan="6" style="text-align: center; padding: 40px;">No items in inventory. Add your first item!</td>
+                            <td colspan="10" style="text-align: center; padding: 40px;">No items in inventory. Add your first item!</td>
                         </tr>
                     </tbody>
                 </table>
@@ -195,17 +219,54 @@
                 <div class="form-row-group">
                     <div class="form-row form-row-half">
                         <label class="form-label-with-icon">
-                            <span class="material-icons label-icon">store</span>
-                            <span>Stock Quantity <span class="required">*</span></span>
+                            <span class="material-icons label-icon">inventory</span>
+                            <span>Opening Stock <span class="required">*</span></span>
                         </label>
-                        <input type="number" id="itemStock" required min="0" max="999999" step="1" value="0" placeholder="0">
+                        <input type="number" id="itemOpeningStock" required min="0" max="999999" step="1" value="0" placeholder="0">
+                        <small class="form-hint">Initial stock when adding this item</small>
                     </div>
                     <div class="form-row form-row-half">
                         <label class="form-label-with-icon">
-                            <span class="material-icons label-icon">payments</span>
-                            <span>Rate (GST Inclusive) <span class="required">*</span></span>
+                            <span class="material-icons label-icon">store</span>
+                            <span>Current Stock <span class="required">*</span></span>
                         </label>
-                        <input type="number" id="itemRate" required min="0.01" max="9999999" step="0.01" placeholder="Enter rate in ₹">
+                        <input type="number" id="itemStock" required min="0" max="999999" step="1" value="0" placeholder="0">
+                    </div>
+                </div>
+                <div class="form-row-group">
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">shopping_cart</span>
+                            <span>Purchase Price <span class="required">*</span></span>
+                        </label>
+                        <input type="number" id="itemPurchasePrice" required min="0.01" max="9999999" step="0.01" placeholder="Enter purchase price in ₹">
+                        <small class="form-hint">Cost price (GST Inclusive)</small>
+                    </div>
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">sell</span>
+                            <span>Sale Price <span class="required">*</span></span>
+                        </label>
+                        <input type="number" id="itemSalePrice" required min="0.01" max="9999999" step="0.01" placeholder="Enter sale price in ₹">
+                        <small class="form-hint">Selling price (GST Inclusive)</small>
+                    </div>
+                </div>
+                <div class="form-row-group">
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">trending_down</span>
+                            <span>Stock Consumed</span>
+                        </label>
+                        <input type="text" id="stockConsumed" readonly value="0" style="background: var(--bg-hover); cursor: not-allowed;">
+                        <small class="form-hint">Opening Stock - Current Stock</small>
+                    </div>
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">trending_up</span>
+                            <span>Profit Margin</span>
+                        </label>
+                        <input type="text" id="profitMargin" readonly value="0%" style="background: var(--bg-hover); cursor: not-allowed;">
+                        <small class="form-hint">(Sale - Purchase) / Purchase × 100</small>
                     </div>
                 </div>
                 <div class="form-row">
@@ -221,6 +282,53 @@
                     <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Item</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- CSV Import Preview Modal -->
+    <div id="csvPreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h2><span class="material-icons">upload_file</span> CSV Import Preview</h2>
+                <button class="btn-close-modal" onclick="closeCSVPreviewModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="csvPreviewStats" style="margin-bottom: 20px; padding: 12px; background: #f8f9fa; border-radius: 8px; display: none;">
+                    <p style="margin: 0; color: #666;">
+                        <strong>Total rows:</strong> <span id="csvTotalRows">0</span> | 
+                        <strong>Valid:</strong> <span id="csvValidRows" style="color: #10b981;">0</span> | 
+                        <strong>Errors:</strong> <span id="csvErrorRows" style="color: #ef4444;">0</span>
+                    </p>
+                </div>
+                <div class="table-wrapper" style="max-height: 400px; overflow-y: auto;">
+                    <table class="modern-table" id="csvPreviewTable">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Item Name</th>
+                                <th>Description</th>
+                                <th>Opening Stock</th>
+                                <th>Purchase Price</th>
+                                <th>Sale Price</th>
+                                <th>Low Stock</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody id="csvPreviewTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeCSVPreviewModal()">
+                    <span class="material-icons">cancel</span> Cancel
+                </button>
+                <button class="btn-primary" id="csvImportBtn" onclick="confirmCSVImport()">
+                    <span class="material-icons">check_circle</span> Import Valid Items
+                </button>
+            </div>
         </div>
     </div>
 

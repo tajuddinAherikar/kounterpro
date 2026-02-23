@@ -75,8 +75,10 @@ async function loadInventory() {
                 id: item.id,
                 name: item.name,
                 description: item.description,
+                openingStock: item.opening_stock || 0,
                 stock: item.stock,
-                rate: parseFloat(item.rate),
+                purchasePrice: parseFloat(item.purchase_price || 0),
+                salePrice: parseFloat(item.sale_price || 0),
                 lowStockThreshold: item.low_stock_threshold
             }));
             displayInventory();
@@ -102,8 +104,10 @@ async function saveInventoryItem(item, isEdit = false) {
         const itemData = {
             name: item.name,
             description: item.description,
+            openingStock: item.openingStock || 0,
             stock: item.stock,
-            rate: item.rate,
+            purchasePrice: item.purchasePrice,
+            salePrice: item.salePrice,
             lowStockThreshold: item.lowStockThreshold
         };
         
@@ -193,6 +197,8 @@ function displayInventory(items = inventory) {
         .map(item => {
             const stockInfo = getStockStatus(item);
             const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+            const consumed = (item.openingStock || 0) - item.stock;
+            const profitMargin = item.purchasePrice > 0 ? (((item.salePrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(2) : 0;
             const stockDisplay = item.stock === 0 ? 
                 `<strong style="color: #c62828;">${item.stock} units</strong>` :
                 item.stock <= threshold ?
@@ -203,14 +209,18 @@ function displayInventory(items = inventory) {
                 <tr style="${item.stock === 0 ? 'background-color: #ffebee;' : item.stock <= threshold ? 'background-color: #fff8f0;' : ''}">
                     <td><strong>${item.name}</strong></td>
                     <td>${item.description || '-'}</td>
+                    <td>${item.openingStock || 0} units</td>
                     <td>${stockDisplay}</td>
-                    <td>₹${formatIndianCurrency(item.rate)}</td>
+                    <td>${consumed} units</td>
+                    <td>₹${formatIndianCurrency(item.purchasePrice)}</td>
+                    <td>₹${formatIndianCurrency(item.salePrice)}</td>
+                    <td><span style="color: ${profitMargin >= 0 ? '#28a745' : '#c62828'}; font-weight: 600;">${profitMargin}%</span></td>
                     <td><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></td>
                     <td>
-                        <a href="#" class="action-link" onclick="editItem('${item.id}'); return false;">
+                        <a href="#" class="action-link view" onclick="editItem('${item.id}'); return false;">
                             <span class="material-icons">edit</span> Edit
                         </a>
-                        <a href="#" class="action-link" onclick="deleteItem('${item.id}'); return false;">
+                        <a href="#" class="action-link delete" onclick="deleteItem('${item.id}'); return false;">
                             <span class="material-icons">delete</span> Delete
                         </a>
                     </td>
@@ -238,9 +248,13 @@ function editItem(itemId) {
     document.getElementById('editItemId').value = itemId;
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemDescription').value = item.description || '';
+    document.getElementById('itemOpeningStock').value = item.openingStock || 0;
     document.getElementById('itemStock').value = item.stock;
-    document.getElementById('itemRate').value = item.rate;
+    document.getElementById('itemPurchasePrice').value = item.purchasePrice;
+    document.getElementById('itemSalePrice').value = item.salePrice;
     document.getElementById('itemLowStockThreshold').value = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+    updateStockConsumed();
+    updateProfitMargin();
     document.getElementById('itemModal').style.display = 'flex';
 }
 
@@ -248,6 +262,27 @@ function editItem(itemId) {
 function closeModal() {
     document.getElementById('itemModal').style.display = 'none';
     editingItemId = null;
+}
+
+// Update stock consumed calculation
+function updateStockConsumed() {
+    const openingStock = parseInt(document.getElementById('itemOpeningStock').value) || 0;
+    const currentStock = parseInt(document.getElementById('itemStock').value) || 0;
+    const consumed = openingStock - currentStock;
+    document.getElementById('stockConsumed').value = consumed + ' units';
+}
+
+// Update profit margin calculation
+function updateProfitMargin() {
+    const purchasePrice = parseFloat(document.getElementById('itemPurchasePrice').value) || 0;
+    const salePrice = parseFloat(document.getElementById('itemSalePrice').value) || 0;
+    
+    if (purchasePrice > 0) {
+        const margin = ((salePrice - purchasePrice) / purchasePrice) * 100;
+        document.getElementById('profitMargin').value = margin.toFixed(2) + '%';
+    } else {
+        document.getElementById('profitMargin').value = '0%';
+    }
 }
 
 // Delete item
@@ -291,7 +326,8 @@ async function handleFormSubmit(e) {
     const name = document.getElementById('itemName').value.trim();
     const description = document.getElementById('itemDescription').value.trim();
     const stockInput = document.getElementById('itemStock').value;
-    const rateInput = document.getElementById('itemRate').value;
+    const purchasePriceInput = document.getElementById('itemPurchasePrice').value;
+    const salePriceInput = document.getElementById('itemSalePrice').value;
     const lowStockThresholdInput = document.getElementById('itemLowStockThreshold').value;
     
     // Validation
@@ -337,16 +373,29 @@ async function handleFormSubmit(e) {
         return;
     }
     
-    const rate = parseFloat(rateInput);
-    if (isNaN(rate) || rate <= 0) {
-        alert('❌ Rate must be a positive number greater than 0');
-        document.getElementById('itemRate').focus();
+    const purchasePrice = parseFloat(purchasePriceInput);
+    if (isNaN(purchasePrice) || purchasePrice <= 0) {
+        alert('❌ Purchase price must be a positive number greater than 0');
+        document.getElementById('itemPurchasePrice').focus();
         return;
     }
     
-    if (rate > 9999999) {
-        alert('❌ Rate value is too large (maximum: 9,999,999)');
-        document.getElementById('itemRate').focus();
+    if (purchasePrice > 9999999) {
+        alert('❌ Purchase price value is too large (maximum: 9,999,999)');
+        document.getElementById('itemPurchasePrice').focus();
+        return;
+    }
+    
+    const salePrice = parseFloat(salePriceInput);
+    if (isNaN(salePrice) || salePrice <= 0) {
+        alert('❌ Sale price must be a positive number greater than 0');
+        document.getElementById('itemSalePrice').focus();
+        return;
+    }
+    
+    if (salePrice > 9999999) {
+        alert('❌ Sale price value is too large (maximum: 9,999,999)');
+        document.getElementById('itemSalePrice').focus();
         return;
     }
     
@@ -368,11 +417,15 @@ async function handleFormSubmit(e) {
     }
     
     // All validations passed, proceed with save
+    const openingStock = parseInt(document.getElementById('itemOpeningStock').value);
+    
     const itemData = {
         name,
         description,
+        openingStock,
         stock,
-        rate,
+        purchasePrice,
+        salePrice,
         lowStockThreshold
     };
     
@@ -446,6 +499,14 @@ function initInventory() {
     // Add form submit listener
     document.getElementById('itemForm').addEventListener('submit', handleFormSubmit);
     
+    // Add event listeners for stock consumed calculation
+    document.getElementById('itemOpeningStock').addEventListener('input', updateStockConsumed);
+    document.getElementById('itemStock').addEventListener('input', updateStockConsumed);
+    
+    // Add event listeners for profit margin calculation
+    document.getElementById('itemPurchasePrice').addEventListener('input', updateProfitMargin);
+    document.getElementById('itemSalePrice').addEventListener('input', updateProfitMargin);
+    
     // Add search on enter key
     document.getElementById('searchInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
@@ -482,4 +543,254 @@ async function importBackup(event) {
     // Note: Restore from file not implemented for Supabase
     alert('ℹ️ Backup restore from file is not yet available with Supabase.\n\nPlease use the Supabase Dashboard to manage your data.\n\nTo migrate localStorage data to Supabase, open console and run:\nmigrateLocalStorageToSupabase()');
     event.target.value = '';
+}
+// ===== CSV IMPORT FUNCTIONALITY =====
+
+let csvImportData = [];
+
+// Download CSV template
+function downloadCSVTemplate() {
+    const template = [
+        ['Item Name', 'Description', 'Opening Stock', 'Purchase Price', 'Sale Price', 'Low Stock Threshold'],
+        ['iPhone 14 Pro', '256GB Space Black', '50', '95000', '110000', '5'],
+        ['Samsung Galaxy S23', '128GB Phantom Black', '30', '65000', '75000', '5'],
+        ['MacBook Air M2', '8GB RAM 256GB SSD', '15', '110000', '125000', '3']
+    ];
+    
+    const csvContent = template.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'inventory_template.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('✅ CSV template downloaded successfully', 'success');
+}
+
+// Handle CSV file upload
+function handleCSVUpload(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    if (!file.name.endsWith('.csv')) {
+        showToast('❌ Please select a CSV file', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const csvText = e.target.result;
+        parseCSV(csvText);
+    };
+    reader.readAsText(file);
+    
+    // Reset file input
+    event.target.value = '';
+}
+
+// Parse CSV and validate data
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+        showToast('❌ CSV file is empty or invalid', 'error');
+        return;
+    }
+    
+    // Skip header row
+    const dataRows = lines.slice(1);
+    csvImportData = [];
+    
+    let validCount = 0;
+    let errorCount = 0;
+    
+    dataRows.forEach((line, index) => {
+        // Simple CSV parsing - split by comma and trim
+        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+        
+        if (values.length < 6) {
+            csvImportData.push({
+                valid: false,
+                error: 'Incomplete data (6 columns required)',
+                name: values[0] || '',
+                description: values[1] || '',
+                openingStock: values[2] || '',
+                purchasePrice: values[3] || '',
+                salePrice: values[4] || '',
+                lowStockThreshold: values[5] || ''
+            });
+            errorCount++;
+            return;
+        }
+        
+        const [name, description, openingStock, purchasePrice, salePrice, lowStockThreshold] = values;
+        
+        // Validation
+        let error = '';
+        
+        if (!name || name.length < 2) {
+            error = 'Item name must be at least 2 characters';
+        } else if (name.length > 100) {
+            error = 'Item name too long (max 100 characters)';
+        } else if (!description || description.length < 2) {
+            error = 'Description must be at least 2 characters';
+        } else if (description.length > 200) {
+            error = 'Description too long (max 200 characters)';
+        } else if (isNaN(openingStock) || parseFloat(openingStock) < 0) {
+            error = 'Invalid opening stock (must be >= 0)';
+        } else if (isNaN(purchasePrice) || parseFloat(purchasePrice) <= 0) {
+            error = 'Invalid purchase price (must be > 0)';
+        } else if (isNaN(salePrice) || parseFloat(salePrice) <= 0) {
+            error = 'Invalid sale price (must be > 0)';
+        } else if (parseFloat(salePrice) < parseFloat(purchasePrice)) {
+            error = 'Sale price must be >= purchase price';
+        } else if (isNaN(lowStockThreshold) || parseFloat(lowStockThreshold) < 0) {
+            error = 'Invalid low stock threshold (must be >= 0)';
+        } else if (inventory.some(item => item.name.toLowerCase() === name.toLowerCase())) {
+            error = 'Item already exists in inventory';
+        } else if (csvImportData.some(item => item.name && item.name.toLowerCase() === name.toLowerCase())) {
+            error = 'Duplicate item in CSV';
+        }
+        
+        const isValid = error === '';
+        
+        csvImportData.push({
+            valid: isValid,
+            error: error,
+            name: name,
+            description: description,
+            openingStock: parseFloat(openingStock),
+            stock: parseFloat(openingStock), // Initial stock = opening stock
+            purchasePrice: parseFloat(purchasePrice),
+            salePrice: parseFloat(salePrice),
+            lowStockThreshold: parseFloat(lowStockThreshold)
+        });
+        
+        if (isValid) {
+            validCount++;
+        } else {
+            errorCount++;
+        }
+    });
+    
+    showCSVPreview(validCount, errorCount);
+}
+
+// Show CSV preview modal
+function showCSVPreview(validCount, errorCount) {
+    const modal = document.getElementById('csvPreviewModal');
+    const stats = document.getElementById('csvPreviewStats');
+    const tbody = document.getElementById('csvPreviewTableBody');
+    const importBtn = document.getElementById('csvImportBtn');
+    
+    document.getElementById('csvTotalRows').textContent = csvImportData.length;
+    document.getElementById('csvValidRows').textContent = validCount;
+    document.getElementById('csvErrorRows').textContent = errorCount;
+    
+    stats.style.display = 'block';
+    
+    tbody.innerHTML = csvImportData.map(item => {
+        const statusIcon = item.valid 
+            ? '<span class="material-icons" style="color: #10b981;">check_circle</span>'
+            : '<span class="material-icons" style="color: #ef4444;">error</span>';
+        
+        const rowClass = item.valid ? '' : 'style="background-color: #fee2e2;"';
+        
+        return `
+            <tr ${rowClass}>
+                <td style="text-align: center;">${statusIcon}</td>
+                <td>${escapeHtml(item.name)}</td>
+                <td>${escapeHtml(item.description)}</td>
+                <td>${item.openingStock}</td>
+                <td>₹${formatIndianCurrency(item.purchasePrice)}</td>
+                <td>₹${formatIndianCurrency(item.salePrice)}</td>
+                <td>${item.lowStockThreshold}</td>
+                <td style="color: #ef4444; font-size: 12px;">${item.error || '-'}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    importBtn.disabled = validCount === 0;
+    importBtn.textContent = validCount > 0 
+        ? `Import ${validCount} Valid Item${validCount !== 1 ? 's' : ''}`
+        : 'No Valid Items';
+    
+    modal.style.display = 'flex';
+}
+
+// Close CSV preview modal
+function closeCSVPreviewModal() {
+    const modal = document.getElementById('csvPreviewModal');
+    modal.style.display = 'none';
+    csvImportData = [];
+}
+
+// Confirm and import valid items
+async function confirmCSVImport() {
+    const validItems = csvImportData.filter(item => item.valid);
+    
+    if (validItems.length === 0) {
+        showToast('❌ No valid items to import', 'error');
+        return;
+    }
+    
+    const importBtn = document.getElementById('csvImportBtn');
+    importBtn.disabled = true;
+    importBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Importing...';
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const item of validItems) {
+        try {
+            console.log('Importing item:', item);
+            const result = await supabaseAddInventoryItem(item);
+            console.log('Import result:', result);
+            if (result.success) {
+                successCount++;
+            } else {
+                console.error('Failed to import:', result.error);
+                failCount++;
+            }
+        } catch (error) {
+            console.error('Error importing item:', error);
+            failCount++;
+        }
+    }
+    
+    console.log(`Import complete: ${successCount} success, ${failCount} failed`);
+    
+    // Reload inventory first
+    if (successCount > 0) {
+        console.log('Reloading inventory...');
+        await loadInventory();
+        console.log('Inventory reloaded, current count:', inventory.length);
+    }
+    
+    // Then close modal and show messages
+    closeCSVPreviewModal();
+    
+    if (successCount > 0) {
+        showToast(`✅ Successfully imported ${successCount} item${successCount !== 1 ? 's' : ''}`, 'success');
+    }
+    
+    if (failCount > 0) {
+        showToast(`⚠️ ${failCount} item${failCount !== 1 ? 's' : ''} failed to import`, 'error');
+    }
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

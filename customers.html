@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Management - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles-new.css">
+    <link rel="stylesheet" href="dark-mode.css">
+    <script src="dark-mode.js"></script>
+</head>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item active">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <a href="profile.html" class="nav-item">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mobile Header Bar -->
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <h1 class="mobile-header-title">Customers</h1>
+        <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
+            <button class="mobile-notification-btn" id="mobileNotificationBtn">
+                <span class="material-icons">notifications</span>
+                <span class="notification-badge" id="mobileNotificationBadge" style="display: none;">0</span>
+            </button>
+            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
+                <span class="material-icons">account_circle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title">Customer Management</h1>
+                <p class="page-subtitle">Manage your customer database</p>
+            </div>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+                <button class="notification-btn" id="notificationBtn">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card-modern">
+                <div class="stat-card-icon blue">
+                    <span class="material-icons">people</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">Total Customers</span>
+                    <h2 class="stat-card-value" id="totalCustomers">0</h2>
+                    <span class="stat-card-meta">In your database</span>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-card-icon orange">
+                    <span class="material-icons">trending_up</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">Active Customers</span>
+                    <h2 class="stat-card-value" id="activeCustomers">0</h2>
+                    <span class="stat-card-meta">With recent transactions</span>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-card-icon green">
+                    <span class="material-icons">verified</span>
+                </div>
+                <div class="stat-card-content">
+                    <span class="stat-card-label">GST Registered</span>
+                    <h2 class="stat-card-value" id="gstCustomers">0</h2>
+                    <span class="stat-card-meta">Customers with GSTIN</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer List Section -->
+        <div class="content-section">
+            <div class="invoices-card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>Customer List</h2>
+                    <div class="inventory-search">
+                        <div class="search-container">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" id="searchInput" placeholder="Search by name, mobile, or GST..." oninput="searchCustomers()">
+                            <span class="material-icons clear-icon" id="clearSearchIcon" onclick="clearSearch()" style="display: none;">close</span>
+                        </div>
+                        <button class="btn-primary" onclick="showAddCustomerModal()">
+                            <span class="material-icons">add</span> Add Customer
+                        </button>
+                    </div>
+                </div>
+            <div class="table-wrapper">
+                <table class="invoices-table">
+                    <thead>
+                        <tr>
+                            <th>Customer Name</th>
+                            <th>Mobile</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                            <th>GST No.</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTableBody">
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px;">No customers added yet. Add your first customer!</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden file input for restore -->
+    <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+
+    <!-- Add/Edit Customer Modal -->
+    <div id="customerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Customer</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="customerForm" class="modal-form">
+                <input type="hidden" id="editCustomerId">
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">person</span>
+                        <span>Customer Name <span class="required">*</span></span>
+                    </label>
+                    <input type="text" id="customerName" required minlength="2" maxlength="100" placeholder="Enter customer name">
+                </div>
+                <div class="form-row-group">
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">phone</span>
+                            <span>Mobile Number <span class="required">*</span></span>
+                        </label>
+                        <input type="tel" id="customerMobile" required pattern="[0-9]{10}" minlength="10" maxlength="10" placeholder="9876543210">
+                    </div>
+                    <div class="form-row form-row-half">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">email</span>
+                            <span>Email <span class="optional">(optional)</span></span>
+                        </label>
+                        <input type="email" id="customerEmail" maxlength="100" placeholder="customer@example.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">location_on</span>
+                        <span>Address <span class="required">*</span></span>
+                    </label>
+                    <textarea id="customerAddress" rows="3" required minlength="5" maxlength="255" placeholder="Enter complete address"></textarea>
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">receipt</span>
+                        <span>GST Number <span class="optional">(optional)</span></span>
+                    </label>
+                    <input type="text" id="customerGST" maxlength="15" pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}" placeholder="22AAAAA0000A1Z5" style="text-transform: uppercase;">
+                    <small class="form-hint">Format: 22AAAAA0000A1Z5 (15 characters)</small>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()"><span class="material-icons">cancel</span> Cancel</button>
+                    <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="toast.js"></script>
+    <script src="validation.js"></script>
+    <script src="supabase.js"></script>
+    <script src="auth.js"></script>
+    <script src="notifications.js"></script>
+    <script src="customers.js"></script>
+    <script>
+        // Sidebar toggle functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const overlay = document.getElementById('sidebarOverlay');
+            
+            function toggleSidebar() {
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            }
+            
+            function toggleMobileSidebar() {
+                sidebar.classList.toggle('mobile-open');
+                overlay.classList.toggle('active');
+            }
+            
+            if (toggleBtn) toggleBtn.addEventListener('click', toggleSidebar);
+            if (mobileToggle) mobileToggle.addEventListener('click', toggleMobileSidebar);
+            if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', toggleMobileSidebar);
+            if (overlay) overlay.addEventListener('click', toggleMobileSidebar);
+            
+            // Restore sidebar state
+            if (localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapsed');
+            }
+        });
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('customerModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+    </script>
+</body>
+</html>

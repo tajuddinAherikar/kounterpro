@@ -249,9 +249,13 @@ async function supabaseUpdateUserProfile(userId, profileData) {
 
 async function supabaseGetInventory() {
     try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
         const { data, error } = await supabaseClient
             .from('inventory')
             .select('*')
+            .eq('user_id', user.id)
             .order('name', { ascending: true });
         
         if (error) throw error;
@@ -274,8 +278,11 @@ async function supabaseAddInventoryItem(item) {
                     user_id: user.id,
                     name: item.name,
                     description: item.description || '',
+                    opening_stock: item.openingStock || 0,
                     stock: item.stock || 0,
-                    rate: item.rate,
+                    rate: item.salePrice || item.purchasePrice || 0, // For backwards compatibility
+                    purchase_price: item.purchasePrice || 0,
+                    sale_price: item.salePrice || 0,
                     low_stock_threshold: item.lowStockThreshold || 10
                 }
             ])
@@ -296,8 +303,10 @@ async function supabaseUpdateInventoryItem(id, updates) {
             .update({
                 name: updates.name,
                 description: updates.description,
+                opening_stock: updates.openingStock,
                 stock: updates.stock,
-                rate: updates.rate,
+                purchase_price: updates.purchasePrice,
+                sale_price: updates.salePrice,
                 low_stock_threshold: updates.lowStockThreshold,
                 updated_at: new Date().toISOString()
             })
@@ -549,6 +558,96 @@ function getSupabaseStatus() {
     return { configured: true, initialized: true, message: '✅ Supabase ready' };
 }
 
+// ===== CUSTOMER MANAGEMENT FUNCTIONS =====
+
+// Get all customers
+async function supabaseGetCustomers() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('name', { ascending: true });
+        
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get customers error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+// Add new customer
+async function supabaseAddCustomer(customer) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .insert([
+                {
+                    user_id: user.id,
+                    name: customer.name,
+                    mobile: customer.mobile,
+                    email: customer.email || null,
+                    address: customer.address,
+                    gst_number: customer.gst || null
+                }
+            ])
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Add customer error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Update customer
+async function supabaseUpdateCustomer(id, updates) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .update({
+                name: updates.name,
+                mobile: updates.mobile,
+                email: updates.email || null,
+                address: updates.address,
+                gst_number: updates.gst || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Update customer error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Delete customer
+async function supabaseDeleteCustomer(id) {
+    try {
+        const { error } = await supabaseClient
+            .from('customers')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Delete customer error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // Initialize on page load
 if (typeof window !== 'undefined') {
     window.addEventListener('DOMContentLoaded', () => {
@@ -559,4 +658,3 @@ if (typeof window !== 'undefined') {
         }
     });
 }
-

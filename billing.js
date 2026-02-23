@@ -1,7 +1,101 @@
 // Billing functionality with Supabase
 let itemCounter = 1;
 let inventory = [];
+let customers = [];
 let userProfile = null;
+
+// Load customers from database
+async function loadCustomers() {
+    try {
+        const result = await supabaseGetCustomers();
+        if (result.success) {
+            customers = result.data.map(customer => ({
+                id: customer.id,
+                name: customer.name,
+                mobile: customer.mobile,
+                email: customer.email || '',
+                address: customer.address,
+                gst: customer.gst_number || ''
+            }));
+        }
+    } catch (error) {
+        console.error('Error loading customers:', error);
+        customers = [];
+    }
+}
+
+// Customer autocomplete functionality
+function initCustomerAutocomplete() {
+    const searchInput = document.getElementById('customerSearch');
+    const suggestionsDiv = document.getElementById('customerSuggestions');
+    const customerNameInput = document.getElementById('customerName');
+    const customerMobileInput = document.getElementById('customerMobile');
+    const customerAddressInput = document.getElementById('customerAddress');
+    const customerGSTInput = document.getElementById('customerGST');
+    
+    let selectedCustomer = null;
+    
+    searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase().trim();
+        
+        if (searchTerm.length < 2) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+        
+        const matches = customers.filter(customer => 
+            customer.name.toLowerCase().includes(searchTerm) ||
+            customer.mobile.includes(searchTerm)
+        );
+        
+        if (matches.length === 0) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+        
+        suggestionsDiv.innerHTML = matches.slice(0, 5).map(customer => `
+            <div class="autocomplete-item" data-customer-id="${customer.id}">
+                <div style="font-weight: 600;">${customer.name}</div>
+                <div style="font-size: 12px; color: #666;">${customer.mobile} • ${customer.address.substring(0, 50)}${customer.address.length > 50 ? '...' : ''}</div>
+            </div>
+        `).join('');
+        
+        suggestionsDiv.style.display = 'block';
+        
+        // Add click handlers to suggestions
+        suggestionsDiv.querySelectorAll('.autocomplete-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const customerId = this.getAttribute('data-customer-id');
+                const customer = customers.find(c => c.id === customerId);
+                
+                if (customer) {
+                    searchInput.value = customer.name;
+                    customerNameInput.value = customer.name;
+                    customerMobileInput.value = customer.mobile;
+                    customerAddressInput.value = customer.address;
+                    customerGSTInput.value = customer.gst || '';
+                    selectedCustomer = customer;
+                }
+                
+                suggestionsDiv.style.display = 'none';
+            });
+        });
+    });
+    
+    // Update hidden name field when search changes
+    searchInput.addEventListener('change', function() {
+        if (!selectedCustomer || selectedCustomer.name !== this.value) {
+            customerNameInput.value = this.value;
+        }
+    });
+    
+    // Close suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+            suggestionsDiv.style.display = 'none';
+        }
+    });
+}
 
 // Format number in Indian numbering system (e.g., 8,21,000)
 function formatIndianCurrency(amount) {
@@ -106,8 +200,13 @@ async function updateStockAfterSale(itemName, quantitySold) {
 // Calculate item amounts and totals (Rate is GST-inclusive)
 function calculateAmounts() {
     const rows = document.querySelectorAll('.item-row');
-    const gstRate = parseFloat(document.getElementById('gstRate').value) || 0;
-    const gstMultiplier = 1 + (gstRate / 100);
+    const sgstRate = parseFloat(document.getElementById('sgstRate').value) || 0;
+    const cgstRate = parseFloat(document.getElementById('cgstRate').value) || 0;
+    const totalGstRate = sgstRate + cgstRate;
+    const gstMultiplier = 1 + (totalGstRate / 100);
+    
+    // Update total GST display
+    document.getElementById('totalGstRate').textContent = totalGstRate.toFixed(2);
     
     let subtotalExclGST = 0;
     let grandTotal = 0;
@@ -136,12 +235,16 @@ function calculateAmounts() {
         grandTotal += amountInclGST;
     });
     
-    const gstAmount = grandTotal - subtotalExclGST;
+    const totalGstAmount = grandTotal - subtotalExclGST;
+    const sgstAmount = subtotalExclGST * (sgstRate / 100);
+    const cgstAmount = subtotalExclGST * (cgstRate / 100);
     
     document.getElementById('subtotal').textContent = `₹${formatIndianCurrency(subtotalExclGST)}`;
-    document.getElementById('gstAmount').textContent = `₹${formatIndianCurrency(gstAmount)}`;
+    document.getElementById('sgstAmount').textContent = `₹${formatIndianCurrency(sgstAmount)}`;
+    document.getElementById('cgstAmount').textContent = `₹${formatIndianCurrency(cgstAmount)}`;
     document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
-    document.getElementById('displayGstRate').textContent = gstRate.toFixed(2);
+    document.getElementById('displaySgstRate').textContent = sgstRate.toFixed(2);
+    document.getElementById('displayCgstRate').textContent = cgstRate.toFixed(2);
 }
 
 // Add new item row
@@ -421,7 +524,9 @@ async function collectFormData() {
     const customerAddress = document.getElementById('customerAddress').value.trim();
     const customerMobile = document.getElementById('customerMobile').value.trim();
     const customerGST = document.getElementById('customerGST').value.trim();
-    const gstRate = parseFloat(document.getElementById('gstRate').value);
+    const sgstRate = parseFloat(document.getElementById('sgstRate').value) || 0;
+    const cgstRate = parseFloat(document.getElementById('cgstRate').value) || 0;
+    const gstRate = sgstRate + cgstRate;
     const gstMultiplier = 1 + (gstRate / 100);
     const termsConditions = document.getElementById('termsConditions').value.trim();
     
@@ -554,6 +659,8 @@ async function collectFormData() {
     });
     
     const gstAmount = grandTotal - subtotal;
+    const sgstAmount = subtotal * (sgstRate / 100);
+    const cgstAmount = subtotal * (cgstRate / 100);
     
     // Generate invoice number once
     const invoiceNumber = await generateInvoiceNumber();
@@ -578,8 +685,12 @@ async function collectFormData() {
         gstNumber: customerGST, // Add alias for Supabase
         items,
         gstRate,
+        sgstRate,
+        cgstRate,
         subtotal,
         gstAmount,
+        sgstAmount,
+        cgstAmount,
         grandTotal,
         totalAmount: grandTotal, // Add alias for Supabase
         totalUnits,
@@ -1064,12 +1175,17 @@ async function initForm() {
         termsTextarea.value = defaultTerms;
     }
     
+    // Load customers for autocomplete
+    await loadCustomers();
+    initCustomerAutocomplete();
+    
     // Add event listeners to initial row
     const initialRow = document.querySelector('.item-row');
     addItemEventListeners(initialRow);
     
-    // Add event listener to GST rate
-    document.getElementById('gstRate').addEventListener('input', calculateAmounts);
+    // Add event listeners to SGST and CGST rates
+    document.getElementById('sgstRate').addEventListener('input', calculateAmounts);
+    document.getElementById('cgstRate').addEventListener('input', calculateAmounts);
     
     // Add form submit listener
     document.getElementById('invoiceForm').addEventListener('submit', handleFormSubmit);

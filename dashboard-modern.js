@@ -127,14 +127,18 @@ async function initializeDashboard() {
         const result = await supabaseGetInvoices();
         const invoices = result.success ? result.data : [];
         
+        // Fetch inventory for activity feed
+        const inventoryResult = await supabaseGetInventory();
+        const inventory = inventoryResult.success ? inventoryResult.data : [];
+        
         // Update statistics
         updateStatistics(invoices);
         
         // Initialize chart
         initializeSalesChart(invoices);
         
-        // Populate activity feed
-        populateActivityFeed(invoices);
+        // Populate activity feed with both invoices and inventory
+        populateActivityFeed(invoices, inventory);
         
         // Update invoice table
         updateInvoiceTable(invoices);
@@ -316,19 +320,44 @@ async function updateLowStockCount() {
             return stock <= threshold && stock > 0;
         });
         
-        document.getElementById('lowStockCount').textContent = lowStockItems.length;
+        const lowStockCard = document.getElementById('lowStockCard');
+        const lowStockCount = document.getElementById('lowStockCount');
+        
+        if (lowStockItems.length > 0) {
+            lowStockCount.textContent = lowStockItems.length;
+            if (lowStockCard) {
+                lowStockCard.style.display = 'block';
+            }
+        } else {
+            lowStockCount.textContent = '0';
+            if (lowStockCard) {
+                lowStockCard.style.display = 'none';
+            }
+        }
     } catch (error) {
         console.error('Error fetching low stock count:', error);
+        const lowStockCard = document.getElementById('lowStockCard');
         document.getElementById('lowStockCount').textContent = '0';
+        if (lowStockCard) {
+            lowStockCard.style.display = 'none';
+        }
     }
 }
 
 // Initialize sales chart
 function initializeSalesChart(invoices) {
-    const ctx = document.getElementById('salesTrendChart');
+    const ctx = document.getElementById('salesChart');
     if (!ctx) return;
 
-    const chartData = prepareSalesChartData(invoices, 7);
+    const chartData = prepareSalesChartData(invoices, 30);
+    
+    // Get current theme
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    
+    // Destroy existing chart if it exists
+    if (salesChart) {
+        salesChart.destroy();
+    }
     
     salesChart = new Chart(ctx, {
         type: 'line',
@@ -337,14 +366,14 @@ function initializeSalesChart(invoices) {
             datasets: [{
                 label: 'Sales',
                 data: chartData.data,
-                borderColor: '#2845D6',
-                backgroundColor: 'rgba(40, 69, 214, 0.1)',
+                borderColor: isDark ? '#3B82F6' : '#2845D6',
+                backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(40, 69, 214, 0.1)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.4,
                 pointRadius: 4,
                 pointHoverRadius: 6,
-                pointBackgroundColor: '#2845D6',
+                pointBackgroundColor: isDark ? '#3B82F6' : '#2845D6',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2
             }]
@@ -357,10 +386,10 @@ function initializeSalesChart(invoices) {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: '#fff',
-                    titleColor: '#2c3e50',
-                    bodyColor: '#2c3e50',
-                    borderColor: '#e0e0e0',
+                    backgroundColor: isDark ? '#111827' : '#fff',
+                    titleColor: isDark ? '#E5E7EB' : '#2c3e50',
+                    bodyColor: isDark ? '#9CA3AF' : '#2c3e50',
+                    borderColor: isDark ? '#1F2937' : '#e0e0e0',
                     borderWidth: 1,
                     padding: 12,
                     displayColors: false,
@@ -375,9 +404,10 @@ function initializeSalesChart(invoices) {
                 y: {
                     beginAtZero: true,
                     grid: {
-                        color: '#f0f0f0'
+                        color: isDark ? '#1F2937' : '#f0f0f0'
                     },
                     ticks: {
+                        color: isDark ? '#9CA3AF' : '#64748b',
                         callback: function(value) {
                             return '₹' + value;
                         }
@@ -386,11 +416,17 @@ function initializeSalesChart(invoices) {
                 x: {
                     grid: {
                         display: false
+                    },
+                    ticks: {
+                        color: isDark ? '#9CA3AF' : '#64748b'
                     }
                 }
             }
         }
     });
+    
+    // Store chart globally for dark mode updates
+    window.salesChart = salesChart;
 }
 
 // Prepare chart data
@@ -422,10 +458,15 @@ function prepareSalesChartData(invoices, days) {
 // Setup chart period selector
 function setupChartPeriodSelector() {
     const selector = document.getElementById('chartPeriod');
-    if (!selector) return;
+    if (!selector) {
+        console.log('Chart period selector not found');
+        return;
+    }
     
     selector.addEventListener('change', async (e) => {
         const days = parseInt(e.target.value);
+        console.log('Chart period changed to:', days);
+        
         const result = await supabaseGetInvoices();
         const invoices = result.success ? result.data : [];
         
@@ -433,42 +474,103 @@ function setupChartPeriodSelector() {
             const chartData = prepareSalesChartData(invoices, days);
             salesChart.data.labels = chartData.labels;
             salesChart.data.datasets[0].data = chartData.data;
-            salesChart.update();
+            salesChart.update('active');
+            console.log('Chart updated with', chartData.data.length, 'data points');
+        } else {
+            console.log('Sales chart not initialized');
         }
     });
 }
 
 // Populate activity feed
-function populateActivityFeed(invoices) {
+function populateActivityFeed(invoices, inventory = []) {
     const feedContainer = document.getElementById('activityFeed');
     if (!feedContainer) return;
     
-    // Sort invoices by date (most recent first)
-    const recentInvoices = [...invoices]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    // Combine invoices and inventory into activity items
+    const activities = [];
+    
+    // Add invoice activities
+    invoices.forEach(invoice => {
+        activities.push({
+            type: 'invoice',
+            date: invoice.created_at,
+            data: invoice
+        });
+    });
+    
+    // Add inventory activities
+    inventory.forEach(item => {
+        activities.push({
+            type: 'inventory',
+            date: item.created_at,
+            data: item
+        });
+    });
+    
+    // Sort by date (most recent first) and take top 10
+    const recentActivities = activities
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
         .slice(0, 10);
     
     feedContainer.innerHTML = '';
     
-    recentInvoices.forEach(invoice => {
+    if (recentActivities.length === 0) {
+        feedContainer.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-icon blue">
+                    <span class="material-icons">info</span>
+                </div>
+                <div class="activity-content">
+                    <p class="activity-text">No recent activity</p>
+                    <span class="activity-time">Start creating invoices to see activity</span>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    recentActivities.forEach(activity => {
         const activityItem = document.createElement('div');
         activityItem.className = 'activity-item';
         
-        const timeAgo = getTimeAgo(invoice.created_at);
-        const amount = parseFloat(invoice.total_amount) || 0;
+        const timeAgo = getTimeAgo(activity.date);
         
-        activityItem.innerHTML = `
-            <div class="activity-icon blue">
-                <span class="material-icons">receipt_long</span>
-            </div>
-            <div class="activity-content">
-                <p class="activity-text">
-                    Invoice ${invoice.invoice_number} - ${invoice.customer_name || 'Customer'}
-                    <strong style="color: #2845D6;">₹${formatIndianCurrency(amount)}</strong>
-                </p>
-                <span class="activity-time">${timeAgo}</span>
-            </div>
-        `;
+        if (activity.type === 'invoice') {
+            const invoice = activity.data;
+            const amount = parseFloat(invoice.total_amount) || 0;
+            
+            activityItem.innerHTML = `
+                <div class="activity-icon blue">
+                    <span class="material-icons">receipt_long</span>
+                </div>
+                <div class="activity-content">
+                    <p class="activity-text">
+                        Invoice ${invoice.invoice_number} - ${invoice.customer_name || 'Customer'}
+                        <strong style="color: #2845D6;">₹${formatIndianCurrency(amount)}</strong>
+                    </p>
+                    <span class="activity-time">${timeAgo}</span>
+                </div>
+            `;
+        } else if (activity.type === 'inventory') {
+            const item = activity.data;
+            const stock = item.stock || 0;
+            const stockStatus = stock <= (item.low_stock_threshold || 10) ? 'Low Stock' : 'In Stock';
+            const stockColor = stock <= (item.low_stock_threshold || 10) ? '#ef4444' : '#10b981';
+            
+            activityItem.innerHTML = `
+                <div class="activity-icon green">
+                    <span class="material-icons">inventory_2</span>
+                </div>
+                <div class="activity-content">
+                    <p class="activity-text">
+                        ${item.name} added to inventory
+                        <strong style="color: ${stockColor};">${stock} units (${stockStatus})</strong>
+                    </p>
+                    <span class="activity-time">${timeAgo}</span>
+                </div>
+            `;
+        }
         
         feedContainer.appendChild(activityItem);
     });
@@ -1197,17 +1299,34 @@ async function checkLowStockBanner() {
         });
         
         if (lowStockItems.length > 0) {
-            // Add notification instead of showing banner immediately
-            addNotification(
-                'warning',
-                `${lowStockItems.length} Low Stock Alert${lowStockItems.length > 1 ? 's' : ''}`,
-                lowStockItems.map(item => item.name).slice(0, 3).join(', ') + 
-                (lowStockItems.length > 3 ? ` and ${lowStockItems.length - 3} more...` : ''),
-                'inventory'
-            );
+            // Get existing low stock notifications from localStorage
+            const existingNotifications = JSON.parse(localStorage.getItem('lowStockNotifications') || '[]');
+            
+            // Filter out items that already have active notifications
+            const newLowStockItems = lowStockItems.filter(item => {
+                return !existingNotifications.includes(item.id);
+            });
+            
+            // Only add notification if there are new low stock items
+            if (newLowStockItems.length > 0) {
+                addNotification(
+                    'warning',
+                    `${newLowStockItems.length} Low Stock Alert${newLowStockItems.length > 1 ? 's' : ''}`,
+                    newLowStockItems.map(item => item.name).slice(0, 3).join(', ') + 
+                    (newLowStockItems.length > 3 ? ` and ${newLowStockItems.length - 3} more...` : ''),
+                    'inventory'
+                );
+                
+                // Store all low stock item IDs (both existing and new)
+                const allLowStockIds = lowStockItems.map(item => item.id);
+                localStorage.setItem('lowStockNotifications', JSON.stringify(allLowStockIds));
+            }
             
             // Mark as shown for this session
             sessionStorage.setItem('lowStockBannerShown', 'true');
+        } else {
+            // Clear low stock notifications if no items are low stock
+            localStorage.removeItem('lowStockNotifications');
         }
     } catch (error) {
         console.error('Error checking low stock:', error);
