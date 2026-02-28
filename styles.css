@@ -432,6 +432,7 @@ h3 {
     padding: 20px;
     border-radius: 5px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow: visible;
 }
 
 .section-header {
@@ -555,12 +556,13 @@ h3 {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     margin-top: 15px;
+    border-radius: 4px;
 }
 
 .invoices-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 600px; /* Ensures table doesn't compress too much */
+    min-width: 100%;
 }
 
 .invoices-table th,
@@ -568,7 +570,13 @@ h3 {
     padding: 12px;
     text-align: left;
     border-bottom: 1px solid #eee;
-    white-space: nowrap; /* Prevents text wrapping in cells */
+    white-space: normal; /* Allow text wrapping */
+}
+
+.invoices-table th:nth-child(2),
+.invoices-table td:nth-child(2) {
+    max-width: 150px; /* Description column */
+    word-wrap: break-word;
 }
 
 .invoices-table th {
@@ -726,7 +734,7 @@ textarea#termsConditions {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
-    min-width: 700px; /* Ensures usable width on mobile */
+    min-width: 100%;
 }
 
 .items-table th,
@@ -734,6 +742,7 @@ textarea#termsConditions {
     padding: 10px;
     border: 1px solid #ddd;
     text-align: left;
+    word-wrap: break-word;
 }
 
 .items-table th {
