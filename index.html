@@ -57,6 +57,10 @@
                 <span class="material-icons">cloud_upload</span>
                 <span class="nav-text">Restore</span>
             </a>
+            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;">
+                <span class="material-icons">logout</span>
+                <span class="nav-text">Logout</span>
+            </a>
         </nav>
         
         <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">

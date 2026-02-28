@@ -126,6 +126,9 @@ img, video, canvas, svg {
 /* Sidebar Navigation */
 .sidebar-nav {
     padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 75px); /* Account for sidebar header */
 }
 
 .nav-item {
@@ -163,6 +166,20 @@ img, video, canvas, svg {
     height: 1px;
     background: rgba(255, 255, 255, 0.1);
     margin: 16px 20px;
+}
+
+/* Logout button styling */
+.nav-logout {
+    margin-top: auto;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7) !important;
+    transition: all 0.2s;
+}
+
+.nav-logout:hover {
+    background: rgba(246, 128, 72, 0.15) !important;
+    color: #F68048 !important;
 }
 
 /* ==================== Main Content Area ==================== */

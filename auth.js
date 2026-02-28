@@ -118,44 +118,20 @@ async function addUserProfileDropdown() {
                 ? profileResult.data.business_name 
                 : 'Business Name';
             
-            // Find header-right and add user profile dropdown
+            // Find header-right and add user profile button
             const headerRight = document.querySelector('.header-right');
             if (headerRight && !document.getElementById('userProfileButton')) {
                 const userProfileContainer = document.createElement('div');
                 userProfileContainer.className = 'user-profile-dropdown';
                 userProfileContainer.innerHTML = `
-                    <button class="user-profile-button" id="userProfileButton">
+                    <button class="user-profile-button" id="userProfileButton" onclick="window.location.href='profile.html'">
                         <span class="user-profile-text">Welcome, ${businessName}</span>
                         <div class="user-avatar">
                             <span class="material-icons">account_circle</span>
                         </div>
                     </button>
-                    <div class="user-profile-menu" id="userProfileMenu">
-                        <a href="profile.html" class="profile-menu-item">
-                            <span class="material-icons">person</span>
-                            <span>Profile</span>
-                        </a>
-                        <a href="#" onclick="logout(); return false;" class="profile-menu-item">
-                            <span class="material-icons">logout</span>
-                            <span>Logout</span>
-                        </a>
-                    </div>
                 `;
                 headerRight.appendChild(userProfileContainer);
-                
-                // Add click handler for dropdown
-                const profileButton = document.getElementById('userProfileButton');
-                const profileMenu = document.getElementById('userProfileMenu');
-                
-                profileButton.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    profileMenu.classList.toggle('show');
-                });
-                
-                // Close dropdown when clicking outside
-                document.addEventListener('click', () => {
-                    profileMenu.classList.remove('show');
-                });
             }
         }
     }
