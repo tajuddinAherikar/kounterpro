@@ -104,10 +104,13 @@ function displayCustomers() {
                 <td>${customer.address}</td>
                 <td>${customer.gst || '-'}</td>
                 <td>
-                    <a href="#" class="action-link view" onclick="editCustomer('${customer.id}'); return false;">
+                    <a href="customer-ledger.html?id=${customer.id}" class="action-link" title="View Ledger">
+                        <span class="material-icons">history</span> Ledger
+                    </a>
+                    <a href="#" class="action-link edit-link" onclick="editCustomer('${customer.id}'); return false;">
                         <span class="material-icons">edit</span> Edit
                     </a>
-                    <a href="#" class="action-link delete" onclick="deleteCustomer('${customer.id}'); return false;">
+                    <a href="#" class="action-link delete-link" onclick="deleteCustomer('${customer.id}'); return false;">
                         <span class="material-icons">delete</span> Delete
                     </a>
                 </td>
@@ -160,7 +163,8 @@ async function deleteCustomer(customerId) {
         `This action cannot be undone!\n\n` +
         `Are you sure you want to delete this customer?`;
     
-    if (confirm(confirmMessage)) {
+    const confirmed = await showDeleteConfirm(`${customer.name}`);
+    if (confirmed) {
         showLoading('Deleting customer...');
         const result = await supabaseDeleteCustomer(customerId);
         hideLoading();

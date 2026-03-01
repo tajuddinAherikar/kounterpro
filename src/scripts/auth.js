@@ -1,28 +1,59 @@
 // Authentication Logic with Supabase
 
-// Check if user is already logged in
+// Global auth state to prevent multiple checks
+let authCheckComplete = false;
+let isUserAuthenticated = false;
+
+// Check if user is already logged in - SINGLE auth check to prevent race conditions
 async function checkAuth() {
-    const currentPage = window.location.pathname.split('/').pop();
-    
-    // Skip auth check on login and signup pages
-    if (currentPage === 'login.html' || currentPage === 'signup.html') {
-        const session = await supabaseGetSession();
-        if (session) {
-            window.location.href = 'index.html';
-        }
-        return;
+    // Prevent multiple auth checks
+    if (authCheckComplete) {
+        return isUserAuthenticated;
     }
     
-    // Check authentication for other pages
-    const session = await supabaseGetSession();
-    if (!session) {
-        window.location.href = 'login.html';
+    try {
+        const currentPage = window.location.pathname.split('/').pop();
+        
+        // Skip auth check on login and signup pages
+        if (currentPage === 'login.html' || currentPage === 'signup.html') {
+            const user = await supabaseGetCurrentUser();
+            isUserAuthenticated = !!user;
+            authCheckComplete = true;
+            
+            if (user) {
+                window.location.href = 'index.html';
+            }
+            return isUserAuthenticated;
+        }
+        
+        // Check authentication for other pages (dashboard, etc.)
+        const user = await supabaseGetCurrentUser();
+        isUserAuthenticated = !!user;
+        authCheckComplete = true;
+        
+        if (!user) {
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Auth check error:', error);
+        isUserAuthenticated = false;
+        authCheckComplete = true;
+        
+        // If there's an error, redirect to login
+        const currentPage = window.location.pathname.split('/').pop();
+        if (currentPage !== 'login.html' && currentPage !== 'signup.html') {
+            window.location.href = 'login.html';
+        }
+        return false;
     }
 }
 
 // Login form handler
 document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication on page load
+    // Check authentication on page load (once)
     checkAuth();
     
     const loginForm = document.getElementById('loginForm');
@@ -74,6 +105,11 @@ async function handleLogin(e) {
     const result = await supabaseSignIn(emailToLogin, password);
     
     if (result.success) {
+        // Reset auth check state for fresh dashboard load
+        authCheckComplete = false;
+        isUserAuthenticated = false;
+        clearUserCache(); // Clear cache to force fresh auth check
+        
         // Redirect to dashboard
         window.location.href = 'index.html';
     } else {
@@ -100,8 +136,15 @@ async function handleLogin(e) {
 
 // Logout function
 async function logout() {
-    if (confirm('Are you sure you want to logout?')) {
+    const confirmed = await showLogoutConfirm();
+    if (confirmed) {
         await supabaseSignOut();
+        
+        // Reset auth check state for fresh login
+        authCheckComplete = false;
+        isUserAuthenticated = false;
+        clearUserCache(); // Clear user cache from supabase.js
+        
         window.location.href = 'login.html';
     }
 }

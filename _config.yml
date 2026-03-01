@@ -1,0 +1,39 @@
+# GitHub Pages Configuration for KounterPro
+
+# Site settings
+title: KounterPro
+description: Billing and Inventory Management System
+url: ""
+baseurl: ""
+
+# Build settings
+theme: null
+markdown: kramdown
+
+# Include directories
+include:
+  - .github
+  - src
+
+# Exclude directories
+exclude:
+  - .git
+  - .gitignore
+  - node_modules
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+  - "*.sql"
+
+# Plugins
+plugins: []
+
+# Prevent Jekyll from processing files
+keep_files:
+  - src
+  - database
+  - docs
+
+# Output settings
+source: .
+destination: ./_site

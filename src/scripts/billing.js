@@ -3,25 +3,124 @@ let itemCounter = 1;
 let inventory = [];
 let customers = [];
 let userProfile = null;
+let editingInvoiceId = null;
 
 // Load customers from database
 async function loadCustomers() {
     try {
         const result = await supabaseGetCustomers();
         if (result.success) {
-            customers = result.data.map(customer => ({
-                id: customer.id,
-                name: customer.name,
-                mobile: customer.mobile,
-                email: customer.email || '',
-                address: customer.address,
-                gst: customer.gst_number || ''
-            }));
+            customers = result.data.map(customer => {
+                // Handle both gst and gst_number field names
+                const gstNumber = customer.gst_number || customer.gst || '';
+                return {
+                    id: customer.id,
+                    name: customer.name || '',
+                    mobile: customer.mobile || '',
+                    email: customer.email || '',
+                    address: customer.address || '',
+                    gst: gstNumber
+                };
+            });
+            console.log('✅ Customers loaded:', customers.length, 'customers', customers);
+        } else {
+            console.error('Failed to load customers:', result.error);
+            customers = [];
         }
     } catch (error) {
         console.error('Error loading customers:', error);
         customers = [];
     }
+}
+
+// Load invoice data for editing
+function loadInvoiceForEditing() {
+    const editingInvoice = sessionStorage.getItem('editingInvoice');
+    if (!editingInvoice) {
+        return false;
+    }
+    
+    try {
+        const invoice = JSON.parse(editingInvoice);
+        editingInvoiceId = invoice.id;
+        
+        // Store original date for later use
+        sessionStorage.setItem('editingInvoiceDate', invoice.date);
+        
+        // Populate customer details
+        document.getElementById('customerName').value = invoice.customer_name || '';
+        document.getElementById('customerSearch').value = invoice.customer_name || '';
+        document.getElementById('customerMobile').value = invoice.customer_mobile || '';
+        document.getElementById('customerAddress').value = invoice.customer_address || '';
+        document.getElementById('customerGST').value = invoice.customer_gst || '';
+        
+        // Populate GST rates
+        document.getElementById('sgstRate').value = (invoice.gst_rate || 18) / 2; // Assuming split
+        document.getElementById('cgstRate').value = (invoice.gst_rate || 18) / 2; // Assuming split
+        
+        // Clear existing items and populate with invoice items
+        const itemsTableBody = document.getElementById('itemsTableBody');
+        itemsTableBody.innerHTML = '';
+        itemCounter = 0;
+        
+        const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
+        items.forEach((item, index) => {
+            itemCounter++;
+            const row = document.createElement('tr');
+            row.className = 'item-row';
+            row.setAttribute('data-row', itemCounter);
+            
+            row.innerHTML = `
+                <td>${itemCounter}</td>
+                <td>
+                    <input type="text" class="item-description" value="${escapeHtml(item.description || item.name || '')}" required>
+                    <span class="error-message item-error"></span>
+                </td>
+                <td><textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || '')}</textarea></td>
+                <td>
+                    <input type="number" class="item-quantity" min="1" value="${item.quantity || 1}" required>
+                    <span class="error-message item-error"></span>
+                </td>
+                <td>
+                    <input type="number" class="item-rate" min="0" step="0.01" value="${item.rate || ''}" required>
+                    <span class="error-message item-error"></span>
+                </td>
+                <td class="item-amount">0.00</td>
+                <td><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
+            `;
+            
+            itemsTableBody.appendChild(row);
+            
+            // Add event listeners to new inputs
+            addItemEventListeners(row);
+            addItemValidationListeners(row);
+        });
+        
+        // Clear sessionStorage after loading (but keep the date)
+        sessionStorage.removeItem('editingInvoice');
+        
+        // Recalculate amounts
+        setTimeout(() => {
+            calculateAmounts();
+        }, 100);
+        
+        return true;
+    } catch (error) {
+        console.error('Error loading invoice for editing:', error);
+        sessionStorage.removeItem('editingInvoice');
+        sessionStorage.removeItem('editingInvoiceDate');
+        return false;
+    }
+}
+
+// Escape HTML special characters
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 // Customer autocomplete functionality
@@ -33,48 +132,86 @@ function initCustomerAutocomplete() {
     const customerAddressInput = document.getElementById('customerAddress');
     const customerGSTInput = document.getElementById('customerGST');
     
+    if (!searchInput || !suggestionsDiv) {
+        console.error('❌ Autocomplete elements not found in DOM');
+        return;
+    }
+    
     let selectedCustomer = null;
     
     searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase().trim();
+        const searchTerm = this.value.trim();
         
-        if (searchTerm.length < 2) {
+        if (!searchTerm || searchTerm.length === 0) {
             suggestionsDiv.style.display = 'none';
             return;
         }
         
-        const matches = customers.filter(customer => 
-            customer.name.toLowerCase().includes(searchTerm) ||
-            customer.mobile.includes(searchTerm)
-        );
+        console.log('🔍 Search term:', searchTerm);
+        console.log('📊 Total customers available:', customers.length);
+        
+        // Search in customers - case insensitive
+        const searchLower = searchTerm.toLowerCase();
+        const matches = customers.filter(customer => {
+            if (!customer.name && !customer.mobile) {
+                console.warn('⚠️ Customer missing name and mobile:', customer);
+                return false;
+            }
+            
+            const nameMatch = (customer.name || '').toLowerCase().includes(searchLower);
+            const mobileMatch = (customer.mobile || '').includes(searchTerm); // Mobile: exact + partial match
+            return nameMatch || mobileMatch;
+        });
+        
+        console.log('📍 Matches found:', matches.length);
+        if (matches.length > 0) {
+            console.log('   Matched customers:', matches.map(m => `${m.name} (${m.mobile})`).join(', '));
+        }
         
         if (matches.length === 0) {
             suggestionsDiv.style.display = 'none';
             return;
         }
         
-        suggestionsDiv.innerHTML = matches.slice(0, 5).map(customer => `
-            <div class="autocomplete-item" data-customer-id="${customer.id}">
-                <div style="font-weight: 600;">${customer.name}</div>
-                <div style="font-size: 12px; color: #666;">${customer.mobile} • ${customer.address.substring(0, 50)}${customer.address.length > 50 ? '...' : ''}</div>
-            </div>
-        `).join('');
+        // Build suggestions HTML
+        suggestionsDiv.innerHTML = matches.slice(0, 5).map(customer => {
+            const address = (customer.address || '').substring(0, 40);
+            const addressDisplay = address + (customer.address && customer.address.length > 40 ? '...' : '');
+            return `
+                <div class="autocomplete-item" data-customer-id="${customer.id}" style="cursor: pointer;">
+                    <div style="font-weight: 600;">📦 ${customer.name}</div>
+                    <div style="font-size: 12px; color: #666;">📱 ${customer.mobile} • ${addressDisplay}</div>
+                </div>
+            `;
+        }).join('');
         
         suggestionsDiv.style.display = 'block';
+        console.log('✅ Suggestions displayed');
         
         // Add click handlers to suggestions
         suggestionsDiv.querySelectorAll('.autocomplete-item').forEach(item => {
-            item.addEventListener('click', function() {
+            item.addEventListener('click', function(e) {
+                e.stopPropagation();
                 const customerId = this.getAttribute('data-customer-id');
                 const customer = customers.find(c => c.id === customerId);
                 
                 if (customer) {
+                    console.log('✅ Customer selected:', customer.name, customer.mobile);
                     searchInput.value = customer.name;
                     customerNameInput.value = customer.name;
                     customerMobileInput.value = customer.mobile;
-                    customerAddressInput.value = customer.address;
+                    customerAddressInput.value = customer.address || '';
                     customerGSTInput.value = customer.gst || '';
                     selectedCustomer = customer;
+                    
+                    // Trigger validation on filled fields
+                    setTimeout(() => {
+                        validateMobileFieldRealTime();
+                        validateAddressFieldRealTime();
+                        if (customer.gst) validateGSTFieldRealTime();
+                    }, 10);
+                } else {
+                    console.error('❌ Customer not found for ID:', customerId);
                 }
                 
                 suggestionsDiv.style.display = 'none';
@@ -82,8 +219,8 @@ function initCustomerAutocomplete() {
         });
     });
     
-    // Update hidden name field when search changes
-    searchInput.addEventListener('change', function() {
+    // Update hidden name field when search loses focus
+    searchInput.addEventListener('blur', function() {
         if (!selectedCustomer || selectedCustomer.name !== this.value) {
             customerNameInput.value = this.value;
         }
@@ -91,10 +228,16 @@ function initCustomerAutocomplete() {
     
     // Close suggestions when clicking outside
     document.addEventListener('click', function(e) {
-        if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+        if (searchInput && suggestionsDiv && !searchInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
             suggestionsDiv.style.display = 'none';
         }
     });
+    
+    console.log('✅ Autocomplete initialized');
+    console.log('📊 Total customers available:', customers.length);
+    if (customers.length > 0) {
+        console.log('   Sample customers:', customers.slice(0, 3).map(c => `${c.name} (${c.mobile})`).join(' | '));
+    }
 }
 
 // Format number in Indian numbering system (e.g., 8,21,000)
@@ -256,10 +399,19 @@ function addItem() {
     newRow.setAttribute('data-row', itemCounter);
     newRow.innerHTML = `
         <td>${itemCounter}</td>
-        <td><input type="text" class="item-description" required></td>
+        <td>
+            <input type="text" class="item-description" required>
+            <span class="error-message item-error"></span>
+        </td>
         <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
-        <td><input type="number" class="item-quantity" min="1" value="1" required></td>
-        <td><input type="number" class="item-rate" min="0" step="0.01" required></td>
+        <td>
+            <input type="number" class="item-quantity" min="1" value="1" required>
+            <span class="error-message item-error"></span>
+        </td>
+        <td>
+            <input type="number" class="item-rate" min="0" step="0.01" required>
+            <span class="error-message item-error"></span>
+        </td>
         <td class="item-amount">0.00</td>
         <td><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
     `;
@@ -267,6 +419,7 @@ function addItem() {
     
     // Add event listeners to new inputs
     addItemEventListeners(newRow);
+    addItemValidationListeners(newRow);
 }
 
 // Remove item row
@@ -665,12 +818,25 @@ async function collectFormData() {
     // Generate invoice number once
     const invoiceNumber = await generateInvoiceNumber();
     
-    // Store date as YYYY-MM-DD string to avoid timezone issues
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    const dateString = `${year}-${month}-${day}`;
+    // For editing, use the original invoice date. For creating, use current date
+    let dateString;
+    const editingDateFromSession = sessionStorage.getItem('editingInvoiceDate');
+    if (editingInvoiceId && editingDateFromSession) {
+        // Use the original invoice date
+        dateString = editingDateFromSession.split('T')[0]; // Extract YYYY-MM-DD part
+    } else {
+        // Generate new date for new invoices
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        dateString = `${year}-${month}-${day}`;
+    }
+    
+    // Clean up session storage
+    if (editingInvoiceId) {
+        sessionStorage.removeItem('editingInvoiceDate');
+    }
     
     return {
         invoiceNo: invoiceNumber,
@@ -993,19 +1159,89 @@ function formatDateForPDF(dateString) {
     return `${day}/${month}/${year}`;
 }
 
+// Save customer if they don't already exist in the database
+async function saveCustomerIfNew(invoiceData) {
+    try {
+        // Check if customer already exists by searching in the customers array
+        const existingCustomer = customers.find(c => 
+            c.mobile === invoiceData.customerMobile ||
+            (c.name.toLowerCase() === invoiceData.customerName.toLowerCase() && c.mobile)
+        );
+        
+        // If customer already exists, don't add duplicate
+        if (existingCustomer) {
+            console.log('Customer already exists:', existingCustomer.name);
+            return { success: true, isNew: false };
+        }
+        
+        // Customer is new, add to database
+        const newCustomer = {
+            name: invoiceData.customerName,
+            mobile: invoiceData.customerMobile,
+            address: invoiceData.customerAddress,
+            gst: invoiceData.customerGST || '',
+            email: '' // Email not captured in invoice form
+        };
+        
+        const result = await supabaseAddCustomer(newCustomer);
+        
+        if (result.success) {
+            // Add to local customers array to avoid duplicate adds
+            customers.push({
+                id: result.data.id,
+                name: newCustomer.name,
+                mobile: newCustomer.mobile,
+                address: newCustomer.address,
+                gst: newCustomer.gst,
+                email: newCustomer.email
+            });
+            
+            console.log('✅ New customer saved:', newCustomer.name);
+            return { success: true, isNew: true, customer: result.data };
+        } else {
+            // Log error but don't fail the invoice creation
+            console.error('Failed to save customer:', result.error);
+            return { success: false, error: result.error, isNew: false };
+        }
+    } catch (error) {
+        // Log error but don't fail the invoice creation
+        console.error('Error saving customer:', error);
+        return { success: false, error: error.message, isNew: false };
+    }
+}
+
 // Save invoice to Supabase and update inventory
 async function saveInvoice(invoiceData) {
-    // Save to Supabase
-    const result = await supabaseAddInvoice(invoiceData);
-    
-    if (result.success) {
-        // Deduct stock from inventory
-        await deductStock(invoiceData.items);
-        return true;
+    // Check if we're updating an existing invoice
+    if (editingInvoiceId) {
+        // Update existing invoice
+        const result = await supabaseUpdateInvoice(editingInvoiceId, invoiceData);
+        
+        if (result.success) {
+            return true;
+        } else {
+            console.error('Error updating invoice:', result.error);
+            alert('❌ Error updating invoice: ' + result.error);
+            return false;
+        }
     } else {
-        console.error('Error saving invoice:', result.error);
-        alert('❌ Error saving invoice: ' + result.error);
-        return false;
+        // Create new invoice - automatically save customer if they're new
+        const customerResult = await saveCustomerIfNew(invoiceData);
+        if (customerResult.isNew) {
+            console.log('💾 New customer automatically saved to database');
+        }
+        
+        const result = await supabaseAddInvoice(invoiceData);
+        
+        if (result.success) {
+            // Deduct stock from inventory for new invoices
+            await deductStock(invoiceData.items);
+            return true;
+        } else {
+            console.error('Error saving invoice:', result.error);
+            alert('❌ Error saving invoice: ' + result.error);
+            return false;
+        }
     }
 }
 
@@ -1044,9 +1280,10 @@ async function handleFormSubmit(e) {
         document.body.appendChild(loadingOverlay);
     }
     
-    // Update message
+    // Update message based on mode
     const loadingMessage = document.getElementById('loadingMessage');
-    if (loadingMessage) loadingMessage.textContent = 'Saving invoice...';
+    const actionText = editingInvoiceId ? 'Updating invoice...' : 'Saving invoice...';
+    if (loadingMessage) loadingMessage.textContent = actionText;
     
     // Show loading
     loadingOverlay.style.display = 'flex';
@@ -1078,7 +1315,8 @@ async function handleFormSubmit(e) {
             submitBtn.classList.add('btn-success');
             
             // Show success message
-            alert('✅ Invoice saved successfully! Click "Generate Invoice PDF" to create the PDF document.');
+            const successMsg = editingInvoiceId ? '✅ Invoice updated successfully!' : '✅ Invoice saved successfully!';
+            alert(successMsg + ' Click "Generate Invoice PDF" to create the PDF document.');
         }
     } catch (error) {
         // Hide loading
@@ -1155,8 +1393,292 @@ async function generateAndShowPDF(invoiceData) {
     }
 }
 
+// ===== REAL-TIME FORM VALIDATION =====
+
+/**
+ * Validate customer mobile number and show inline error
+ */
+function validateMobileFieldRealTime() {
+    const mobile = document.getElementById('customerMobile').value.trim();
+    const errorEl = document.getElementById('mobileError');
+    const inputEl = document.getElementById('customerMobile');
+    
+    if (!mobile) {
+        errorEl.textContent = 'Mobile number is required';
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    const cleaned = mobile.replace(/[\s\-\+]/g, '');
+    
+    if (!/^[6-9]\d{9}$/.test(cleaned) && cleaned.length > 0) {
+        // Only show error if they've typed something that's not valid
+        if (cleaned.length < 10) {
+            errorEl.textContent = `Need ${10 - cleaned.length} more digit(s)`;
+        } else {
+            errorEl.textContent = 'Must start with 6-9 followed by 9 digits';
+        }
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    if (/^[6-9]\d{9}$/.test(cleaned)) {
+        errorEl.textContent = '';
+        inputEl.classList.remove('field-error');
+        inputEl.classList.add('field-valid');
+        return true;
+    }
+    
+    errorEl.textContent = '';
+    inputEl.classList.remove('field-error', 'field-valid');
+    return false;
+}
+
+/**
+ * Validate customer address and show inline error + char count
+ */
+function validateAddressFieldRealTime() {
+    const address = document.getElementById('customerAddress').value;
+    const errorEl = document.getElementById('addressError');
+    const charCountEl = document.getElementById('addressCharCount');
+    const inputEl = document.getElementById('customerAddress');
+    
+    charCountEl.textContent = `${address.length}/255`;
+    
+    if (!address.trim()) {
+        errorEl.textContent = 'Address is required';
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    if (address.length < 5) {
+        errorEl.textContent = `Need ${5 - address.length} more character(s)`;
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    if (address.length > 255) {
+        errorEl.textContent = 'Address is too long (max 255 characters)';
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    errorEl.textContent = '';
+    inputEl.classList.remove('field-error');
+    inputEl.classList.add('field-valid');
+    return true;
+}
+
+/**
+ * Validate GST number format and show inline error
+ */
+function validateGSTFieldRealTime() {
+    const gst = document.getElementById('customerGST').value.trim().toUpperCase();
+    const errorEl = document.getElementById('gstError');
+    const inputEl = document.getElementById('customerGST');
+    
+    if (!gst) {
+        // GST is optional
+        errorEl.textContent = '';
+        inputEl.classList.remove('field-error', 'field-valid');
+        return true;
+    }
+    
+    // GST format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric
+    const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+    
+    if (!gstRegex.test(gst)) {
+        if (gst.length < 15) {
+            errorEl.textContent = `GST format: ${gst.length}/15 chars. Example: 22AAAAA0000A1Z5`;
+        } else {
+            errorEl.textContent = 'Invalid GST format. Example: 22AAAAA0000A1Z5';
+        }
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    errorEl.textContent = '';
+    inputEl.classList.remove('field-error');
+    inputEl.classList.add('field-valid');
+    return true;
+}
+
+/**
+ * Validate item quantity and show inline error
+ */
+function validateItemQuantity(quantityInput) {
+    const quantity = parseFloat(quantityInput.value);
+    const row = quantityInput.closest('.item-row');
+    
+    if (!row) return true;
+    
+    const errorEl = row.querySelector('.item-error') || document.createElement('span');
+    
+    if (!errorEl.parentElement || errorEl.parentElement !== quantityInput.parentElement) {
+        errorEl.className = 'error-message item-error';
+        quantityInput.parentElement.appendChild(errorEl);
+    }
+    
+    if (isNaN(quantity) || quantity <= 0) {
+        errorEl.textContent = 'Qty must be > 0';
+        errorEl.classList.add('show');
+        quantityInput.classList.add('field-error');
+        return false;
+    }
+    
+    if (quantity > 9999) {
+        errorEl.textContent = 'Qty too large (max 9999)';
+        errorEl.classList.add('show');
+        quantityInput.classList.add('field-error');
+        return false;
+    }
+    
+    errorEl.textContent = '';
+    errorEl.classList.remove('show');
+    quantityInput.classList.remove('field-error');
+    return true;
+}
+
+/**
+ * Validate item rate and show inline error
+ */
+function validateItemRate(rateInput) {
+    const rate = parseFloat(rateInput.value);
+    const row = rateInput.closest('.item-row');
+    
+    if (!row) return true;
+    
+    const errorEl = row.querySelector('.item-error') || document.createElement('span');
+    
+    if (!errorEl.parentElement || errorEl.parentElement !== rateInput.parentElement) {
+        errorEl.className = 'error-message item-error';
+        rateInput.parentElement.appendChild(errorEl);
+    }
+    
+    if (isNaN(rate) || rate < 0) {
+        errorEl.textContent = 'Rate must be positive';
+        errorEl.classList.add('show');
+        rateInput.classList.add('field-error');
+        return false;
+    }
+    
+    errorEl.textContent = '';
+    errorEl.classList.remove('show');
+    rateInput.classList.remove('field-error');
+    return true;
+}
+
+/**
+ * Validate terms and conditions length
+ */
+function validateTermsFieldRealTime() {
+    const terms = document.getElementById('termsConditions').value;
+    const errorEl = document.getElementById('termsError');
+    const charCountEl = document.getElementById('termsCharCount');
+    const inputEl = document.getElementById('termsConditions');
+    
+    charCountEl.textContent = `${terms.length}/1000`;
+    
+    if (!terms.trim()) {
+        errorEl.textContent = 'Terms and conditions are required';
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    if (terms.length < 10) {
+        errorEl.textContent = `Need ${10 - terms.length} more character(s)`;
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    if (terms.length > 1000) {
+        errorEl.textContent = 'Terms are too long (max 1000 characters)';
+        inputEl.classList.add('field-error');
+        return false;
+    }
+    
+    errorEl.textContent = '';
+    inputEl.classList.remove('field-error');
+    inputEl.classList.add('field-valid');
+    return true;
+}
+
+/**
+ * Initialize real-time validation for form fields
+ */
+function setupRealtimeValidation() {
+    // Mobile validation
+    const mobileInput = document.getElementById('customerMobile');
+    if (mobileInput) {
+        mobileInput.addEventListener('input', validateMobileFieldRealTime);
+        mobileInput.addEventListener('blur', validateMobileFieldRealTime);
+    }
+    
+    // Address validation
+    const addressInput = document.getElementById('customerAddress');
+    if (addressInput) {
+        addressInput.addEventListener('input', validateAddressFieldRealTime);
+        addressInput.addEventListener('blur', validateAddressFieldRealTime);
+    }
+    
+    // GST validation
+    const gstInput = document.getElementById('customerGST');
+    if (gstInput) {
+        gstInput.addEventListener('input', validateGSTFieldRealTime);
+        gstInput.addEventListener('blur', validateGSTFieldRealTime);
+    }
+    
+    // Terms validation
+    const termsInput = document.getElementById('termsConditions');
+    if (termsInput) {
+        termsInput.addEventListener('input', validateTermsFieldRealTime);
+        termsInput.addEventListener('blur', validateTermsFieldRealTime);
+    }
+}
+
+/**
+ * Add real-time validation listeners to item rows
+ */
+function addItemValidationListeners(row) {
+    const quantityInput = row.querySelector('.item-quantity');
+    const rateInput = row.querySelector('.item-rate');
+    
+    if (quantityInput) {
+        quantityInput.addEventListener('input', () => validateItemQuantity(quantityInput));
+        quantityInput.addEventListener('blur', () => validateItemQuantity(quantityInput));
+    }
+    
+    if (rateInput) {
+        rateInput.addEventListener('input', () => validateItemRate(rateInput));
+        rateInput.addEventListener('blur', () => validateItemRate(rateInput));
+    }
+}
+
+// ===== END REAL-TIME VALIDATION =====
+
 // Initialize form
 async function initForm() {
+    // Check if in edit mode
+    const urlParams = new URLSearchParams(window.location.search);
+    const isEditMode = urlParams.get('mode') === 'edit';
+    
+    // Update page title and button if in edit mode
+    if (isEditMode) {
+        // Update page titles
+        const pageTitle = document.querySelector('.page-title');
+        if (pageTitle) pageTitle.textContent = 'Edit Invoice';
+        
+        const pageSubtitle = document.querySelector('.page-subtitle');
+        if (pageSubtitle) pageSubtitle.textContent = 'Modify the invoice details below';
+        
+        const mobileTitle = document.querySelector('.mobile-header-title');
+        if (mobileTitle) mobileTitle.textContent = 'Edit Invoice';
+        
+        // Update submit button text
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) submitBtn.innerHTML = '<span class="material-icons">save</span> Update Invoice';
+    }
+    
     // Load user profile and inventory data
     await loadUserProfile();
     await loadInventory();
@@ -1179,17 +1701,38 @@ async function initForm() {
     await loadCustomers();
     initCustomerAutocomplete();
     
+    // Load invoice data if in edit mode
+    if (isEditMode) {
+        const loaded = loadInvoiceForEditing();
+        if (!loaded) {
+            alert('❌ Error loading invoice for editing. Redirecting to dashboard...');
+            window.location.href = 'index.html';
+            return;
+        }
+    }
+    
     // Add event listeners to initial row
     const initialRow = document.querySelector('.item-row');
-    addItemEventListeners(initialRow);
+    if (initialRow) {
+        addItemEventListeners(initialRow);
+    }
     
     // Add event listeners to SGST and CGST rates
     document.getElementById('sgstRate').addEventListener('input', calculateAmounts);
     document.getElementById('cgstRate').addEventListener('input', calculateAmounts);
     
+    // Setup real-time validation for form fields
+    setupRealtimeValidation();
+    
+    // Add validation to initial item row
+    if (initialRow) {
+        addItemValidationListeners(initialRow);
+    }
+    
     // Add form submit listener
     document.getElementById('invoiceForm').addEventListener('submit', handleFormSubmit);
 }
 
-// Initialize when page loads
+// Initialize form when page loads
 document.addEventListener('DOMContentLoaded', initForm);
+

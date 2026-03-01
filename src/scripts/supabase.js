@@ -6,6 +6,8 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // Initialize Supabase client immediately
 let supabaseClient = null;
+let cachedUser = null; // Cache for current user to avoid multiple auth calls
+let userCachePromise = null; // Promise for concurrent requests
 
 // Initialize as soon as the library is available
 if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
@@ -117,6 +119,11 @@ async function supabaseSignOut() {
         
         const { error } = await supabaseClient.auth.signOut();
         if (error) throw error;
+        
+        // Clear the user cache
+        cachedUser = null;
+        userCachePromise = null;
+        
         return { success: true };
     } catch (error) {
         console.error('Sign out error:', error);
@@ -126,16 +133,64 @@ async function supabaseSignOut() {
 
 async function supabaseGetCurrentUser() {
     try {
-        if (!supabaseClient) initSupabase();
-        if (!supabaseClient) return null;
+        // Return cached user if available
+        if (cachedUser) {
+            return cachedUser;
+        }
         
-        const { data: { user }, error } = await supabaseClient.auth.getUser();
-        if (error) throw error;
-        return user;
+        // If a request is already in progress, wait for it
+        if (userCachePromise) {
+            return await userCachePromise;
+        }
+        
+        // Create new promise for this request
+        userCachePromise = (async () => {
+            try {
+                if (!supabaseClient) initSupabase();
+                if (!supabaseClient) return null;
+                
+                const { data: { user }, error } = await supabaseClient.auth.getUser();
+                
+                if (error) {
+                    // If lock was stolen, retry once
+                    if (error.message && error.message.includes('Lock was stolen')) {
+                        console.warn('⚠️ Auth lock was stolen, retrying...');
+                        // Wait a bit and retry
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        const { data: { user: retryUser }, error: retryError } = await supabaseClient.auth.getUser();
+                        if (retryError) throw retryError;
+                        cachedUser = retryUser;
+                        return retryUser;
+                    }
+                    throw error;
+                }
+                
+                // Cache the user
+                cachedUser = user;
+                return user;
+            } catch (error) {
+                console.error('Get user error:', error);
+                return null;
+            } finally {
+                // Clear the promise once it's done
+                userCachePromise = null;
+            }
+        })();
+        
+        return await userCachePromise;
     } catch (error) {
         console.error('Get user error:', error);
         return null;
     }
+}
+
+/**
+ * Clear user cache (useful for testing or when session changes)
+ */
+function clearUserCache() {
+    cachedUser = null;
+    userCachePromise = null;
+    console.log('✅ User cache cleared');
 }
 
 async function supabaseGetSession() {
@@ -420,6 +475,36 @@ async function supabaseAddInvoice(invoice) {
     }
 }
 
+async function supabaseUpdateInvoice(id, invoice) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('invoices')
+            .update({
+                date: invoice.date,
+                customer_name: invoice.customerName,
+                customer_mobile: invoice.mobile || null,
+                customer_gst: invoice.gstNumber || null,
+                customer_address: invoice.address || null,
+                items: invoice.items,
+                subtotal: invoice.subtotal,
+                gst_amount: invoice.gstAmount,
+                gst_rate: invoice.gstRate,
+                total_amount: invoice.totalAmount,
+                total_units: invoice.totalUnits,
+                payment_method: invoice.paymentMethod || null,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Update invoice error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 async function supabaseDeleteInvoice(id) {
     try {
         const { error } = await supabaseClient
@@ -644,6 +729,86 @@ async function supabaseDeleteCustomer(id) {
         return { success: true };
     } catch (error) {
         console.error('Delete customer error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============ EXPENSE MANAGEMENT ============
+
+async function supabaseGetExpenses() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('expenses')
+            .select('*')
+            .order('date', { ascending: false });
+        
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get expenses error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+async function supabaseAddExpense(expense) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabaseClient
+            .from('expenses')
+            .insert([
+                {
+                    user_id: user.id,
+                    amount: expense.amount,
+                    description: expense.description,
+                    category: expense.category,
+                    date: expense.date
+                }
+            ])
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Add expense error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseUpdateExpense(id, expense) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('expenses')
+            .update({
+                amount: expense.amount,
+                description: expense.description,
+                category: expense.category,
+                date: expense.date,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', id)
+            .select();
+        
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Update expense error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseDeleteExpense(id) {
+    try {
+        const { error } = await supabaseClient
+            .from('expenses')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Delete expense error:', error);
         return { success: false, error: error.message };
     }
 }

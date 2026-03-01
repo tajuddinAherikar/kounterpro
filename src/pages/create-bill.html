@@ -6,12 +6,12 @@
     <title>Create Invoice - KounterPro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="styles-new.css">
-    <link rel="stylesheet" href="dark-mode.css">
-    <script src="dark-mode.js"></script>
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/styles-new.css">
+    <link rel="stylesheet" href="../styles/dark-mode.css">
+    <script src="../scripts/dark-mode.js"></script>
 </head>
 <body class="modern-layout">
     <!-- Sidebar Navigation -->
@@ -21,42 +21,50 @@
                 <span class="material-icons logo-icon">store</span>
                 <span class="logo-text">KounterPro</span>
             </div>
-            <button class="sidebar-toggle" id="sidebarToggle">
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
                 <span class="material-icons">menu</span>
             </button>
         </div>
         
         <nav class="sidebar-nav">
-            <a href="index.html" class="nav-item">
+            <a href="index.html" class="nav-item" title="Dashboard">
                 <span class="material-icons">dashboard</span>
                 <span class="nav-text">Dashboard</span>
             </a>
-            <a href="create-bill.html" class="nav-item active">
+            <a href="create-bill.html" class="nav-item active" title="Create Invoice">
                 <span class="material-icons">receipt_long</span>
                 <span class="nav-text">Create Invoice</span>
             </a>
-            <a href="inventory.html" class="nav-item">
+            <a href="inventory.html" class="nav-item" title="Inventory">
                 <span class="material-icons">inventory_2</span>
                 <span class="nav-text">Inventory</span>
             </a>
-            <a href="customers.html" class="nav-item">
+            <a href="customers.html" class="nav-item" title="Customers">
                 <span class="material-icons">people</span>
                 <span class="nav-text">Customers</span>
             </a>
-            <a href="profile.html" class="nav-item">
+            <a href="expenses.html" class="nav-item" title="Expenses">
+                <span class="material-icons">receipt</span>
+                <span class="nav-text">Expenses</span>
+            </a>
+            <a href="reports.html" class="nav-item" title="Reports">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Reports</span>
+            </a>
+            <a href="profile.html" class="nav-item" title="Business Profile">
                 <span class="material-icons">business</span>
                 <span class="nav-text">Profile</span>
             </a>
             <div class="nav-divider"></div>
-            <a href="#" class="nav-item" onclick="exportBackup(); return false;">
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;" title="Backup Data">
                 <span class="material-icons">cloud_download</span>
                 <span class="nav-text">Backup</span>
             </a>
-            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;">
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;" title="Restore Data">
                 <span class="material-icons">cloud_upload</span>
                 <span class="nav-text">Restore</span>
             </a>
-            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;">
+            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;" title="Logout">
                 <span class="material-icons">logout</span>
                 <span class="nav-text">Logout</span>
             </a>
@@ -104,7 +112,7 @@
                 <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <span class="material-icons">dark_mode</span>
                 </button>
-                <button class="notification-btn" id="notificationBtn">
+                <button class="notification-btn" id="notificationBtn" title="Notifications">
                     <span class="material-icons">notifications</span>
                     <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                 </button>
@@ -136,28 +144,33 @@
                             <div id="customerSuggestions" class="autocomplete-dropdown" style="display: none;"></div>
                         </div>
                     </label>
-                    <small style="color: #666;">Type to search existing customers or enter new customer details</small>
+                    <small class="format-hint">🔍 Type to search existing customers or enter new customer name</small>
+                    <span class="error-message" id="customerSearchError"></span>
                 </div>
                 <input type="hidden" id="customerName">
                 <div class="form-row">
                     <label>
                         Customer Mobile Number: <span class="required">*</span>
-                        <input type="tel" id="customerMobile" placeholder="e.g., 9876543210" pattern="[0-9]{10}" minlength="10" maxlength="10" required>
+                        <input type="tel" id="customerMobile" placeholder="e.g., 9876543210" maxlength="12" required>
                     </label>
-                    <small style="color: #666;">10-digit mobile number starting with 6-9 (for WhatsApp)</small>
+                    <small class="format-hint">📱 10-digit number starting with 6-9 (e.g., 9876543210). Don't include spaces, dashes, or +91</small>
+                    <span class="error-message" id="mobileError"></span>
                 </div>
                 <div class="form-row">
                     <label>
                         Customer Address: <span class="required">*</span>
                         <textarea id="customerAddress" rows="3" required minlength="5" maxlength="255" placeholder="Enter complete address"></textarea>
                     </label>
+                    <small class="format-hint">📍 Minimum 5 characters, maximum 255 <span id="addressCharCount" style="float: right;">0/255</span></small>
+                    <span class="error-message" id="addressError"></span>
                 </div>
                 <div class="form-row">
                     <label>
                         Customer GST No: <span class="optional">(optional)</span>
-                        <input type="text" id="customerGST" placeholder="e.g., 22AAAAA0000A1Z5" maxlength="15" pattern="[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}" style="text-transform: uppercase;">
+                        <input type="text" id="customerGST" placeholder="e.g., 22AAAAA0000A1Z5" maxlength="15" style="text-transform: uppercase;">
                     </label>
-                    <small style="color: #666;">15-character GST number (optional)</small>
+                    <small class="format-hint">💰 Format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric (15 chars total). Leave empty if not applicable.</small>
+                    <span class="error-message" id="gstError"></span>
                 </div>
             </div>
 
@@ -192,10 +205,19 @@
                         <tbody id="itemsTableBody">
                             <tr class="item-row" data-row="1">
                                 <td>1</td>
-                                <td><input type="text" class="item-description" required></td>
+                                <td>
+                                    <input type="text" class="item-description" required>
+                                    <span class="error-message item-error"></span>
+                                </td>
                                 <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
-                                <td><input type="number" class="item-quantity" min="1" value="1" required></td>
-                                <td><input type="number" class="item-rate" min="0" step="0.01" required></td>
+                                <td>
+                                    <input type="number" class="item-quantity" min="1" value="1" required>
+                                    <span class="error-message item-error"></span>
+                                </td>
+                                <td>
+                                    <input type="number" class="item-rate" min="0" step="0.01" required>
+                                    <span class="error-message item-error"></span>
+                                </td>
                                 <td class="item-amount">0.00</td>
                                 <td><button type="button" class="btn-remove" onclick="removeItem(1)">✕</button></td>
                             </tr>
@@ -203,6 +225,7 @@
                     </table>
                 </div>
                 <button type="button" class="btn-secondary" onclick="addItem()">+ Add Item</button>
+                <span class="error-message" id="itemsError"></span>
 
                 <div class="totals-section">
                     <div class="total-row">
@@ -226,11 +249,13 @@
 
             <div class="form-section">
                 <h2>Terms & Conditions</h2>
-                <textarea id="termsConditions" rows="6">1. Payment should be made on delivery.
+                <textarea id="termsConditions" rows="6" minlength="10" maxlength="1000" required>1. Payment should be made on delivery.
 2. Goods once sold will not be taken back or exchanged.
 3. Warranty on all peripherals/parts is as per manufacturer's policy and shall be got done no claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.
 4. Our responsibility ceases the moment goods leave our premises.
 5. No claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.</textarea>
+                <small class="format-hint">📋 Minimum 10 characters, maximum 1000 <span id="termsCharCount" style="float: right;">0/1000</span></small>
+                <span class="error-message" id="termsError"></span>
             </div>
 
             <div class="form-actions">
@@ -269,12 +294,13 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="toast.js"></script>
-    <script src="validation.js"></script>
-    <script src="supabase.js"></script>
-    <script src="auth.js"></script>
-    <script src="notifications.js"></script>
-    <script src="billing.js"></script>
+    <script src="../scripts/dialog.js"></script>
+    <script src="../scripts/toast.js"></script>
+    <script src="../scripts/validation.js"></script>
+    <script src="../scripts/supabase.js"></script>
+    <script src="../scripts/auth.js"></script>
+    <script src="../scripts/notifications.js"></script>
+    <script src="../scripts/billing.js"></script>
     <script>
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', () => {

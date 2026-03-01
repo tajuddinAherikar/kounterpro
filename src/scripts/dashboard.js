@@ -618,7 +618,8 @@ async function deleteInvoice(invoiceId) {
         `This action cannot be undone!\n\n` +
         `Are you sure you want to delete this invoice?`;
     
-    if (confirm(confirmMessage)) {
+    const confirmed = await showDeleteConfirm(`invoice ${invoice.invoiceNumber}`);
+    if (confirmed) {
         try {
             showLoading('Deleting invoice...');
             const result = await supabaseDeleteInvoice(invoiceId);

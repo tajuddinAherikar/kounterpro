@@ -196,6 +196,83 @@
   - Inventory page shows alert counts
   - Real-time updates as stock changes
 
+### 12. Expense Management ✅ NEW
+- **Expense Tracking**:
+  - Add, edit, and delete business expenses
+  - Categorize expenses (rent, utilities, salary, etc.)
+  - Track expense amount and date
+  - Optional notes/description for each expense
+  - Attach expense category with color coding
+- **Expense Dashboard**:
+  - Monthly and total expense statistics
+  - Visual charts showing spending trends:
+    - Line chart: Monthly expense trends
+    - Doughnut chart: Breakdown by category
+  - Quick stats for current period
+  - Month-over-month comparison
+- **Modern UI**:
+  - Responsive modal form for adding expenses
+  - Clean table view of all expenses
+  - Material Design icons and styling
+  - Dark mode support
+  - Smooth animations and transitions
+- **Performance Optimized**:
+  - Modal closes immediately for instant feedback
+  - Local array updates (no full refetch)
+  - Non-blocking chart rendering
+  - Fast edit/delete operations
+- **Data Persistence**:
+  - Expenses saved to Supabase database
+  - Automatic data synchronization
+  - Real-time updates across sessions
+  - Included in backup/restore functionality
+- **Confirmation Dialogs**:
+  - Custom delete confirmation with expense details
+  - Prevents accidental deletions
+  - Clear action buttons and messaging
+
+### 13. Customer Ledger (Payment History) ✅ NEW
+- **Customer Payment History**:
+  - View complete transaction history per customer
+  - Individual invoice tracking linked to customers
+  - Payment timeline visualization
+  - Customer information display (name, mobile, email, GST, address)
+- **Ledger Statistics**:
+  - Total amount spent by customer
+  - Invoice count and frequency
+  - Last purchase date tracking
+  - Average order value calculation
+  - Reference data for customer relationships
+- **Purchase Timeline Chart**:
+  - Visual bar chart of monthly spending by customer
+  - Responsive Chart.js integration
+  - Color-coded spending trends
+  - Tooltip values with formatted currency
+  - Mobile-responsive layout
+- **Invoice History Table**:
+  - Complete list of customer's invoices
+  - Columns: Invoice No, Date, Item Count, Amount
+  - Sorted by most recent first
+  - View invoice details action (expandable)
+  - Proper currency formatting (Indian Rupees)
+- **Data Export**:
+  - Export customer ledger as CSV file
+  - Includes all transactions for selected customer
+  - Summary row with total spent
+  - Timestamped filename with customer name
+  - Compatible with spreadsheet applications
+- **Navigation Integration**:
+  - "View Ledger" button from customers table
+  - URL parameter-based customer selection
+  - Back button to return to customers page
+  - Seamless sidebar navigation
+- **UI Features**:
+  - Consistent styling with application design system
+  - Material Design icons and layout
+  - Dark mode full support
+  - Responsive design (mobile-friendly)
+  - Notification dropdown integration
+
 ---
 
 ## 🚀 Future Enhancements
@@ -429,19 +506,21 @@
 
 | Feature | Impact | Effort | Priority | Status |
 |---------|--------|--------|----------|---------|
-| Customer Database | High | Medium | 1 | ⏳ Pending |
-| Payment Status Tracking | High | Medium | 1 | ⏳ Pending |
+| Expense Management | High | Low | 1 | ✅ Complete |
+| Customer Ledger (History) | High | Low | 1 | ✅ Complete |
+| Customer Database | High | Medium | 1 | ✅ Complete |
+| Payment Status Tracking | High | Medium | 2 | ⏳ Pending |
 | Low Stock Alerts | High | Low | 1 | ✅ Complete |
 | Data Backup & Export | High | Low | 1 | ✅ Complete |
 | Error Handling & Validation | High | Low | 1 | ✅ Complete |
 | Search & Filter | High | Medium | 2 | ⏳ Pending |
-| Invoice Editing | Medium | Medium | 2 |
-| Analytics & Reports | Medium | High | 2 |
-| Print Features | Medium | Medium | 3 |
-| Advanced Inventory | Medium | High | 3 |
-| Company Settings | Low | Medium | 3 |
-| Multi-User System | Low | Very High | 4 |
-| Advanced Features | Low | Very High | 4 |
+| Invoice Editing | Medium | Medium | 2 | ⏳ Pending |
+| Analytics & Reports | Medium | High | 2 | ⏳ Pending |
+| Print Features | Medium | Medium | 3 | ⏳ Pending |
+| Advanced Inventory | Medium | High | 3 | ⏳ Pending |
+| Company Settings | Low | Medium | 3 | ⏳ Pending |
+| Multi-User System | Low | Very High | 4 | ⏳ Pending |
+| Advanced Features | Low | Very High | 4 | ⏳ Pending |
 
 ---
 
@@ -502,25 +581,31 @@
 1. ~~Data Backup & Export system~~ - **Done on February 9, 2026**
 2. ~~Error Handling & Validation~~ - **Done on February 9, 2026**
 3. ~~Low Stock Alerts~~ - **Done on February 9, 2026**
+4. ~~Customer Database Management~~ - **Done on February 28, 2026**
+5. ~~Expense Management System~~ - **Done on March 1, 2026**
+6. ~~Customer Ledger (Payment History)~~ - **Done on March 1, 2026**
 
 ### In Progress
-4. **Customer Database** (Next) - Save and reuse customer information
-5. **Payment Tracking** - Track paid/unpaid invoices
-6. **Search & Filter Enhancement** - Advanced search capabilities
+7. **Payment Status Tracking** - Track paid/unpaid invoices
+8. **Search & Filter Enhancement** - Advanced search capabilities
+9. **Advanced Reporting** - Analytics and insights
 
 ### Recommended Implementation Order
-1. ~~**Data Backup/Export** (1 day)~~ ✅ **COMPLETED**
-2. ~~**Error Handling** (1 day)~~ ✅ **COMPLETED**
-3. ~~**Low Stock Alerts** (1 day)~~ ✅ **COMPLETED**
-4. **Customer Database** (2-3 days) - Huge time saver
-5. **Payment Tracking** (2-3 days) - Financial visibility
-6. **Search & Filter** (2 days) - Enhanced usability
+1. ~~**Data Backup/Export** (1 day)~~ ✅ **COMPLETED** (Feb 9)
+2. ~~**Error Handling** (1 day)~~ ✅ **COMPLETED** (Feb 9)
+3. ~~**Low Stock Alerts** (1 day)~~ ✅ **COMPLETED** (Feb 9)
+4. ~~**Customer Database** (2 days)~~ ✅ **COMPLETED** (Feb 28)
+5. ~~**Expense Management** (1 day)~~ ✅ **COMPLETED** (Mar 1)
+6. ~~**Customer Ledger** (1 day)~~ ✅ **COMPLETED** (Mar 1)
+7. **Payment Tracking** (2-3 days) - Financial visibility
+8. **Search & Filter** (2 days) - Enhanced usability
+9. **Advanced Reporting** (3 days) - Business insights
 
-**Progress**: 3/6 core features complete (50% done)
-**Estimated Time Remaining**: ~5-6 days to production-ready
+**Progress**: 6/9 core features complete (67% done)
+**Estimated Time Remaining**: ~5-7 days to production-ready
 
 ---
 
-**Last Updated**: February 9, 2026
-**Version**: 1.3
-**Status**: In Development - 50% Production Ready (3/6 Core Features Complete)
+**Last Updated**: March 1, 2026
+**Version**: 2.0
+**Status**: In Development - 67% Production Ready (6/9 Core Features Complete)

@@ -300,7 +300,8 @@ async function deleteItem(itemId) {
         `This action cannot be undone!\n\n` +
         `Are you sure you want to delete this product?`;
     
-    if (confirm(confirmMessage)) {
+    const confirmed = await showDeleteConfirm(`${item.name}`);
+    if (confirmed) {
         showLoading('Deleting item...');
         const result = await supabaseDeleteInventoryItem(itemId);
         hideLoading();

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Reports - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/styles-new.css">
+    <link rel="stylesheet" href="../styles/dark-mode.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/dark-mode.js"></script>
+</head>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item" title="Dashboard">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item" title="Create Invoice">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item" title="Inventory">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item" title="Customers">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <a href="expenses.html" class="nav-item" title="Expenses">
+                <span class="material-icons">receipt</span>
+                <span class="nav-text">Expenses</span>
+            </a>
+            <a href="reports.html" class="nav-item active" title="Reports">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Reports</span>
+            </a>
+            <a href="profile.html" class="nav-item" title="Business Profile">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;" title="Backup Data">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;" title="Restore Data">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;" title="Logout">
+                <span class="material-icons">logout</span>
+                <span class="nav-text">Logout</span>
+            </a>
+        </nav>
+        
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mobile Header Bar -->
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <h1 class="mobile-header-title">Reports</h1>
+        <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
+            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
+                <span class="material-icons">account_circle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title">Advanced Reports</h1>
+                <p class="page-subtitle">Analyze sales trends, top products, and customer insights</p>
+            </div>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+                <button class="notification-btn" id="notificationBtn" title="Notifications">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <button class="btn-text" onclick="markAllAsRead()">Mark all as read</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-empty">
+                    <span class="material-icons">notifications_none</span>
+                    <p>No notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Date Range Filter -->
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header">
+                    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span class="material-icons">calendar_today</span>
+                        Date Range Filter
+                    </h3>
+                </div>
+                <div class="card-body" style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="display: block; font-size: 12px; color: #666; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">From Date</label>
+                        <input type="date" id="reportFromDate" class="form-control" placeholder="From Date">
+                    </div>
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="display: block; font-size: 12px; color: #666; margin-bottom: 6px; text-transform: uppercase; font-weight: 600;">To Date</label>
+                        <input type="date" id="reportToDate" class="form-control" placeholder="To Date">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: flex-end;">
+                        <button class="btn-primary" onclick="applyReportDateFilter()">
+                            <span class="material-icons">check</span> Apply
+                        </button>
+                        <button class="btn-secondary" onclick="clearReportDateFilter()">
+                            <span class="material-icons">clear</span> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="report-tabs">
+                <button class="report-tab active" onclick="switchReportTab('revenue')">
+                    <span class="material-icons">trending_up</span>
+                    Monthly Revenue
+                </button>
+                <button class="report-tab" onclick="switchReportTab('products')">
+                    <span class="material-icons">inventory_2</span>
+                    Top Products
+                </button>
+                <button class="report-tab" onclick="switchReportTab('customers')">
+                    <span class="material-icons">people</span>
+                    Top Customers
+                </button>
+            </div>
+
+            <!-- Monthly Revenue Tab -->
+            <div id="revenue-tab" class="report-tab-content active">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                            <span class="material-icons">trending_up</span>
+                            Monthly Revenue Trends
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 400px;">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Revenue Summary Stats -->
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">trending_up</span>
+                            <span class="stat-card-label">Total Revenue</span>
+                        </div>
+                        <div class="stat-card-value" id="totalRevenue">₹0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">calendar_month</span>
+                            <span class="stat-card-label">Average Monthly</span>
+                        </div>
+                        <div class="stat-card-value" id="avgMonthlyRevenue">₹0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">trending_up</span>
+                            <span class="stat-card-label">Best Month</span>
+                        </div>
+                        <div class="stat-card-value" id="bestMonth">₹0</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;" id="bestMonthDate">-</div>
+                    </div>
+                </div>
+
+                <!-- Monthly Details Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">table_chart</span>
+                            Monthly Breakdown
+                        </h3>
+                        <button class="btn-secondary" onclick="exportRevenueData()" style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-icons" style="font-size: 18px;">download</span> Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body" style="overflow-x: auto;">
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Month</th>
+                                    <th style="text-align: right;">Invoices</th>
+                                    <th style="text-align: right;">Units Sold</th>
+                                    <th style="text-align: right;">Revenue</th>
+                                    <th style="text-align: right;">Growth %</th>
+                                </tr>
+                            </thead>
+                            <tbody id="revenueTableBody">
+                                <tr><td colspan="5" style="text-align: center; color: #999;">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Products Tab -->
+            <div id="products-tab" class="report-tab-content" style="display: none;">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                            <span class="material-icons">inventory_2</span>
+                            Product Performance
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 400px;">
+                            <canvas id="productsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Products Stats -->
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">inventory_2</span>
+                            <span class="stat-card-label">Total Products Sold</span>
+                        </div>
+                        <div class="stat-card-value" id="totalProductTypes">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">shopping_cart</span>
+                            <span class="stat-card-label">Total Units</span>
+                        </div>
+                        <div class="stat-card-value" id="totalUnitsSold">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">trending_up</span>
+                            <span class="stat-card-label">Total Revenue</span>
+                        </div>
+                        <div class="stat-card-value" id="productsRevenue">₹0</div>
+                    </div>
+                </div>
+
+                <!-- Top Products Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">table_chart</span>
+                            Top 20 Products
+                        </h3>
+                        <button class="btn-secondary" onclick="exportProductsData()" style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-icons" style="font-size: 18px;">download</span> Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body" style="overflow-x: auto;">
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Product</th>
+                                    <th style="text-align: right;">Units Sold</th>
+                                    <th style="text-align: right;">Revenue</th>
+                                    <th style="text-align: right;">% of Total</th>
+                                    <th style="text-align: right;">Avg Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="productsTableBody">
+                                <tr><td colspan="6" style="text-align: center; color: #999;">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Customers Tab -->
+            <div id="customers-tab" class="report-tab-content" style="display: none;">
+                <div class="card" style="margin-bottom: 20px;">
+                    <div class="card-header">
+                        <h2 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                            <span class="material-icons">people</span>
+                            Customer Analysis
+                        </h2>
+                    </div>
+                    <div class="card-body">
+                        <div style="position: relative; height: 400px;">
+                            <canvas id="customersChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Stats -->
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">people</span>
+                            <span class="stat-card-label">Total Customers</span>
+                        </div>
+                        <div class="stat-card-value" id="totalCustomers">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">repeat</span>
+                            <span class="stat-card-label">Repeat Customers</span>
+                        </div>
+                        <div class="stat-card-value" id="repeatCustomers">0</div>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;" id="repeatPercentage">0%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <span class="material-icons">shopping_cart</span>
+                            <span class="stat-card-label">Avg Order Value</span>
+                        </div>
+                        <div class="stat-card-value" id="avgOrderValue">₹0</div>
+                    </div>
+                </div>
+
+                <!-- Top Customers Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                            <span class="material-icons">table_chart</span>
+                            Top 20 Customers
+                        </h3>
+                        <button class="btn-secondary" onclick="exportCustomersData()" style="display: flex; align-items: center; gap: 6px;">
+                            <span class="material-icons" style="font-size: 18px;">download</span> Export CSV
+                        </button>
+                    </div>
+                    <div class="card-body" style="overflow-x: auto;">
+                        <table class="data-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Customer Name</th>
+                                    <th style="text-align: right;">Orders</th>
+                                    <th style="text-align: right;">Total Spent</th>
+                                    <th style="text-align: right;">Avg Order</th>
+                                    <th style="text-align: right;">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="customersTableBody">
+                                <tr><td colspan="6" style="text-align: center; color: #999;">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../scripts/supabase.js"></script>
+    <script src="../scripts/auth.js"></script>
+    <script src="../scripts/toast.js"></script>
+    <script src="../scripts/notifications.js"></script>
+    <script src="../scripts/reports.js"></script>
+    <script src="../scripts/dashboard-modern.js"></script>
+</body>
+</html>

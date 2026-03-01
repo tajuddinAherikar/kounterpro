@@ -106,9 +106,14 @@ function hideSkeletonLoaders() {
 // Initialize dashboard data
 async function initializeDashboard() {
     try {
-        // Get current user first
+        // Auth check already done in auth.js, just load dashboard data
+        // The user must be authenticated at this point
+        
+        // Get current user for operations
         const user = await supabaseGetCurrentUser();
         if (!user) {
+            // This shouldn't happen if auth.js did its job, but as a failsafe
+            console.warn('⚠️ User not authenticated in dashboard');
             window.location.href = 'login.html';
             return;
         }
@@ -635,11 +640,15 @@ function updateInvoiceTable(invoices) {
             <td>${units}</td>
             <td>₹${formatIndianCurrency(amount)}</td>
             <td class="action-cell">
+                <a href="#" class="action-link edit-link" data-id="${invoice.id}">
+                    <span class="material-icons">edit</span>
+                    Edit
+                </a>
                 <a href="#" class="action-link view-link" data-id="${invoice.id}">
                     <span class="material-icons">visibility</span>
                     View
                 </a>
-                <a href="#" class="action-link delete-link" data-id="${invoice.id}" style="color: #dc3545; margin-left: 12px;">
+                <a href="#" class="action-link delete-link" data-id="${invoice.id}">
                     <span class="material-icons">delete</span>
                     Delete
                 </a>
@@ -647,8 +656,14 @@ function updateInvoiceTable(invoices) {
         `;
         
         // Add event listeners
+        const editLink = row.querySelector('.edit-link');
         const viewLink = row.querySelector('.view-link');
         const deleteLink = row.querySelector('.delete-link');
+        
+        editLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            editInvoice(invoice.id);
+        });
         
         viewLink.addEventListener('click', (e) => {
             e.preventDefault();
@@ -732,6 +747,29 @@ function downloadCurrentPDF() {
     }
 }
 
+// Edit invoice
+async function editInvoice(invoiceId) {
+    try {
+        const result = await supabaseGetInvoices();
+        const invoices = result.success ? result.data : [];
+        const invoice = invoices.find(inv => inv.id === invoiceId);
+        
+        if (!invoice) {
+            alert('❌ Invoice not found');
+            return;
+        }
+        
+        // Store invoice data in sessionStorage to load on create-bill page
+        sessionStorage.setItem('editingInvoice', JSON.stringify(invoice));
+        
+        // Redirect to create-bill page with edit mode
+        window.location.href = 'create-bill.html?mode=edit';
+    } catch (error) {
+        console.error('Error loading invoice for editing:', error);
+        alert('❌ Error loading invoice for editing');
+    }
+}
+
 // Delete invoice
 async function deleteInvoice(invoiceId) {
     try {
@@ -751,7 +789,8 @@ async function deleteInvoice(invoiceId) {
             `This action cannot be undone!\n\n` +
             `Are you sure you want to delete this invoice?`;
         
-        if (confirm(confirmMessage)) {
+        const confirmed = await showDeleteConfirm(`invoice ${invoice.invoice_number}`);
+        if (confirmed) {
             const deleteResult = await supabaseDeleteInvoice(invoiceId);
             
             if (deleteResult.success) {

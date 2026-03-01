@@ -5,7 +5,7 @@
 }
 
 body {
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
@@ -79,7 +79,7 @@ body {
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 14px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     transition: border-color 0.3s;
 }
 
@@ -144,7 +144,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: background-color 0.3s;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .btn-login:hover {
@@ -208,7 +208,7 @@ header > div {
     transition: all 0.3s;
     flex: 1;
     min-width: 200px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .btn-nav:hover {
@@ -396,7 +396,7 @@ h3 {
     border-radius: 4px;
     font-size: 14px;
     width: 300px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .report-controls {
@@ -417,7 +417,7 @@ h3 {
     font-size: 14px;
     font-weight: 600;
     transition: all 0.3s;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .btn-report:hover {
@@ -470,7 +470,7 @@ h3 {
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 14px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     transition: border-color 0.3s;
 }
 
@@ -525,7 +525,7 @@ h3 {
     border: 2px solid #ddd;
     border-radius: 6px;
     font-size: 14px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     transition: border-color 0.3s;
 }
 
@@ -665,7 +665,7 @@ textarea#termsConditions {
     border: 2px solid #e0e0e0;
     border-radius: 6px;
     font-size: 14px;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     transition: border-color 0.2s ease;
 }
 
@@ -760,7 +760,7 @@ textarea#termsConditions {
     border-radius: 3px;
     font-size: 14px;
     min-width: 80px; /* Prevents inputs from becoming too narrow */
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .items-table textarea {
@@ -1452,7 +1452,7 @@ button .material-icons {
     padding: 8px 12px 8px 20px;
     cursor: pointer;
     transition: all 0.3s ease;
-    font-family: 'Lato', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .user-profile-button:hover {

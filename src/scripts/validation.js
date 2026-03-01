@@ -255,8 +255,14 @@ function showSuccess(message) {
 /**
  * Show confirmation dialog
  */
-function showConfirmation(message) {
-    return confirm(message);
+async function showConfirmation(message) {
+    return await showConfirmDialog({
+        title: 'Confirmation',
+        message: message,
+        confirmText: 'Confirm',
+        cancelText: 'Cancel',
+        type: 'info'
+    });
 }
 
 /**

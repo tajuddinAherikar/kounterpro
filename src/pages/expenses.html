@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="../styles/styles.css">
+    <link rel="stylesheet" href="../styles/styles-new.css">
+    <link rel="stylesheet" href="../styles/dark-mode.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../scripts/dark-mode.js"></script>
+</head>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item" title="Dashboard">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <a href="create-bill.html" class="nav-item" title="Create Invoice">
+                <span class="material-icons">receipt_long</span>
+                <span class="nav-text">Create Invoice</span>
+            </a>
+            <a href="inventory.html" class="nav-item" title="Inventory">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item" title="Customers">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <a href="expenses.html" class="nav-item active" title="Expenses">
+                <span class="material-icons">receipt</span>
+                <span class="nav-text">Expenses</span>
+            </a>
+            <a href="reports.html" class="nav-item" title="Reports">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Reports</span>
+            </a>
+            <a href="profile.html" class="nav-item" title="Business Profile">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;" title="Backup Data">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;" title="Restore Data">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;" title="Logout">
+                <span class="material-icons">logout</span>
+                <span class="nav-text">Logout</span>
+            </a>
+        </nav>
+        
+        <input type="file" id="restoreFileInput" accept=".json" style="display: none;" onchange="importBackup(event)">
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mobile Header Bar -->
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <h1 class="mobile-header-title">Expenses</h1>
+        <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
+            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
+                <span class="material-icons">account_circle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title">Expense Tracker</h1>
+                <p class="page-subtitle">Track and manage your business expenses</p>
+            </div>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+                <button class="notification-btn" id="notificationBtn" title="Notifications">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Notification Dropdown -->
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <button class="btn-text" onclick="markAllAsRead()">Mark all as read</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-empty">
+                    <span class="material-icons">notifications_none</span>
+                    <p>No notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Page Content -->
+        <div class="page-content">
+            <!-- Quick Action Button -->
+            <div style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+                <button class="btn-primary" onclick="showAddExpenseForm()" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons">add</span> Add Expense
+                </button>
+                <button class="btn-secondary" onclick="exportExpensesData()" style="display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons">download</span> Export CSV
+                </button>
+            </div>
+
+            <!-- Summary Stats -->
+            <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 24px;">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="material-icons">trending_down</span>
+                        <span class="stat-card-label">Total Expenses</span>
+                    </div>
+                    <div class="stat-card-value" id="totalExpenses">₹0</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;" id="expenseCount">0 expenses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="material-icons">calendar_month</span>
+                        <span class="stat-card-label">This Month</span>
+                    </div>
+                    <div class="stat-card-value" id="monthExpenses">₹0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="material-icons">category</span>
+                        <span class="stat-card-label">Top Category</span>
+                    </div>
+                    <div class="stat-card-value" id="topCategory" style="font-size: 18px;">-</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;" id="topCategoryAmount">₹0</div>
+                </div>
+            </div>
+
+            <!-- Monthly Expenses Chart -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span class="material-icons">trending_down</span>
+                        Monthly Expense Trends
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 350px;">
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Category Breakdown -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3 style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                        <span class="material-icons">pie_chart</span>
+                        Expense by Category
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Expenses List -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-icons">receipt</span>
+                        Recent Expenses
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-wrapper">
+                        <table class="modern-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="expensesTableBody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
+                                        <span class="material-icons" style="font-size: 48px; color: #ddd;">receipt</span>
+                                        <p style="margin-top: 16px;">No expenses yet. Add your first expense!</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Expense Modal -->
+    <div id="expenseModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add Expense</h2>
+                <span class="close" onclick="closeExpenseModal()">&times;</span>
+            </div>
+            <form id="expenseForm" class="modal-form">
+                <input type="hidden" id="expenseId">
+                
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">attach_money</span>
+                        <span>Amount <span class="required">*</span></span>
+                    </label>
+                    <input type="number" id="expenseAmount" placeholder="0.00" step="0.01" required min="0">
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">description</span>
+                        <span>Description <span class="required">*</span></span>
+                    </label>
+                    <input type="text" id="expenseDescription" placeholder="e.g., Office supplies" required>
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">category</span>
+                        <span>Category <span class="required">*</span></span>
+                    </label>
+                    <select id="expenseCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="Supplies">📦 Supplies</option>
+                        <option value="Labor">👷 Labor</option>
+                        <option value="Utilities">💡 Utilities</option>
+                        <option value="Transport">🚚 Transport</option>
+                        <option value="Other">📌 Other</option>
+                        <option value="Miscellaneous">🔧 Miscellaneous</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">calendar_today</span>
+                        <span>Date <span class="required">*</span></span>
+                    </label>
+                    <input type="date" id="expenseDate" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeExpenseModal()"><span class="material-icons">cancel</span> Cancel</button>
+                    <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../scripts/supabase.js"></script>
+    <script src="../scripts/auth.js"></script>
+    <script src="../scripts/dialog.js"></script>
+    <script src="../scripts/toast.js"></script>
+    <script src="../scripts/notifications.js"></script>
+    <script src="../scripts/expenses.js"></script>
+    <script src="../scripts/dashboard-modern.js"></script>
+</body>
+</html>
