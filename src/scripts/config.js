@@ -1,6 +1,6 @@
 // KounterPro Configuration
 const APP_CONFIG = {
-    version: '1.0.6',
+    version: '2.0.0',
     name: 'KounterPro',
     year: '2026'
 };
