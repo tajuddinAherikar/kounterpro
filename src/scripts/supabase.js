@@ -8,6 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabaseClient = null;
 let cachedUser = null; // Cache for current user to avoid multiple auth calls
 let userCachePromise = null; // Promise for concurrent requests
+let supabaseInitPromise = null; // Promise for initialization
 
 // Initialize as soon as the library is available
 if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
@@ -37,6 +38,45 @@ function initSupabase() {
         console.error('❌ Error initializing Supabase:', error);
         return null;
     }
+}
+
+// Wait for Supabase to be ready
+async function ensureSupabaseReady() {
+    if (supabaseClient) {
+        return supabaseClient;
+    }
+
+    // Return existing promise if already waiting
+    if (supabaseInitPromise) {
+        return supabaseInitPromise;
+    }
+
+    // Create new initialization promise
+    supabaseInitPromise = new Promise((resolve, reject) => {
+        const maxAttempts = 50; // 5 seconds with 100ms intervals
+        let attempts = 0;
+
+        const checkSupabase = () => {
+            if (typeof window.supabase !== 'undefined') {
+                supabaseClient = initSupabase();
+                if (supabaseClient) {
+                    resolve(supabaseClient);
+                    return;
+                }
+            }
+
+            attempts++;
+            if (attempts < maxAttempts) {
+                setTimeout(checkSupabase, 100);
+            } else {
+                reject(new Error('Supabase failed to initialize'));
+            }
+        };
+
+        checkSupabase();
+    });
+
+    return supabaseInitPromise;
 }
 
 // ============================================
@@ -270,6 +310,35 @@ async function supabaseGetUserProfile(userId) {
     }
 }
 
+async function supabaseCreateOAuthUserProfile(user) {
+    try {
+        const client = await ensureSupabaseReady();
+        if (!client) throw new Error('Supabase client not initialized');
+        
+        const { error } = await client
+            .from('user_profiles')
+            .insert([{
+                user_id: user.id,
+                email: user.email,
+                business_name: 'My Business',
+                phone: '',
+                city: '',
+                state: '',
+                country: '',
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                profile_image_url: user.user_metadata?.avatar_url || null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }]);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Create OAuth profile error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 async function supabaseUpdateUserProfile(userId, profileData) {
     try {
         if (!supabaseClient) initSupabase();
@@ -294,6 +363,69 @@ async function supabaseUpdateUserProfile(userId, profileData) {
         return { success: true, data: data[0] };
     } catch (error) {
         console.error('Update user profile error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================
+// GOOGLE OAUTH FUNCTIONS (Phase 1)
+// ============================================
+
+async function supabaseSignInWithGoogle() {
+    try {
+        const client = await ensureSupabaseReady();
+        if (!client) throw new Error('Supabase client not initialized');
+        
+        const { data, error } = await client.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + '/src/pages/index.html',
+                queryParams: {
+                    access_type: 'offline',
+                    prompt: 'consent'
+                }
+            }
+        });
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Google OAuth error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseGetSessionData() {
+    try {
+        const client = await ensureSupabaseReady();
+        if (!client) throw new Error('Supabase client not initialized');
+        
+        const { data, error } = await client.auth.getSession();
+        
+        if (error) throw error;
+        return { success: true, data: data?.session };
+    } catch (error) {
+        console.error('Get session error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseLinkIdentity(provider) {
+    try {
+        const client = await ensureSupabaseReady();
+        if (!client) throw new Error('Supabase client not initialized');
+        
+        const { error } = await client.auth.linkIdentity({
+            provider: provider,
+            options: {
+                redirectTo: window.location.origin + '/src/pages/profile.html'
+            }
+        });
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Link identity error:', error);
         return { success: false, error: error.message };
     }
 }
@@ -812,6 +944,19 @@ async function supabaseDeleteExpense(id) {
         return { success: false, error: error.message };
     }
 }
+
+// ============================================
+// PASSWORD RESET FUNCTIONS (Phase 2)
+// Uses Supabase's built-in password reset
+// ============================================
+
+// Password reset is now handled by Supabase's native functions:
+// - auth.resetPasswordForEmail(email) - Sends reset email
+// - User gets recovery session when clicking email link
+// - auth.updateUser({ password: newPassword }) - Updates password
+
+// No custom token management needed!
+// More secure and battle-tested approach.
 
 // Initialize on page load
 if (typeof window !== 'undefined') {
