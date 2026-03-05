@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="../styles/styles.css">
     <link rel="stylesheet" href="../styles/styles-new.css">
     <link rel="stylesheet" href="../styles/dark-mode.css">
+    <link rel="stylesheet" href="../styles/invoice-templates.css">
     <script src="../scripts/dark-mode.js"></script>
 </head>
 <body class="modern-layout">
@@ -141,6 +142,10 @@
                 <span class="material-icons">business</span>
                 Profile Settings
             </button>
+            <button class="tab-btn" data-tab="invoice-templates">
+                <span class="material-icons">receipt_long</span>
+                Invoice Templates
+            </button>
             <button class="tab-btn" data-tab="password-security">
                 <span class="material-icons">lock</span>
                 Password & Security
@@ -226,6 +231,36 @@
                     
                     <div class="form-row">
                         <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">tag</span>
+                            <span>Invoice Number Prefix <span class="optional">(optional)</span></span>
+                        </label>
+                        <input type="text" id="invoicePrefix" maxlength="20" placeholder="e.g., INV, SHOP, BILL" pattern="[A-Z0-9\-\_\/]+" style="text-transform: uppercase;">
+                        <small class="form-hint">Custom prefix for invoice numbers (uppercase letters, numbers, -, _, /). Leave empty to use default format.</small>
+                    </div>
+
+                    <div class="form-row-group">
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">format_list_numbered</span>
+                                <span>Starting Invoice Number <span class="optional">(optional)</span></span>
+                            </label>
+                            <input type="number" id="startingInvoiceNumber" min="1" max="999999" placeholder="e.g., 1, 100, 1001">
+                            <small class="form-hint">First invoice number in sequence</small>
+                        </div>
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">preview</span>
+                                <span>Preview</span>
+                            </label>
+                            <div class="invoice-number-preview" id="invoiceNumberPreview">
+                                <span class="preview-label">Next invoice will be:</span>
+                                <span class="preview-number" id="previewNumber">INV-0001</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
                             <span class="material-icons label-icon">assignment</span>
                             <span>Terms & Conditions <span class="optional">(optional)</span></span>
                         </label>
@@ -237,6 +272,184 @@
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="window.location.href='index.html'"><span class="material-icons">cancel</span> Cancel</button>
                     <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Profile</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Invoice Templates Tab -->
+        <div id="invoice-templates" class="tab-content">
+            <form id="templateForm" class="profile-form">
+                <div class="form-section">
+                    <h3 class="section-title"><span class="material-icons">palette</span> Invoice Design & Branding</h3>
+                    <p class="section-description">Customize how your invoices look and feel. Choose a template style and add your branding.</p>
+                    
+                    <!-- Template Selection -->
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">view_quilt</span>
+                            <span>Invoice Template <span class="required">*</span></span>
+                        </label>
+                        <div class="template-grid" id="templateGrid">
+                            <div class="template-card" data-template="classic">
+                                <div class="template-preview">
+                                    <span class="material-icons">description</span>
+                                </div>
+                                <div class="template-info">
+                                    <h4>Classic</h4>
+                                    <p>Simple, minimal layout</p>
+                                </div>
+                                <div class="template-radio">
+                                    <input type="radio" name="invoiceTemplate" value="classic" id="template-classic" checked>
+                                    <label for="template-classic"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="template-card" data-template="modern">
+                                <div class="template-preview">
+                                    <span class="material-icons">auto_awesome</span>
+                                </div>
+                                <div class="template-info">
+                                    <h4>Modern</h4>
+                                    <p>Clean with better spacing</p>
+                                </div>
+                                <div class="template-radio">
+                                    <input type="radio" name="invoiceTemplate" value="modern" id="template-modern">
+                                    <label for="template-modern"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="template-card" data-template="gst_format">
+                                <div class="template-preview">
+                                    <span class="material-icons">assignment</span>
+                                </div>
+                                <div class="template-info">
+                                    <h4>GST Format</h4>
+                                    <p>Structured for compliance</p>
+                                </div>
+                                <div class="template-radio">
+                                    <input type="radio" name="invoiceTemplate" value="gst_format" id="template-gst">
+                                    <label for="template-gst"></label>
+                                </div>
+                            </div>
+                            
+                            <div class="template-card" data-template="retail">
+                                <div class="template-preview">
+                                    <span class="material-icons">shopping_cart</span>
+                                </div>
+                                <div class="template-info">
+                                    <h4>Retail</h4>
+                                    <p>Compact for retail billing</p>
+                                </div>
+                                <div class="template-radio">
+                                    <input type="radio" name="invoiceTemplate" value="retail" id="template-retail">
+                                    <label for="template-retail"></label>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="previewTemplate()" style="margin-top: 12px;">
+                            <span class="material-icons">visibility</span> Preview Template
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="section-title"><span class="material-icons">image</span> Business Logo</h3>
+                    <p class="section-description">Upload your business logo to appear on invoices. Recommended size: 300x100px</p>
+                    
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">cloud_upload</span>
+                            <span>Logo Image <span class="optional">(optional)</span></span>
+                        </label>
+                        
+                        <div class="logo-upload-container">
+                            <div class="logo-preview" id="logoPreview">
+                                <span class="material-icons">add_photo_alternate</span>
+                                <p>No logo uploaded</p>
+                            </div>
+                            <div class="logo-upload-actions">
+                                <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" style="display: none;">
+                                <button type="button" class="btn-secondary" onclick="document.getElementById('logoUpload').click()">
+                                    <span class="material-icons">file_upload</span> Upload Logo
+                                </button>
+                                <button type="button" class="btn-secondary" id="removeLogoBtn" onclick="removeLogo()" style="display: none;">
+                                    <span class="material-icons">delete</span> Remove
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-hint">Supported formats: PNG, JPEG, SVG. Maximum size: 2MB</small>
+                    </div>
+
+                    <div class="form-row-group">
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">location_searching</span>
+                                <span>Logo Position</span>
+                            </label>
+                            <select id="logoPosition">
+                                <option value="left">Left</option>
+                                <option value="center">Center</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">visibility</span>
+                                <span>Show Logo on Invoices</span>
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 12px; height: 42px;">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="showLogo" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span id="showLogoLabel" style="font-size: 14px; color: #2845D6; font-weight: 500;">Enabled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="section-title"><span class="material-icons">color_lens</span> Brand Colors</h3>
+                    <p class="section-description">Choose your primary brand color to apply to invoice headers and highlights.</p>
+                    
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">palette</span>
+                            <span>Primary Brand Color</span>
+                        </label>
+                        <div class="color-picker-container">
+                            <input type="color" id="brandColor" value="#2845D6">
+                            <input type="text" id="brandColorHex" value="#2845D6" maxlength="7" pattern="^#[0-9A-Fa-f]{6}$" placeholder="#2845D6">
+                            <div class="color-presets">
+                                <button type="button" class="color-preset" data-color="#2845D6" style="background: #2845D6;" title="Blue"></button>
+                                <button type="button" class="color-preset" data-color="#4CAF50" style="background: #4CAF50;" title="Green"></button>
+                                <button type="button" class="color-preset" data-color="#F44336" style="background: #F44336;" title="Red"></button>
+                                <button type="button" class="color-preset" data-color="#FF9800" style="background: #FF9800;" title="Orange"></button>
+                                <button type="button" class="color-preset" data-color="#9C27B0" style="background: #9C27B0;" title="Purple"></button>
+                                <button type="button" class="color-preset" data-color="#00BCD4" style="background: #00BCD4;" title="Cyan"></button>
+                                <button type="button" class="color-preset" data-color="#607D8B" style="background: #607D8B;" title="Gray"></button>
+                                <button type="button" class="color-preset" data-color="#212121" style="background: #212121;" title="Black"></button>
+                            </div>
+                        </div>
+                        <small class="form-hint">This color will be used for headers, dividers, and totals</small>
+                    </div>
+
+                    <div class="brand-color-preview">
+                        <div class="preview-label">Preview:</div>
+                        <div class="preview-samples">
+                            <div class="preview-header" id="previewHeader">
+                                <span>Invoice Header</span>
+                            </div>
+                            <div class="preview-total" id="previewTotal">
+                                <span>Total Amount: ₹12,500</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="resetTemplateSettings()"><span class="material-icons">refresh</span> Reset to Default</button>
+                    <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Template Settings</button>
                 </div>
             </form>
         </div>
@@ -293,6 +506,34 @@
         </div>
     </div>
 
+    <!-- Template Preview Modal -->
+    <div id="templatePreviewModal">
+        <div class="modal-overlay" onclick="closeTemplatePreview()"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2><span class="material-icons">visibility</span> Invoice Template Preview</h2>
+                <button class="modal-close" onclick="closeTemplatePreview()" aria-label="Close">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="previewLoadingState">
+                    <div class="loading-spinner"></div>
+                    <p>Generating preview...</p>
+                </div>
+                <iframe id="previewIframe" style="display: none;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeTemplatePreview()">
+                    <span class="material-icons">close</span> Close
+                </button>
+                <button type="button" class="btn-primary" onclick="downloadPreviewPDF()">
+                    <span class="material-icons">download</span> Download Preview
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../scripts/dialog.js"></script>
     <script src="../scripts/toast.js"></script>
@@ -300,6 +541,9 @@
     <script src="../scripts/auth.js"></script>
     <script src="../scripts/backup.js"></script>
     <script src="../scripts/notifications.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="../scripts/invoice-templates.js"></script>
     <script>
         let currentUser = null;
 
@@ -336,6 +580,9 @@
                 
                 if (result.success && result.data) {
                     const profile = result.data;
+                    // Update currentUser with all profile data including template settings
+                    currentUser = { ...currentUser, ...profile };
+                    
                     document.getElementById('businessName').value = profile.business_name || '';
                     document.getElementById('businessAddress').value = profile.business_address || '';
                     document.getElementById('contactNumber1').value = profile.contact_number_1 || '';
@@ -343,7 +590,12 @@
                     document.getElementById('businessEmail').value = profile.business_email || '';
                     document.getElementById('gstNumber').value = profile.gst_number || '';
                     document.getElementById('upiId').value = profile.upi_id || '';
+                    document.getElementById('invoicePrefix').value = profile.invoice_prefix || '';
+                    document.getElementById('startingInvoiceNumber').value = profile.starting_invoice_number || 1;
                     document.getElementById('termsConditions').value = profile.terms_conditions || '';
+                    
+                    // Update invoice number preview
+                    updateInvoiceNumberPreview();
                 }
             } catch (error) {
                 hideSkeletonLoaders();
@@ -362,7 +614,10 @@
             const contactNumber2 = document.getElementById('contactNumber2').value.trim();
             const businessEmail = document.getElementById('businessEmail').value.trim();
             const gstNumber = document.getElementById('gstNumber').value.trim().toUpperCase();
-            const upiId = document.getElementById('upiId').value.trim();            const termsConditions = document.getElementById('termsConditions').value.trim();
+            const upiId = document.getElementById('upiId').value.trim();
+            const invoicePrefix = document.getElementById('invoicePrefix').value.trim().toUpperCase();
+            const startingInvoiceNumber = parseInt(document.getElementById('startingInvoiceNumber').value) || 1;
+            const termsConditions = document.getElementById('termsConditions').value.trim();
             // Validation
             if (!businessName || businessName.length < 2) {
                 alert('❌ Business name must be at least 2 characters');
@@ -401,6 +656,15 @@
             submitBtn.disabled = true;
 
             try {
+                // Validate invoice prefix format if provided
+                if (invoicePrefix && !/^[A-Z0-9\-\_\/]+$/.test(invoicePrefix)) {
+                    throw new Error('Invoice prefix can only contain uppercase letters, numbers, -, _, /');
+                }
+                
+                if (startingInvoiceNumber < 1 || startingInvoiceNumber > 999999) {
+                    throw new Error('Starting invoice number must be between 1 and 999999');
+                }
+                
                 const profileData = {
                     business_name: businessName,
                     business_address: businessAddress,
@@ -409,12 +673,16 @@
                     business_email: businessEmail,
                     gst_number: gstNumber || null,
                     upi_id: upiId || null,
+                    invoice_prefix: invoicePrefix || null,
+                    starting_invoice_number: startingInvoiceNumber,
                     terms_conditions: termsConditions
                 };
 
                 const result = await supabaseUpdateUserProfile(currentUser.id, profileData);
 
                 if (result.success) {
+                    // Update currentUser object with new settings
+                    Object.assign(currentUser, profileData);
                     alert('✅ Profile updated successfully!');
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
@@ -517,9 +785,470 @@
             }
         }
 
+        // ============================================
+        // INVOICE TEMPLATE FUNCTIONS
+        // ============================================
+
+        let currentLogoPath = null;
+
+        // Update invoice number preview
+        function updateInvoiceNumberPreview() {
+            const prefix = document.getElementById('invoicePrefix').value.trim().toUpperCase() || 'INV';
+            const startingNumber = parseInt(document.getElementById('startingInvoiceNumber').value) || 1;
+            const counter = currentUser?.current_invoice_counter || 0;
+            const nextNumber = startingNumber + counter;
+            const paddedNumber = String(nextNumber).padStart(4, '0');
+            const invoiceNumber = prefix ? `${prefix}-${paddedNumber}` : `INV-${paddedNumber}`;
+            
+            document.getElementById('previewNumber').textContent = invoiceNumber;
+        }
+
+        // Load template settings
+        async function loadTemplateSettings() {
+            if (!currentUser || !currentUser.id) {
+                console.log('User not loaded yet, skipping template settings load');
+                return;
+            }
+            
+            try {
+                const result = await supabaseGetUserProfile(currentUser.id);
+                if (result.success && result.data) {
+                    const profile = result.data;
+                    
+                    // Update currentUser with template settings
+                    currentUser.invoice_template = profile.invoice_template;
+                    currentUser.brand_color = profile.brand_color;
+                    currentUser.logo_url = profile.logo_url;
+                    currentUser.logo_position = profile.logo_position;
+                    currentUser.show_logo = profile.show_logo;
+                    
+                    // Set template selection
+                    const template = profile.invoice_template || 'classic';
+                    document.querySelector(`input[name="invoiceTemplate"][value="${template}"]`).checked = true;
+                    updateTemplateCardSelection(template);
+                    
+                    // Set brand color
+                    const brandColor = profile.brand_color || '#2845D6';
+                    document.getElementById('brandColor').value = brandColor;
+                    document.getElementById('brandColorHex').value = brandColor;
+                    updateBrandColorPreview(brandColor);
+                    
+                    // Set logo
+                    if (profile.logo_url) {
+                        currentLogoPath = profile.logo_url;
+                        updateLogoPreview(profile.logo_url);
+                    }
+                    
+                    // Set logo settings
+                    document.getElementById('logoPosition').value = profile.logo_position || 'left';
+                    document.getElementById('showLogo').checked = profile.show_logo !== false;
+                    updateShowLogoLabel();
+                }
+            } catch (error) {
+                console.error('Error loading template settings:', error);
+            }
+        }
+
+        // Update template card selection
+        function updateTemplateCardSelection(template) {
+            document.querySelectorAll('.template-card').forEach(card => {
+                card.classList.remove('selected');
+                if (card.dataset.template === template) {
+                    card.classList.add('selected');
+                }
+            });
+        }
+
+        // Update logo preview
+        function updateLogoPreview(url) {
+            const preview = document.getElementById('logoPreview');
+            preview.innerHTML = `<img src="${url}" alt="Business Logo">`;
+            preview.classList.add('has-logo');
+            document.getElementById('removeLogoBtn').style.display = 'block';
+        }
+
+        // Remove logo preview
+        function clearLogoPreview() {
+            const preview = document.getElementById('logoPreview');
+            preview.innerHTML = `
+                <span class="material-icons">add_photo_alternate</span>
+                <p>No logo uploaded</p>
+            `;
+            preview.classList.remove('has-logo');
+            document.getElementById('removeLogoBtn').style.display = 'none';
+        }
+
+        // Update brand color preview
+        function updateBrandColorPreview(color) {
+            document.getElementById('previewHeader').style.background = color;
+            document.getElementById('previewTotal').style.background = color;
+            
+            // Update active preset
+            document.querySelectorAll('.color-preset').forEach(preset => {
+                preset.classList.remove('active');
+                if (preset.dataset.color.toLowerCase() === color.toLowerCase()) {
+                    preset.classList.add('active');
+                }
+            });
+        }
+
+        // Update show logo label
+        function updateShowLogoLabel() {
+            const checkbox = document.getElementById('showLogo');
+            const label = document.getElementById('showLogoLabel');
+            label.textContent = checkbox.checked ? 'Enabled' : 'Disabled';
+            label.style.color = checkbox.checked ? '#2845D6' : '#7f8c8d';
+        }
+
+        // Remove logo
+        async function removeLogo() {
+            if (!confirm('Are you sure you want to remove the logo?')) {
+                return;
+            }
+            
+            try {
+                // Delete from storage if there's a path
+                if (currentLogoPath) {
+                    // Extract path from URL
+                    const urlParts = currentLogoPath.split('/business-logos/');
+                    if (urlParts.length > 1) {
+                        const filePath = urlParts[1];
+                        await supabaseDeleteLogo(filePath);
+                    }
+                }
+                
+                // Update profile to remove logo URL
+                const result = await supabaseUpdateUserProfile(currentUser.id, {
+                    logo_url: null
+                });
+                
+                if (result.success) {
+                    currentLogoPath = null;
+                    clearLogoPreview();
+                    showToast('Logo removed successfully!', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error removing logo:', error);
+                showToast('Failed to remove logo', 'error');
+            }
+        }
+
+        // Reset template settings
+        async function resetTemplateSettings() {
+            if (!confirm('Reset template settings to default?')) {
+                return;
+            }
+            
+            try {
+                const defaultSettings = {
+                    invoice_template: 'classic',
+                    brand_color: '#2845D6',
+                    logo_position: 'left',
+                    show_logo: true
+                };
+                
+                const result = await supabaseUpdateUserProfile(currentUser.id, defaultSettings);
+                
+                if (result.success) {
+                    loadTemplateSettings();
+                    showToast('Template settings reset to default!', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error resetting settings:', error);
+                showToast('Failed to reset settings', 'error');
+            }
+        }
+
+        // Store preview PDF globally for download
+        let currentPreviewPDF = null;
+
+        // Preview template with sample data
+        async function previewTemplate() {
+            if (!currentUser) {
+                showToast('Please wait for profile to load', 'warning');
+                return;
+            }
+            
+            const selectedTemplate = document.querySelector('input[name="invoiceTemplate"]:checked').value;
+            const brandColor = document.getElementById('brandColor').value;
+            const showLogo = document.getElementById('showLogo').checked;
+            const logoPosition = document.getElementById('logoPosition').value;
+            const logoUrl = currentLogoPath || currentUser?.logo_url || null;
+
+            // Open modal
+            const modal = document.getElementById('templatePreviewModal');
+            modal.classList.add('show');
+            
+            // Show loading state
+            document.getElementById('previewLoadingState').style.display = 'block';
+            document.getElementById('previewIframe').style.display = 'none';
+
+            try {
+                // Sample invoice data for preview
+                const sampleInvoiceData = {
+                    invoiceNo: 'INV-2026-001',
+                    date: '2026-03-05',
+                    customerName: 'Sample Customer Pvt Ltd',
+                    customerAddress: '123 Business Street, Commercial Area, Mumbai, Maharashtra - 400001',
+                    customerMobile: '+91 98765 43210',
+                    customerGST: '27AABCU9603R1ZM',
+                    items: [
+                        {
+                            description: 'Product A - Premium Quality',
+                            hsn: '8471',
+                            quantity: 5,
+                            rate: 1000,
+                            amount: 5000,
+                            gst: 18
+                        },
+                        {
+                            description: 'Product B - Standard Package',
+                            hsn: '8473',
+                            quantity: 10,
+                            rate: 500,
+                            amount: 5000,
+                            gst: 18
+                        },
+                        {
+                            description: 'Service Charges - Installation',
+                            hsn: '9987',
+                            quantity: 1,
+                            rate: 2000,
+                            amount: 2000,
+                            gst: 18
+                        }
+                    ],
+                    subtotal: 12000,
+                    gstRate: 18,
+                    gstAmount: 2160,
+                    cgst: 1080,
+                    sgst: 1080,
+                    igst: 0,
+                    grandTotal: 14160,
+                    amountInWords: 'Fourteen Thousand One Hundred Sixty Rupees Only',
+                    termsConditions: '1. Payment due within 15 days\n2. Goods once sold will not be taken back\n3. Subject to Mumbai jurisdiction',
+                    notes: 'Thank you for your business!'
+                };
+
+                // Sample profile data
+                const sampleProfile = {
+                    business_name: currentUser?.business_name || 'Your Business Name',
+                    business_address: currentUser?.business_address || '456 Business Park, Industrial Area, City, State - 400001',
+                    gstin: currentUser?.gstin || '27AABCU9603R1ZX',
+                    contact_number_1: currentUser?.contact_number_1 || '+91 98765 43210',
+                    contact_number_2: currentUser?.contact_number_2 || null,
+                    email: currentUser?.email || 'business@example.com',
+                    upi_id: currentUser?.upi_id || 'business@paytm',
+                    terms_conditions: currentUser?.terms_conditions || null
+                };
+
+                const settings = {
+                    brand_color: brandColor,
+                    show_logo: showLogo,
+                    logo_url: logoUrl,
+                    logo_position: logoPosition
+                };
+
+                // Generate PDF using the template renderer
+                currentPreviewPDF = await renderInvoiceTemplate(selectedTemplate, sampleInvoiceData, sampleProfile, settings);
+                
+                // Convert PDF to blob and display in iframe
+                const pdfBlob = currentPreviewPDF.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                
+                const iframe = document.getElementById('previewIframe');
+                iframe.src = pdfUrl;
+                
+                // Hide loading, show iframe
+                document.getElementById('previewLoadingState').style.display = 'none';
+                iframe.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error generating preview:', error);
+                showToast('Failed to generate preview', 'error');
+                closeTemplatePreview();
+            }
+        }
+
+        // Close template preview modal
+        function closeTemplatePreview() {
+            const modal = document.getElementById('templatePreviewModal');
+            modal.classList.remove('show');
+            
+            // Clean up
+            const iframe = document.getElementById('previewIframe');
+            if (iframe.src) {
+                URL.revokeObjectURL(iframe.src);
+                iframe.src = '';
+            }
+            currentPreviewPDF = null;
+        }
+
+        // Download preview PDF
+        function downloadPreviewPDF() {
+            if (currentPreviewPDF) {
+                const selectedTemplate = document.querySelector('input[name="invoiceTemplate"]:checked').value;
+                currentPreviewPDF.save(`Invoice_Preview_${selectedTemplate}.pdf`);
+                showToast('Preview downloaded successfully!', 'success');
+            }
+        }
+
+        // Handle template form submission
+        document.getElementById('templateForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Saving...';
+            submitBtn.disabled = true;
+            
+            try {
+                const templateData = {
+                    invoice_template: document.querySelector('input[name="invoiceTemplate"]:checked').value,
+                    brand_color: document.getElementById('brandColor').value,
+                    logo_position: document.getElementById('logoPosition').value,
+                    show_logo: document.getElementById('showLogo').checked
+                };
+                
+                // Add logo URL if it exists
+                if (currentLogoPath) {
+                    templateData.logo_url = currentLogoPath;
+                }
+                
+                const result = await supabaseUpdateUserProfile(currentUser.id, templateData);
+                
+                if (result.success) {
+                    // Update currentUser object with new settings
+                    Object.assign(currentUser, templateData);
+                    showToast('Template settings saved successfully!', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error saving template settings:', error);
+                showToast('Failed to save template settings', 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Handle logo upload
+        document.getElementById('logoUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // Validate file
+            const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+            if (!allowedTypes.includes(file.type)) {
+                showToast('Invalid file type. Please upload PNG, JPEG, or SVG', 'error');
+                return;
+            }
+            
+            const maxSize = 2 * 1024 * 1024; // 2MB
+            if (file.size > maxSize) {
+                showToast('File size too large. Maximum size is 2MB', 'error');
+                return;
+            }
+            
+            // Show uploading state
+            const preview = document.getElementById('logoPreview');
+            preview.innerHTML = `
+                <span class="material-icons rotating">sync</span>
+                <p>Uploading...</p>
+            `;
+            
+            try {
+                // Upload logo
+                const uploadResult = await supabaseUploadLogo(file, currentUser.id);
+                
+                if (!uploadResult.success) {
+                    throw new Error(uploadResult.error);
+                }
+                
+                // Update profile with logo URL
+                const result = await supabaseUpdateUserProfile(currentUser.id, {
+                    logo_url: uploadResult.url
+                });
+                
+                if (result.success) {
+                    currentLogoPath = uploadResult.url;
+                    // Update currentUser object so it persists
+                    if (currentUser) {
+                        currentUser.logo_url = uploadResult.url;
+                    }
+                    updateLogoPreview(uploadResult.url);
+                    showToast('Logo uploaded successfully!', 'success');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error uploading logo:', error);
+                showToast('Failed to upload logo', 'error');
+                clearLogoPreview();
+            }
+            
+            // Clear input
+            e.target.value = '';
+        });
+
+        // Handle brand color changes
+        document.getElementById('brandColor').addEventListener('input', function(e) {
+            const color = e.target.value;
+            document.getElementById('brandColorHex').value = color;
+            updateBrandColorPreview(color);
+        });
+
+        document.getElementById('brandColorHex').addEventListener('input', function(e) {
+            let color = e.target.value.trim();
+            if (!color.startsWith('#')) {
+                color = '#' + color;
+            }
+            if (/^#[0-9A-Fa-f]{6}$/.test(color)) {
+                document.getElementById('brandColor').value = color;
+                updateBrandColorPreview(color);
+            }
+        });
+
+        // Handle color preset clicks
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', function() {
+                const color = this.dataset.color;
+                document.getElementById('brandColor').value = color;
+                document.getElementById('brandColorHex').value = color;
+                updateBrandColorPreview(color);
+            });
+        });
+
+        // Handle invoice prefix and starting number changes for preview
+        document.getElementById('invoicePrefix').addEventListener('input', function(e) {
+            // Convert to uppercase automatically
+            e.target.value = e.target.value.toUpperCase();
+            updateInvoiceNumberPreview();
+        });
+
+        document.getElementById('startingInvoiceNumber').addEventListener('input', updateInvoiceNumberPreview);
+
+        // Handle template card clicks
+        document.querySelectorAll('.template-card').forEach(card => {
+            card.addEventListener('click', function() {
+                const template = this.dataset.template;
+                document.querySelector(`input[name="invoiceTemplate"][value="${template}"]`).checked = true;
+                updateTemplateCardSelection(template);
+            });
+        });
+
+        // Handle show logo toggle
+        document.getElementById('showLogo').addEventListener('change', updateShowLogoLabel);
+
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadProfile();
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadProfile();
+            await loadTemplateSettings();
             
             // Sidebar toggle functionality
             const sidebar = document.querySelector('.sidebar');

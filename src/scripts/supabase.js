@@ -344,18 +344,51 @@ async function supabaseUpdateUserProfile(userId, profileData) {
         if (!supabaseClient) initSupabase();
         if (!supabaseClient) throw new Error('Supabase client not initialized');
         
+        const updateData = {
+            business_name: profileData.business_name,
+            business_address: profileData.business_address,
+            contact_number_1: profileData.contact_number_1,
+            contact_number_2: profileData.contact_number_2,
+            business_email: profileData.business_email,
+            gst_number: profileData.gst_number,
+            upi_id: profileData.upi_id,
+            updated_at: new Date().toISOString()
+        };
+        
+        // Add template settings if provided
+        if (profileData.invoice_template !== undefined) {
+            updateData.invoice_template = profileData.invoice_template;
+        }
+        if (profileData.brand_color !== undefined) {
+            updateData.brand_color = profileData.brand_color;
+        }
+        if (profileData.logo_url !== undefined) {
+            updateData.logo_url = profileData.logo_url;
+        }
+        if (profileData.show_logo !== undefined) {
+            updateData.show_logo = profileData.show_logo;
+        }
+        if (profileData.logo_position !== undefined) {
+            updateData.logo_position = profileData.logo_position;
+        }
+        if (profileData.terms_conditions !== undefined) {
+            updateData.terms_conditions = profileData.terms_conditions;
+        }
+        
+        // Add invoice numbering settings if provided
+        if (profileData.invoice_prefix !== undefined) {
+            updateData.invoice_prefix = profileData.invoice_prefix;
+        }
+        if (profileData.starting_invoice_number !== undefined) {
+            updateData.starting_invoice_number = profileData.starting_invoice_number;
+        }
+        if (profileData.current_invoice_counter !== undefined) {
+            updateData.current_invoice_counter = profileData.current_invoice_counter;
+        }
+        
         const { data, error } = await supabaseClient
             .from('user_profiles')
-            .update({
-                business_name: profileData.business_name,
-                business_address: profileData.business_address,
-                contact_number_1: profileData.contact_number_1,
-                contact_number_2: profileData.contact_number_2,
-                business_email: profileData.business_email,
-                gst_number: profileData.gst_number,
-                upi_id: profileData.upi_id,
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('id', userId)
             .select();
         
@@ -363,6 +396,86 @@ async function supabaseUpdateUserProfile(userId, profileData) {
         return { success: true, data: data[0] };
     } catch (error) {
         console.error('Update user profile error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================
+// LOGO UPLOAD FUNCTIONS
+// ============================================
+
+/**
+ * Upload business logo to Supabase Storage
+ * @param {File} file - Logo image file
+ * @param {string} userId - User ID
+ * @returns {Promise<Object>} - Result with logo URL
+ */
+async function supabaseUploadLogo(file, userId) {
+    try {
+        if (!supabaseClient) initSupabase();
+        if (!supabaseClient) throw new Error('Supabase client not initialized');
+        
+        // Validate file type
+        const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml'];
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error('Invalid file type. Please upload PNG, JPEG, or SVG.');
+        }
+        
+        // Validate file size (max 2MB)
+        const maxSize = 2 * 1024 * 1024; // 2MB
+        if (file.size > maxSize) {
+            throw new Error('File size too large. Maximum size is 2MB.');
+        }
+        
+        // Create unique filename
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${userId}/logo-${Date.now()}.${fileExt}`;
+        
+        // Upload file
+        const { data, error } = await supabaseClient.storage
+            .from('business-logos')
+            .upload(fileName, file, {
+                cacheControl: '3600',
+                upsert: false
+            });
+        
+        if (error) throw error;
+        
+        // Get public URL
+        const { data: urlData } = supabaseClient.storage
+            .from('business-logos')
+            .getPublicUrl(fileName);
+        
+        return { success: true, url: urlData.publicUrl, path: fileName };
+    } catch (error) {
+        console.error('Logo upload error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Delete business logo from Supabase Storage
+ * @param {string} filePath - Path to logo file in storage
+ * @returns {Promise<Object>} - Result of deletion
+ */
+async function supabaseDeleteLogo(filePath) {
+    try {
+        if (!supabaseClient) initSupabase();
+        if (!supabaseClient) throw new Error('Supabase client not initialized');
+        
+        if (!filePath) {
+            throw new Error('File path is required');
+        }
+        
+        const { data, error } = await supabaseClient.storage
+            .from('business-logos')
+            .remove([filePath]);
+        
+        if (error) throw error;
+        
+        return { success: true };
+    } catch (error) {
+        console.error('Logo deletion error:', error);
         return { success: false, error: error.message };
     }
 }
@@ -577,6 +690,23 @@ async function supabaseAddInvoice(invoice) {
         const user = await supabaseGetCurrentUser();
         if (!user) throw new Error('User not authenticated');
         
+        // Determine payment status based on payment type and amount paid
+        let paymentStatus = 'paid';
+        let amountPaid = invoice.totalAmount;
+        let amountDue = 0;
+        
+        if (invoice.paymentType === 'credit') {
+            if (invoice.amountPaid && invoice.amountPaid > 0) {
+                amountPaid = invoice.amountPaid;
+                amountDue = invoice.totalAmount - amountPaid;
+                paymentStatus = amountDue > 0 ? 'partial' : 'paid';
+            } else {
+                amountPaid = 0;
+                amountDue = invoice.totalAmount;
+                paymentStatus = 'unpaid';
+            }
+        }
+        
         const { data, error } = await supabaseClient
             .from('invoices')
             .insert([
@@ -584,6 +714,7 @@ async function supabaseAddInvoice(invoice) {
                     user_id: user.id,
                     invoice_number: invoice.invoiceNumber,
                     date: invoice.date,
+                    customer_id: invoice.customerId || null,
                     customer_name: invoice.customerName,
                     customer_mobile: invoice.mobile || null,
                     customer_gst: invoice.gstNumber || null,
@@ -594,12 +725,22 @@ async function supabaseAddInvoice(invoice) {
                     gst_rate: invoice.gstRate,
                     total_amount: invoice.totalAmount,
                     total_units: invoice.totalUnits,
-                    payment_method: invoice.paymentMethod || null
+                    payment_method: invoice.paymentMethod || null,
+                    payment_type: invoice.paymentType || 'cash',
+                    payment_status: paymentStatus,
+                    amount_paid: amountPaid,
+                    amount_due: amountDue
                 }
             ])
             .select();
         
         if (error) throw error;
+        
+        // If credit invoice with outstanding balance, update customer balance
+        if (invoice.customerId && amountDue > 0) {
+            await supabaseUpdateCustomerBalance(invoice.customerId);
+        }
+        
         return { success: true, data: data[0] };
     } catch (error) {
         console.error('Add invoice error:', error);
@@ -609,10 +750,28 @@ async function supabaseAddInvoice(invoice) {
 
 async function supabaseUpdateInvoice(id, invoice) {
     try {
+        // Determine payment status
+        let paymentStatus = 'paid';
+        let amountPaid = invoice.totalAmount;
+        let amountDue = 0;
+        
+        if (invoice.paymentType === 'credit') {
+            if (invoice.amountPaid && invoice.amountPaid > 0) {
+                amountPaid = invoice.amountPaid;
+                amountDue = invoice.totalAmount - amountPaid;
+                paymentStatus = amountDue > 0 ? 'partial' : 'paid';
+            } else {
+                amountPaid = 0;
+                amountDue = invoice.totalAmount;
+                paymentStatus = 'unpaid';
+            }
+        }
+        
         const { data, error } = await supabaseClient
             .from('invoices')
             .update({
                 date: invoice.date,
+                customer_id: invoice.customerId || null,
                 customer_name: invoice.customerName,
                 customer_mobile: invoice.mobile || null,
                 customer_gst: invoice.gstNumber || null,
@@ -624,12 +783,22 @@ async function supabaseUpdateInvoice(id, invoice) {
                 total_amount: invoice.totalAmount,
                 total_units: invoice.totalUnits,
                 payment_method: invoice.paymentMethod || null,
+                payment_type: invoice.paymentType || 'cash',
+                payment_status: paymentStatus,
+                amount_paid: amountPaid,
+                amount_due: amountDue,
                 updated_at: new Date().toISOString()
             })
             .eq('id', id)
             .select();
         
         if (error) throw error;
+        
+        // Update customer balance if customer is linked
+        if (invoice.customerId) {
+            await supabaseUpdateCustomerBalance(invoice.customerId);
+        }
+        
         return { success: true, data: data[0] };
     } catch (error) {
         console.error('Update invoice error:', error);
@@ -957,6 +1126,239 @@ async function supabaseDeleteExpense(id) {
     } catch (error) {
         console.error('Delete expense error:', error);
         return { success: false, error: error.message };
+    }
+}
+
+// ============================================
+// CREDIT & PAYMENT MANAGEMENT FUNCTIONS
+// ============================================
+
+/**
+ * Get customer's outstanding balance
+ * @param {string} customerId - Customer UUID
+ * @returns {object} { success, balance, data }
+ */
+async function supabaseGetCustomerBalance(customerId) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .select('outstanding_balance')
+            .eq('id', customerId)
+            .single();
+        
+        if (error) throw error;
+        return { 
+            success: true, 
+            balance: data?.outstanding_balance || 0,
+            data: data 
+        };
+    } catch (error) {
+        console.error('Get customer balance error:', error);
+        return { success: false, error: error.message, balance: 0 };
+    }
+}
+
+/**
+ * Update customer's outstanding balance by recalculating from invoices
+ * @param {string} customerId - Customer UUID
+ * @returns {object} { success, balance }
+ */
+async function supabaseUpdateCustomerBalance(customerId) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        // Get all unpaid and partially paid invoices for this customer
+        const { data: invoices, error: invoicesError } = await supabaseClient
+            .from('invoices')
+            .select('amount_due')
+            .eq('customer_id', customerId)
+            .eq('user_id', user.id)
+            .in('payment_status', ['unpaid', 'partial']);
+        
+        if (invoicesError) throw invoicesError;
+        
+        // Calculate total outstanding balance
+        const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.amount_due || 0), 0);
+        
+        // Update customer's outstanding balance
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .update({ 
+                outstanding_balance: totalOutstanding,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', customerId)
+            .select();
+        
+        if (error) throw error;
+        
+        return { success: true, balance: totalOutstanding, data: data[0] };
+    } catch (error) {
+        console.error('Update customer balance error:', error);
+        return { success: false, error: error.message, balance: 0 };
+    }
+}
+
+/**
+ * Get all unpaid or partially paid invoices
+ * @param {string} customerId - Optional customer ID to filter
+ * @returns {object} { success, data }
+ */
+async function supabaseGetPendingInvoices(customerId = null) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        let query = supabaseClient
+            .from('invoices')
+            .select('*')
+            .eq('user_id', user.id)
+            .in('payment_status', ['unpaid', 'partial'])
+            .order('date', { ascending: false });
+        
+        if (customerId) {
+            query = query.eq('customer_id', customerId);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get pending invoices error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+/**
+ * Record a payment against an invoice
+ * @param {object} payment - Payment details { invoiceId, customerId, amount, paymentDate, paymentMethod, notes }
+ * @returns {object} { success, data }
+ */
+async function supabaseRecordPayment(payment) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        // Validate payment amount
+        if (!payment.amount || payment.amount <= 0) {
+            throw new Error('Payment amount must be greater than 0');
+        }
+        
+        // Get the invoice to validate payment amount
+        const { data: invoice, error: invoiceError } = await supabaseClient
+            .from('invoices')
+            .select('total_amount, amount_paid, amount_due, payment_status')
+            .eq('id', payment.invoiceId)
+            .single();
+        
+        if (invoiceError) throw invoiceError;
+        
+        if (payment.amount > invoice.amount_due) {
+            throw new Error(`Payment amount (₹${payment.amount}) exceeds outstanding amount (₹${invoice.amount_due})`);
+        }
+        
+        // Insert payment record
+        const { data: paymentData, error: paymentError } = await supabaseClient
+            .from('payments')
+            .insert([
+                {
+                    user_id: user.id,
+                    invoice_id: payment.invoiceId,
+                    customer_id: payment.customerId,
+                    amount: payment.amount,
+                    payment_date: payment.paymentDate || new Date().toISOString().split('T')[0],
+                    payment_method: payment.paymentMethod || null,
+                    notes: payment.notes || null
+                }
+            ])
+            .select();
+        
+        if (paymentError) throw paymentError;
+        
+        // Update invoice payment status
+        const newAmountPaid = invoice.amount_paid + payment.amount;
+        const newAmountDue = invoice.total_amount - newAmountPaid;
+        const newPaymentStatus = newAmountDue <= 0 ? 'paid' : 'partial';
+        
+        const { error: updateError } = await supabaseClient
+            .from('invoices')
+            .update({
+                amount_paid: newAmountPaid,
+                amount_due: newAmountDue,
+                payment_status: newPaymentStatus,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', payment.invoiceId);
+        
+        if (updateError) throw updateError;
+        
+        // Update customer's outstanding balance
+        await supabaseUpdateCustomerBalance(payment.customerId);
+        
+        return { success: true, data: paymentData[0] };
+    } catch (error) {
+        console.error('Record payment error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Get payment history for an invoice or customer
+ * @param {object} filters - { invoiceId, customerId }
+ * @returns {object} { success, data }
+ */
+async function supabaseGetPayments(filters = {}) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        let query = supabaseClient
+            .from('payments')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('payment_date', { ascending: false });
+        
+        if (filters.invoiceId) {
+            query = query.eq('invoice_id', filters.invoiceId);
+        }
+        
+        if (filters.customerId) {
+            query = query.eq('customer_id', filters.customerId);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get payments error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+/**
+ * Get customers with outstanding balances
+ * @returns {object} { success, data }
+ */
+async function supabaseGetCustomersWithOutstanding() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+        
+        const { data, error } = await supabaseClient
+            .from('customers')
+            .select('*')
+            .eq('user_id', user.id)
+            .gt('outstanding_balance', 0)
+            .order('outstanding_balance', { ascending: false });
+        
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get customers with outstanding error:', error);
+        return { success: false, error: error.message, data: [] };
     }
 }
 

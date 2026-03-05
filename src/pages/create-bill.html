@@ -135,6 +135,24 @@
 
         <form id="invoiceForm" class="invoice-form">
             <div class="form-section">
+                <h2>Invoice Information</h2>
+                <div class="form-row">
+                    <label>
+                        Invoice Number: <span class="required">*</span>
+                        <div class="invoice-number-field">
+                            <input type="text" id="invoiceNumber" placeholder="Generating..." readonly required>
+                            <button type="button" class="edit-invoice-number-btn" id="editInvoiceNumberBtn" title="Edit Invoice Number">
+                                <span class="material-icons">edit</span>
+                                Edit
+                            </button>
+                        </div>
+                    </label>
+                    <small class="format-hint">📋 Auto-generated invoice number. Click Edit to customize manually.</small>
+                    <span class="error-message" id="invoiceNumberError"></span>
+                </div>
+            </div>
+            
+            <div class="form-section">
                 <h2>Customer Details</h2>
                 <div class="form-row">
                     <label>
@@ -247,6 +265,92 @@
                 </div>
             </div>
 
+            <!-- Payment Details Section -->
+            <div class="form-section">
+                <h2>Payment Details</h2>
+                
+                <!-- Customer Outstanding Balance Display -->
+                <div id="customerBalanceDisplay" class="customer-balance-card" style="display: none;">
+                    <div class="balance-header">
+                        <span class="material-icons">account_balance_wallet</span>
+                        <span>Customer Outstanding Balance</span>
+                    </div>
+                    <div class="balance-amount">
+                        <span id="customerBalanceAmount">₹0.00</span>
+                    </div>
+                    <small class="balance-note">Previous outstanding amount for this customer</small>
+                </div>
+
+                <div class="form-row">
+                    <label>
+                        Payment Type: <span class="required">*</span>
+                        <div class="payment-type-selector">
+                            <label class="radio-option">
+                                <input type="radio" name="paymentType" value="cash" checked onchange="handlePaymentTypeChange()">
+                                <span class="radio-label">
+                                    <span class="material-icons">payments</span>
+                                    <span>Cash</span>
+                                </span>
+                                <small>Payment received immediately</small>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="paymentType" value="credit" onchange="handlePaymentTypeChange()">
+                                <span class="radio-label">
+                                    <span class="material-icons">credit_card</span>
+                                    <span>Credit</span>
+                                </span>
+                                <small>Payment to be received later</small>
+                            </label>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Credit Payment Options (shown only when Credit is selected) -->
+                <div id="creditPaymentOptions" style="display: none;">
+                    <div class="form-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="partialPaymentCheckbox" onchange="togglePartialPayment()">
+                            <span>Partial Payment Received</span>
+                        </label>
+                        <small class="format-hint">Check this if the customer has paid a part of the total amount</small>
+                    </div>
+
+                    <div id="partialPaymentSection" style="display: none;">
+                        <div class="form-row">
+                            <label>
+                                Amount Paid: <span class="required">*</span>
+                                <input type="number" id="amountPaid" placeholder="0.00" min="0" step="0.01" oninput="calculateCredit()">
+                            </label>
+                            <small class="format-hint">Enter the amount received from customer</small>
+                            <span class="error-message" id="amountPaidError"></span>
+                        </div>
+
+                        <div class="credit-summary">
+                            <div class="credit-row">
+                                <span>Total Invoice Amount:</span>
+                                <span id="creditTotalAmount">₹0.00</span>
+                            </div>
+                            <div class="credit-row">
+                                <span>Amount Paid:</span>
+                                <span id="creditAmountPaid">₹0.00</span>
+                            </div>
+                            <div class="credit-row highlight">
+                                <span><strong>Amount Due:</strong></span>
+                                <span id="creditAmountDue"><strong>₹0.00</strong></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="credit-info-card">
+                        <span class="material-icons">info</span>
+                        <div>
+                            <strong>Credit Invoice</strong>
+                            <p>This invoice will be marked as unpaid. You can record payments later from the customer ledger.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="form-section">
                 <h2>Terms & Conditions</h2>
                 <textarea id="termsConditions" rows="6" minlength="10" maxlength="1000" required>1. Payment should be made on delivery.
@@ -301,6 +405,7 @@
     <script src="../scripts/auth.js"></script>
     <script src="../scripts/backup.js"></script>
     <script src="../scripts/notifications.js"></script>
+    <script src="../scripts/invoice-templates.js"></script>
     <script src="../scripts/billing.js"></script>
     <script>
         // Sidebar toggle functionality

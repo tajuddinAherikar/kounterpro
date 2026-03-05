@@ -47,6 +47,12 @@ function loadInvoiceForEditing() {
         // Store original date for later use
         sessionStorage.setItem('editingInvoiceDate', invoice.date);
         
+        // Populate invoice number
+        const invoiceNumberField = document.getElementById('invoiceNumber');
+        if (invoiceNumberField) {
+            invoiceNumberField.value = invoice.invoice_number || '';
+        }
+        
         // Populate customer details
         document.getElementById('customerName').value = invoice.customer_name || '';
         document.getElementById('customerSearch').value = invoice.customer_name || '';
@@ -203,6 +209,15 @@ function initCustomerAutocomplete() {
                     customerAddressInput.value = customer.address || '';
                     customerGSTInput.value = customer.gst || '';
                     selectedCustomer = customer;
+                    
+                    // Set selected customer ID for credit tracking
+                    selectedCustomerId = customer.id;
+                    
+                    // Load customer balance if credit payment type is selected
+                    const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value;
+                    if (paymentType === 'credit') {
+                        loadCustomerBalance(customer.id);
+                    }
                     
                     // Trigger validation on filled fields
                     setTimeout(() => {
@@ -388,6 +403,12 @@ function calculateAmounts() {
     document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
     document.getElementById('displaySgstRate').textContent = sgstRate.toFixed(2);
     document.getElementById('displayCgstRate').textContent = cgstRate.toFixed(2);
+    
+    // Update credit calculation if partial payment is visible
+    const partialSection = document.getElementById('partialPaymentSection');
+    if (partialSection && partialSection.style.display !== 'none') {
+        calculateCredit();
+    }
 }
 
 // Add new item row
@@ -608,10 +629,39 @@ function setupAutocomplete(input, rateInput, quantityInput) {
 }
 
 // Generate invoice number
-// Generate unique invoice number from Supabase data
+// Generate unique invoice number from Supabase data with custom prefix support
 async function generateInvoiceNumber() {
     try {
-        // Get all invoices from Supabase
+        // Get user profile to check for custom prefix
+        const user = await supabaseGetCurrentUser();
+        if (!user) {
+            throw new Error('User not authenticated');
+        }
+        
+        const profileResult = await supabaseGetUserProfile(user.id);
+        let invoicePrefix = 'K'; // Default prefix
+        let useCustomPrefix = false;
+        let startingNumber = 1;
+        let currentCounter = 0;
+        
+        if (profileResult.success && profileResult.data) {
+            const profile = profileResult.data;
+            if (profile.invoice_prefix) {
+                invoicePrefix = profile.invoice_prefix;
+                useCustomPrefix = true;
+                startingNumber = profile.starting_invoice_number || 1;
+                currentCounter = profile.current_invoice_counter || 0;
+            }
+        }
+        
+        // If using custom prefix, use the simple format: PREFIX-0001
+        if (useCustomPrefix) {
+            const nextNumber = startingNumber + currentCounter;
+            const paddedNumber = String(nextNumber).padStart(4, '0');
+            return `${invoicePrefix}-${paddedNumber}`;
+        }
+        
+        // Otherwise, use the legacy format: K0001/MM/YY/YY
         const result = await supabaseGetInvoices();
         
         // Calculate financial year
@@ -815,8 +865,13 @@ async function collectFormData() {
     const sgstAmount = subtotal * (sgstRate / 100);
     const cgstAmount = subtotal * (cgstRate / 100);
     
-    // Generate invoice number once
-    const invoiceNumber = await generateInvoiceNumber();
+    // Get invoice number from field (may have been manually edited)
+    const invoiceNumberField = document.getElementById('invoiceNumber');
+    const invoiceNumber = invoiceNumberField ? invoiceNumberField.value.trim() : await generateInvoiceNumber();
+    
+    if (!invoiceNumber) {
+        throw new Error('Invoice number is required');
+    }
     
     // For editing, use the original invoice date. For creating, use current date
     let dateString;
@@ -860,230 +915,52 @@ async function collectFormData() {
         grandTotal,
         totalAmount: grandTotal, // Add alias for Supabase
         totalUnits,
-        termsConditions
+        termsConditions,
+        // Credit payment fields
+        paymentType: document.querySelector('input[name="paymentType"]:checked')?.value || 'cash',
+        customerId: selectedCustomerId || findCustomerId(customerName, customerMobile),
+        amountPaid: document.getElementById('partialPaymentCheckbox')?.checked 
+            ? (parseFloat(document.getElementById('amountPaid')?.value) || 0)
+            : undefined
     };
 }
 
-// Generate PDF using jsPDF
-function generatePDF(invoiceData) {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-    
-    let y = 20;
-    
-    // Header
-    pdf.setFontSize(16);
-    pdf.setFont(undefined, 'bold');
-    pdf.text('TAX INVOICE', 105, y, { align: 'center' });
-    
-    y += 10;
-    pdf.setFontSize(10);
-    pdf.setFont(undefined, 'normal');
-    pdf.text(`Invoice No: ${invoiceData.invoiceNo}`, 150, y);
-    pdf.text(`Date: ${formatDateForPDF(invoiceData.date)}`, 150, y + 5);
-    
-    // Company Details - Use dynamic profile data or fallback to defaults
-    y += 10;
-    pdf.setFontSize(14);
-    pdf.setFont(undefined, 'bold');
-    const companyName = userProfile?.business_name || 'KEEN BATTERIES';
-    pdf.text(companyName.toUpperCase(), 15, y);
-    
-    pdf.setFontSize(9);
-    pdf.setFont(undefined, 'normal');
-    y += 5;
-    
-    // Address
-    const companyAddress = userProfile?.business_address || 'Indra Auto Nagar, Rangeen Masjid Road Bijapur';
-    const addressLines = pdf.splitTextToSize(companyAddress, 100);
-    addressLines.forEach(line => {
-        pdf.text(line, 15, y);
-        y += 4;
-    });
-    
-    // Contact Numbers
-    const contact1 = userProfile?.contact_number_1 || '6361082439';
-    const contact2 = userProfile?.contact_number_2;
-    const contactText = contact2 ? `Contact No: ${contact1}, ${contact2}` : `Contact No: ${contact1}`;
-    pdf.text(contactText, 15, y);
-    y += 4;
-    
-    // Email
-    const companyEmail = userProfile?.business_email || 'keenbatteries@gmail.com';
-    pdf.text(`Email: ${companyEmail}`, 15, y);
-    y += 4;
-    
-    // GST Number
-    const companyGST = userProfile?.gst_number || '29AVLPA7490C1ZH';
-    if (companyGST) {
-        pdf.text(`Dealer GST: ${companyGST}`, 15, y);
-        y += 4;
-    }
-    
-    // Bill To
-    y += 6;
-    pdf.setFont(undefined, 'bold');
-    pdf.text('Bill To:', 15, y);
-    pdf.setFont(undefined, 'normal');
-    y += 5;
-    pdf.text(invoiceData.customerName, 15, y);
-    y += 5;
-    
-    const customerAddressLines = pdf.splitTextToSize(invoiceData.customerAddress, 80);
-    customerAddressLines.forEach(line => {
-        pdf.text(line, 15, y);
-        y += 5;
-    });
-    
-    if (invoiceData.customerGST) {
-        pdf.text(`GST No: ${invoiceData.customerGST}`, 15, y);
-        y += 5;
-    }
-    
-    // Items Table
-    y += 5;
-    const tableStartY = y;
-    
-    // Table header
-    pdf.setFillColor(240, 240, 240);
-    pdf.rect(15, y, 180, 8, 'F');
-    pdf.setFont(undefined, 'bold');
-    pdf.text('Sl', 17, y + 5);
-    pdf.text('Description of Goods', 28, y + 5);
-    pdf.text('Serial No', 85, y + 5);
-    pdf.text('Qty', 115, y + 5);
-    pdf.text('Rate', 135, y + 5);
-    pdf.text('Amount', 165, y + 5);
-    
-    y += 8;
-    pdf.setFont(undefined, 'normal');
-    
-    // Table rows
-    invoiceData.items.forEach(item => {
-        if (y > 250) {
-            pdf.addPage();
-            y = 20;
-        }
+// Generate PDF using jsPDF with customizable templates
+async function generatePDF(invoiceData) {
+    try {
+        // Get user's template settings from profile
+        const templateType = userProfile?.invoice_template || 'classic';
+        const settings = {
+            brand_color: userProfile?.brand_color || '#2845D6',
+            logo_url: userProfile?.logo_url || null,
+            show_logo: userProfile?.show_logo !== false,
+            logo_position: userProfile?.logo_position || 'left'
+        };
         
-        pdf.text(String(item.slNo), 17, y + 5);
-        const descText = pdf.splitTextToSize(item.description, 55);
-        pdf.text(descText, 28, y + 5);
-        if (item.serialNo) {
-            const serialText = pdf.splitTextToSize(item.serialNo, 28);
-            pdf.text(serialText, 85, y + 5);
-        }
-        pdf.text(String(item.quantity), 115, y + 5);
-        pdf.text('Rs.' + formatIndianCurrency(item.rate), 135, y + 5);
-        pdf.text('Rs.' + formatIndianCurrency(item.amount), 165, y + 5);
+        console.log('Generating PDF with settings:', settings);
+        console.log('User profile:', userProfile);
         
-        pdf.line(15, y + 8, 195, y + 8);
-        y += 8;
-    });
-    
-    // Totals
-    y += 5;
-    pdf.text('Subtotal:', 130, y);
-    pdf.text(`Rs.${formatIndianCurrency(invoiceData.subtotal)}`, 165, y);
-    
-    y += 6;
-    pdf.text(`GST (${invoiceData.gstRate}%)`, 130, y);
-    pdf.text(`Rs.${formatIndianCurrency(invoiceData.gstAmount)}`, 165, y);
-    
-    y += 6;
-    pdf.setFont(undefined, 'bold');
-    pdf.setFontSize(11);
-    pdf.text('Grand Total:', 130, y);
-    pdf.text(`Rs.${formatIndianCurrency(invoiceData.grandTotal)}`, 165, y);
-    
-    // Terms & Conditions
-    y += 15;
-    pdf.setFontSize(10);
-    pdf.text('Terms & Conditions:', 15, y);
-    
-    y += 5;
-    pdf.setFontSize(8);
-    pdf.setFont(undefined, 'normal');
-    const termsLines = pdf.splitTextToSize(invoiceData.termsConditions, 180);
-    termsLines.forEach(line => {
-        if (y > 270) {
-            pdf.addPage();
-            y = 20;
-        }
-        pdf.text(line, 15, y);
-        y += 4;
-    });
-    
-    // Stamp/Seal placeholder
-    y += 10;
-    if (y > 250) {
-        pdf.addPage();
-        y = 20;
-    }
-    
-    // Add UPI QR Code (only if UPI ID is configured)
-    const upiId = userProfile?.upi_id || 'mahammadtajuddin@ybl';
-    const payeeName = userProfile?.business_name || 'Keen Batteries';
-    const amount = invoiceData.grandTotal.toFixed(2);
-    
-    if (upiId) {
-        const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Invoice ${invoiceData.invoiceNo}`;
-        
-        // Generate QR code
-        const qrContainer = document.createElement('div');
-        qrContainer.style.display = 'none';
-        document.body.appendChild(qrContainer);
-        
-        const qr = new QRCode(qrContainer, {
-            text: upiString,
-            width: 120,
-            height: 120
-        });
-        
-        // Wait for QR code to be generated then add to PDF
-        setTimeout(() => {
-            const qrCanvas = qrContainer.querySelector('canvas');
-            if (qrCanvas) {
-                const qrImage = qrCanvas.toDataURL('image/png');
-                
-                pdf.setFontSize(10);
-                pdf.setFont(undefined, 'bold');
-                pdf.text('Scan to Pay', 15, y);
-                pdf.addImage(qrImage, 'PNG', 15, y + 2, 35, 35);
-                
-                pdf.setFontSize(8);
-                pdf.setFont(undefined, 'normal');
-                pdf.text(`UPI ID: ${upiId}`, 52, y + 10);
-                pdf.text(`Amount: ${amount}`, 52, y + 15);
-                pdf.text('Scan QR to pay via any UPI app', 52, y + 25);
-            }
-            
-            document.body.removeChild(qrContainer);
-            
-            // Stamp/Seal placeholder - moved to right side
-            pdf.setFontSize(9);
-            pdf.text('[Stamp/Seal]', 155, y + 15);
-            pdf.rect(150, y + 5, 40, 25);
-            
-            // Footer
-            pdf.setFontSize(8);
-            pdf.text('This copy is generated electronically and does not require a physical signature.| KounterPro', 105, 285, { align: 'center' });
-            
-            // Save PDF
-            pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
-        }, 100);
-    } else {
-        // No UPI ID configured, skip QR code and save PDF directly
-        // Stamp/Seal placeholder
-        pdf.setFontSize(9);
-        pdf.text('[Stamp/Seal]', 155, y + 15);
-        pdf.rect(150, y + 5, 40, 25);
-        
-        // Footer
-        pdf.setFontSize(8);
-        pdf.text('This copy is generated electronically and does not require a physical signature.| KounterPro', 105, 285, { align: 'center' });
+        // Use the template renderer
+        const pdf = await renderInvoiceTemplate(templateType, invoiceData, userProfile, settings);
         
         // Save PDF
-        pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
+        const fileName = `Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`;
+        pdf.save(fileName);
+        
+        console.log(`✅ PDF generated successfully with ${templateType} template`);
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        // Fallback to classic template if there's an error
+        try {
+            console.log('Falling back to classic template...');
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            await renderClassicTemplate(pdf, invoiceData, userProfile, { brand_color: '#2845D6' });
+            pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
+        } catch (fallbackError) {
+            console.error('Fallback PDF generation also failed:', fallbackError);
+            alert('Failed to generate PDF. Please try again.');
+        }
     }
 }
 
@@ -1236,12 +1113,40 @@ async function saveInvoice(invoiceData) {
         if (result.success) {
             // Deduct stock from inventory for new invoices
             await deductStock(invoiceData.items);
+            
+            // Increment invoice counter for custom prefix users
+            await incrementInvoiceCounter();
+            
             return true;
         } else {
             console.error('Error saving invoice:', result.error);
             alert('❌ Error saving invoice: ' + result.error);
             return false;
         }
+    }
+}
+
+// Increment invoice counter after successful invoice creation
+async function incrementInvoiceCounter() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) return;
+        
+        const profileResult = await supabaseGetUserProfile(user.id);
+        if (profileResult.success && profileResult.data) {
+            const profile = profileResult.data;
+            // Only increment if user has a custom prefix
+            if (profile.invoice_prefix) {
+                const newCounter = (profile.current_invoice_counter || 0) + 1;
+                await supabaseUpdateUserProfile(user.id, {
+                    current_invoice_counter: newCounter
+                });
+                console.log('✅ Invoice counter incremented to:', newCounter);
+            }
+        }
+    } catch (error) {
+        console.error('Error incrementing invoice counter:', error);
+        // Don't throw error - this shouldn't block invoice creation
     }
 }
 
@@ -1656,6 +1561,84 @@ function addItemValidationListeners(row) {
 
 // ===== END REAL-TIME VALIDATION =====
 
+// Setup invoice number edit functionality
+function setupInvoiceNumberEdit() {
+    const invoiceNumberField = document.getElementById('invoiceNumber');
+    const editBtn = document.getElementById('editInvoiceNumberBtn');
+    const errorSpan = document.getElementById('invoiceNumberError');
+    
+    if (!invoiceNumberField || !editBtn) return;
+    
+    editBtn.addEventListener('click', function() {
+        if (invoiceNumberField.hasAttribute('readonly')) {
+            // Enable editing
+            invoiceNumberField.removeAttribute('readonly');
+            invoiceNumberField.focus();
+            invoiceNumberField.select();
+            editBtn.innerHTML = '<span class="material-icons">save</span> Save';
+            editBtn.style.background = '#4CAF50';
+            editBtn.style.borderColor = '#4CAF50';
+            editBtn.style.color = 'white';
+        } else {
+            // Save and validate
+            validateInvoiceNumber();
+        }
+    });
+    
+    // Validate on blur
+    invoiceNumberField.addEventListener('blur', function() {
+        if (!invoiceNumberField.hasAttribute('readonly')) {
+            validateInvoiceNumber();
+        }
+    });
+}
+
+// Validate invoice number for duplicates
+async function validateInvoiceNumber() {
+    const invoiceNumberField = document.getElementById('invoiceNumber');
+    const editBtn = document.getElementById('editInvoiceNumberBtn');
+    const errorSpan = document.getElementById('invoiceNumberError');
+    const invoiceNumber = invoiceNumberField.value.trim();
+    
+    if (!invoiceNumber) {
+        errorSpan.textContent = '❌ Invoice number is required';
+        errorSpan.style.display = 'block';
+        return false;
+    }
+    
+    // Check for duplicates
+    try {
+        const result = await supabaseGetInvoices();
+        if (result.success && result.data) {
+            const duplicate = result.data.find(inv => 
+                inv.invoice_number === invoiceNumber && 
+                inv.id !== editingInvoiceId
+            );
+            
+            if (duplicate) {
+                errorSpan.textContent = '❌ This invoice number already exists. Please use a different number.';
+                errorSpan.style.display = 'block';
+                invoiceNumberField.focus();
+                return false;
+            }
+        }
+        
+        // No duplicate found - lock the field
+        invoiceNumberField.setAttribute('readonly', 'readonly');
+        editBtn.innerHTML = '<span class="material-icons">edit</span> Edit';
+        editBtn.style.background = '';
+        editBtn.style.borderColor = '';
+        editBtn.style.color = '';
+        errorSpan.style.display = 'none';
+        return true;
+    } catch (error) {
+        console.error('Error validating invoice number:', error);
+        errorSpan.textContent = '❌ Error validating invoice number';
+        errorSpan.style.display = 'block';
+        return false;
+    }
+}
+
 // Initialize form
 async function initForm() {
     // Check if in edit mode
@@ -1682,6 +1665,19 @@ async function initForm() {
     // Load user profile and inventory data
     await loadUserProfile();
     await loadInventory();
+    
+    // Generate and populate invoice number (unless in edit mode)
+    if (!isEditMode) {
+        const invoiceNumberField = document.getElementById('invoiceNumber');
+        if (invoiceNumberField) {
+            invoiceNumberField.value = 'Generating...';
+            const generatedNumber = await generateInvoiceNumber();
+            invoiceNumberField.value = generatedNumber;
+        }
+    }
+    
+    // Setup invoice number edit functionality
+    setupInvoiceNumberEdit();
     
     // Load terms and conditions from profile (or use default)
     const defaultTerms = `1. Payment should be made on delivery.
@@ -1733,6 +1729,128 @@ async function initForm() {
     document.getElementById('invoiceForm').addEventListener('submit', handleFormSubmit);
 }
 
+// ============================================
+// CREDIT PAYMENT FUNCTIONS
+// ============================================
+
+let selectedCustomerId = null; // Track selected customer ID
+
+/**
+ * Handle payment type change (Cash/Credit)
+ */
+function handlePaymentTypeChange() {
+    const paymentType = document.querySelector('input[name="paymentType"]:checked').value;
+    const creditOptions = document.getElementById('creditPaymentOptions');
+    
+    if (paymentType === 'credit') {
+        creditOptions.style.display = 'block';
+        
+        // Show customer balance if customer is selected
+        if (selectedCustomerId) {
+            loadCustomerBalance(selectedCustomerId);
+        }
+    } else {
+        creditOptions.style.display = 'none';
+        document.getElementById('customerBalanceDisplay').style.display = 'none';
+        
+        // Reset partial payment fields
+        document.getElementById('partialPaymentCheckbox').checked = false;
+        document.getElementById('partialPaymentSection').style.display = 'none';
+        document.getElementById('amountPaid').value = '';
+    }
+}
+
+/**
+ * Toggle partial payment section
+ */
+function togglePartialPayment() {
+    const checkbox = document.getElementById('partialPaymentCheckbox');
+    const section = document.getElementById('partialPaymentSection');
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        calculateCredit();
+    } else {
+        section.style.display = 'none';
+        document.getElementById('amountPaid').value = '';
+        document.getElementById('amountPaidError').textContent = '';
+    }
+}
+
+/**
+ * Calculate credit summary (amount paid vs amount due)
+ */
+function calculateCredit() {
+    const grandTotalText = document.getElementById('grandTotal').textContent;
+    const totalAmount = parseFloat(grandTotalText.replace(/[₹,]/g, '')) || 0;
+    const amountPaid = parseFloat(document.getElementById('amountPaid').value) || 0;
+    const amountDue = totalAmount - amountPaid;
+    
+    // Update credit summary display
+    document.getElementById('creditTotalAmount').textContent = formatIndianCurrency(totalAmount);
+    document.getElementById('creditAmountPaid').textContent = formatIndianCurrency(amountPaid);
+    document.getElementById('creditAmountDue').textContent = formatIndianCurrency(amountDue);
+    
+    // Validation
+    const errorElement = document.getElementById('amountPaidError');
+    if (amountPaid < 0) {
+        errorElement.textContent = 'Amount paid cannot be negative';
+    } else if (amountPaid > totalAmount) {
+        errorElement.textContent = `Amount paid cannot exceed total amount (₹${formatIndianCurrency(totalAmount)})`;
+    } else {
+        errorElement.textContent = '';
+    }
+}
+
+/**
+ * Load and display customer's outstanding balance
+ */
+async function loadCustomerBalance(customerId) {
+    try {
+        const result = await supabaseGetCustomerBalance(customerId);
+        
+        if (result.success && result.balance > 0) {
+            const balanceCard = document.getElementById('customerBalanceDisplay');
+            const balanceAmount = document.getElementById('customerBalanceAmount');
+            
+            balanceAmount.textContent = `₹${formatIndianCurrency(result.balance)}`;
+            balanceCard.style.display = 'block';
+            
+            // Add warning class if balance is high (>10000)
+            if (result.balance > 10000) {
+                balanceCard.classList.add('warning');
+            } else {
+                balanceCard.classList.remove('warning');
+            }
+        } else {
+            document.getElementById('customerBalanceDisplay').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading customer balance:', error);
+    }
+}
+
+/**
+ * Find customer ID from saved customers by name or mobile
+ */
+function findCustomerId(customerName, customerMobile) {
+    if (!savedCustomers || savedCustomers.length === 0) return null;
+    
+    // Try to find by exact name match first
+    let customer = savedCustomers.find(c => 
+        c.name.toLowerCase() === customerName.toLowerCase()
+    );
+    
+    // If not found by name, try mobile
+    if (!customer && customerMobile) {
+        const cleanMobile = customerMobile.replace(/[\s\-\+]/g, '');
+        customer = savedCustomers.find(c => 
+            c.mobile && c.mobile.replace(/[\s\-\+]/g, '') === cleanMobile
+        );
+    }
+    
+    return customer ? customer.id : null;
+}
+
 // Initialize form when page loads
 document.addEventListener('DOMContentLoaded', initForm);
-

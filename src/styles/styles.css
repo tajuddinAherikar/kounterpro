@@ -740,7 +740,8 @@ textarea#termsConditions {
 .form-row input[type="tel"],
 .form-row input[type="email"],
 .form-row input[type="password"],
-.form-row textarea {
+.form-row textarea,
+.form-row select {
     width: 100%;
     padding: 12px;
     border: 2px solid #e0e0e0;
@@ -748,10 +749,21 @@ textarea#termsConditions {
     font-size: 14px;
     font-family: 'DM Sans', sans-serif;
     transition: border-color 0.2s ease;
+    background-color: white;
+}
+
+.form-row select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
 }
 
 .form-row input:focus,
-.form-row textarea:focus {
+.form-row textarea:focus,
+.form-row select:focus {
     outline: none;
     border-color: #2845D6;
     box-shadow: 0 0 0 3px rgba(40, 69, 214, 0.1);
@@ -1846,4 +1858,115 @@ button .material-icons {
     .toast {
         min-width: auto;
     }
+}
+/* Invoice Number Preview Styles */
+.invoice-number-preview {
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border: 2px solid #2845D6;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    box-shadow: 0 2px 8px rgba(40, 69, 214, 0.1);
+}
+
+.invoice-number-preview .preview-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.invoice-number-preview .preview-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #2845D6;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 1px;
+}
+
+/* Dark mode support */
+body.dark-mode .invoice-number-preview {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+    border-color: #4a6fff;
+    box-shadow: 0 2px 8px rgba(74, 111, 255, 0.2);
+}
+
+body.dark-mode .invoice-number-preview .preview-label {
+    color: #999;
+}
+
+body.dark-mode .invoice-number-preview .preview-number {
+    color: #4a6fff;
+}
+
+/* Invoice number field in create bill */
+.invoice-number-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.invoice-number-field input {
+    flex: 1;
+}
+
+.invoice-number-field .edit-invoice-number-btn {
+    padding: 8px 12px;
+    background: #f5f7fa;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 14px;
+    color: #666;
+}
+
+.invoice-number-field .edit-invoice-number-btn:hover {
+    background: #2845D6;
+    color: white;
+    border-color: #2845D6;
+}
+
+.invoice-number-field .edit-invoice-number-btn .material-icons {
+    font-size: 18px;
+}
+
+body.dark-mode .invoice-number-field .edit-invoice-number-btn {
+    background: #2a2a2a;
+    border-color: #444;
+    color: #aaa;
+}
+
+body.dark-mode .invoice-number-field .edit-invoice-number-btn:hover {
+    background: #4a6fff;
+    color: white;
+    border-color: #4a6fff;
+}
+
+/* Dark mode select styling */
+body.dark-mode select,
+body.dark-mode .form-row select {
+    background-color: #1a1a1a;
+    border-color: #444;
+    color: #e0e0e0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239CA3AF' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+body.dark-mode select:focus,
+body.dark-mode .form-row select:focus {
+    border-color: #4a6fff;
+    box-shadow: 0 0 0 3px rgba(74, 111, 255, 0.2);
+}
+
+body.dark-mode select option {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
 }

@@ -1625,37 +1625,78 @@ img, video, canvas, svg {
 .modal-body {
     padding: 24px;
     overflow-y: auto;
-    flex: 1;
+    flex: 1 1 auto;
+    max-height: calc(85vh - 160px);
 }
 
-.modal-form {
-    padding: 24px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.modal-form .form-row {
+.modal-body .form-row {
     margin-bottom: 20px;
 }
 
-.modal-form input,
-.modal-form select,
-.modal-form textarea {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #dfe6e9;
-    border-radius: 8px;
+.modal-body .form-row label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
     font-size: 14px;
-    transition: all 0.3s;
-    font-family: 'DM Sans', sans-serif;
+    color: #2c3e50;
 }
 
-.modal-form input:focus,
-.modal-form select:focus,
-.modal-form textarea:focus {
+.modal-body .format-hint {
+    display: block;
+    color: #7f8c8d;
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: normal;
+}
+
+.modal-body .required {
+    color: #F68048;
+}
+
+.modal-body .optional {
+    color: #7f8c8d;
+    font-weight: normal;
+    font-size: 12px;
+}
+
+.modal-body input,
+.modal-body select,
+.modal-body textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+}
+
+.modal-body input:focus,
+.modal-body select:focus,
+.modal-body textarea:focus {
     outline: none;
     border-color: #2845D6;
     box-shadow: 0 0 0 3px rgba(40, 69, 214, 0.1);
+}
+
+.modal-body select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 36px;
+}
+
+.modal-body select:hover {
+    border-color: #2845D6;
+}
+
+.modal-body textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
 .close {
@@ -1679,6 +1720,8 @@ img, video, canvas, svg {
     gap: 12px;
     padding: 16px 24px;
     border-top: 1px solid #ecf0f1;
+    flex-shrink: 0;
+    background: white;
 }
 
 .btn-close-modal {
@@ -1698,6 +1741,30 @@ img, video, canvas, svg {
 
 .btn-close-modal .material-icons {
     font-size: 24px;
+}
+
+.btn-icon {
+    background: none;
+    border: none;
+    color: #95a5a6;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-icon:hover {
+    background: #ecf0f1;
+    color: #2c3e50;
+}
+
+.btn-icon .material-icons {
+    font-size: 20px;
 }
 
 .form-group {
@@ -3561,4 +3628,377 @@ body.dark-mode .dialog-btn-cancel:hover {
         height: 36px;
         font-size: 18px;
     }
+}
+
+/* ========================================
+   Credit Purchase & Payment Styles
+   ======================================== */
+
+/* Customer Balance Card */
+.customer-balance-card {
+    background: linear-gradient(135deg, #fff8e1 0%, #fff3cd 100%);
+    border: 2px solid #ffc107;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.15);
+}
+
+.balance-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: 8px;
+}
+
+.balance-header .material-icons {
+    font-size: 20px;
+    color: #ff9800;
+}
+
+.balance-amount {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ed6c02;
+    margin: 8px 0;
+}
+
+.balance-note {
+    display: block;
+    font-size: 12px;
+    color: #856404;
+    opacity: 0.9;
+}
+
+/* High balance warning */
+.customer-balance-card.warning {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border-color: #f44336;
+}
+
+.customer-balance-card.warning .balance-header {
+    color: #c62828;
+}
+
+.customer-balance-card.warning .balance-amount {
+    color: #d32f2f;
+}
+
+/* Payment Type Selector */
+.payment-type-selector {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.radio-option {
+    position: relative;
+    display: block;
+    cursor: pointer;
+}
+
+.radio-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px;
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.radio-option:hover .radio-label {
+    border-color: #2563eb;
+    background: #f0f7ff;
+}
+
+.radio-option input[type="radio"]:checked ~ .radio-label {
+    border-color: #2563eb;
+    background: #e3f2fd;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.radio-label .material-icons {
+    font-size: 32px;
+    color: #64748b;
+    transition: color 0.2s;
+}
+
+.radio-option input[type="radio"]:checked ~ .radio-label .material-icons {
+    color: #2563eb;
+}
+
+.radio-label > span:nth-child(2) {
+    font-weight: 600;
+    font-size: 16px;
+    color: #1f2937;
+}
+
+.radio-label small {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: -4px;
+}
+
+/* Checkbox Label */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    font-weight: 500;
+    color: #1f2937;
+    padding: 10px;
+    background: #f9fafb;
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.checkbox-label:hover {
+    background: #f3f4f6;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+/* Credit Summary */
+.credit-summary {
+    background: #f8f9fa;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.credit-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.credit-row:not(:last-child) {
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.credit-row.highlight {
+    background: #fff3cd;
+    margin: 0 -16px -16px;
+    padding: 12px 16px;
+    border-radius: 0 0 8px 8px;
+    border-bottom: none;
+}
+
+.credit-row span {
+    font-size: 15px;
+    color: #495057;
+}
+
+.credit-row.highlight span {
+    font-size: 16px;
+    color: #856404;
+}
+
+/* Credit Info Card */
+.credit-info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    padding: 16px;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+
+.credit-info-card .material-icons {
+    color: #2196f3;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.credit-info-card strong {
+    display: block;
+    color: #0d47a1;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.credit-info-card p {
+    margin: 0;
+    font-size: 13px;
+    color: #1565c0;
+    line-height: 1.5;
+}
+
+/* Dark mode support for payment section */
+body.dark-mode .customer-balance-card {
+    background: linear-gradient(135deg, #3e2723 0%, #4e342e 100%);
+    border-color: #ff9800;
+}
+
+body.dark-mode .balance-header,
+body.dark-mode .balance-note {
+    color: #ffb74d;
+}
+
+body.dark-mode .balance-amount {
+    color: #ffa726;
+}
+
+body.dark-mode .radio-label {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+body.dark-mode .radio-option:hover .radio-label {
+    background: #111827;
+    border-color: #3b82f6;
+}
+
+body.dark-mode .radio-option input[type="radio"]:checked ~ .radio-label {
+    background: #1e293b;
+    border-color: #3b82f6;
+}
+
+body.dark-mode .radio-label > span:nth-child(2) {
+    color: #f3f4f6;
+}
+
+body.dark-mode .checkbox-label {
+    background: #1f2937;
+    color: #f3f4f6;
+}
+
+body.dark-mode .checkbox-label:hover {
+    background: #111827;
+}
+
+body.dark-mode .credit-summary {
+    background: #1f2937;
+    border-color: #374151;
+}
+
+body.dark-mode .credit-row {
+    border-color: #374151;
+}
+
+body.dark-mode .credit-row span {
+    color: #d1d5db;
+}
+
+body.dark-mode .credit-row.highlight {
+    background: #3e2723;
+}
+
+body.dark-mode .credit-row.highlight span {
+    color: #ffb74d;
+}
+
+body.dark-mode .credit-info-card {
+    background: #1e3a5f;
+    border-color: #3b82f6;
+}
+
+body.dark-mode .credit-info-card strong {
+    color: #93c5fd;
+}
+
+body.dark-mode .credit-info-card p {
+    color: #bfdbfe;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    .payment-type-selector {
+        grid-template-columns: 1fr;
+    }
+    
+    .balance-amount {
+        font-size: 24px;
+    }
+    
+    .modal-content {
+        width: 95%;
+        max-height: 90vh;
+    }
+    
+    .modal-body {
+        max-height: calc(90vh - 140px);
+        padding: 16px;
+    }
+    
+    .modal-header {
+        padding: 16px;
+    }
+    
+    .modal-footer {
+        padding: 12px 16px;
+    }
+}
+
+/* Dark mode support for modals */
+body.dark-mode .modal-content {
+    background: #1f2937;
+    border: 1px solid #374151;
+}
+
+body.dark-mode .modal-header {
+    border-color: #374151;
+}
+
+body.dark-mode .modal-header h2 {
+    color: #f3f4f6;
+}
+
+body.dark-mode .modal-body {
+    background: #1f2937;
+}
+
+body.dark-mode .modal-footer {
+    border-color: #374151;
+    background: #1f2937;
+}
+
+body.dark-mode .modal-body input,
+body.dark-mode .modal-body select,
+body.dark-mode .modal-body textarea {
+    background: #111827;
+    border-color: #374151;
+    color: #f3f4f6;
+}
+
+body.dark-mode .modal-body input:focus,
+body.dark-mode .modal-body select:focus,
+body.dark-mode .modal-body textarea:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+body.dark-mode .modal-body select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23f3f4f6' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+}
+
+body.dark-mode .modal-body label {
+    color: #e5e7eb;
+}
+
+body.dark-mode .format-hint {
+    color: #9ca3af;
 }

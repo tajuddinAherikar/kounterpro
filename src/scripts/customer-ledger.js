@@ -133,6 +133,8 @@ function calculateLedgerStats() {
         document.getElementById('spentCount').textContent = '0 invoices';
         document.getElementById('lastPurchase').textContent = '-';
         document.getElementById('avgOrder').textContent = '₹0';
+        document.getElementById('outstandingBalance').textContent = '₹0';
+        document.getElementById('pendingCount').textContent = '0 pending invoices';
         return;
     }
 
@@ -141,6 +143,12 @@ function calculateLedgerStats() {
         const amount = parseFloat(inv.grand_total || inv.total_amount || 0);
         return sum + amount;
     }, 0);
+
+    // Calculate outstanding balance
+    const outstandingBalance = currentCustomer.outstanding_balance || 0;
+    const pendingInvoices = customerInvoices.filter(inv => 
+        inv.payment_status === 'unpaid' || inv.payment_status === 'partial'
+    );
 
     // Last purchase (most recent invoice)
     const sortedByDate = [...customerInvoices].sort((a, b) => 
@@ -158,6 +166,27 @@ function calculateLedgerStats() {
     document.getElementById('spentCount').textContent = `${customerInvoices.length} invoice${customerInvoices.length !== 1 ? 's' : ''}`;
     document.getElementById('lastPurchase').textContent = lastPurchaseDate;
     document.getElementById('avgOrder').textContent = formatIndianCurrency(avgOrder);
+    
+    // Update outstanding balance
+    document.getElementById('outstandingBalance').textContent = formatIndianCurrency(outstandingBalance);
+    document.getElementById('pendingCount').textContent = `${pendingInvoices.length} pending invoice${pendingInvoices.length !== 1 ? 's' : ''}`;
+    
+    // Show Record Payment button if there's outstanding balance
+    const recordPaymentBtn = document.getElementById('recordPaymentBtn');
+    if (outstandingBalance > 0 && recordPaymentBtn) {
+        recordPaymentBtn.style.display = 'flex';
+        recordPaymentBtn.style.alignItems = 'center';
+        recordPaymentBtn.style.justifyContent = 'center';
+        recordPaymentBtn.style.gap = '6px';
+    }
+    
+    // Update card styling based on balance
+    const outstandingCard = document.getElementById('outstandingCard');
+    if (outstandingBalance > 0) {
+        outstandingCard.style.borderLeftColor = '#f44336';
+    } else {
+        outstandingCard.style.borderLeftColor = '#4caf50';
+    }
 }
 
 // Render purchase timeline chart
@@ -422,3 +451,168 @@ function setupNotificationListener() {
         });
     }
 }
+
+// ============================================
+// PAYMENT RECORDING FUNCTIONS
+// ============================================
+
+/**
+ * Open payment recording modal
+ */
+function openPaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    const select = document.getElementById('paymentInvoiceSelect');
+    
+    // Clear previous data
+    select.innerHTML = '<option value="">-- Select an unpaid invoice --</option>';
+    document.getElementById('paymentForm').reset();
+    document.getElementById('paymentInvoiceSummary').style.display = 'none';
+    document.getElementById('paymentAmountError').textContent = '';
+    
+    // Get pending invoices (unpaid or partial)
+    const pendingInvoices = customerInvoices.filter(inv => 
+        inv.payment_status === 'unpaid' || inv.payment_status === 'partial'
+    );
+    
+    if (pendingInvoices.length === 0) {
+        alert('No pending invoices found for this customer.');
+        return;
+    }
+    
+    // Populate invoice dropdown
+    pendingInvoices.forEach(inv => {
+        const option = document.createElement('option');
+        option.value = inv.id;
+        option.textContent = `${inv.invoice_number} - ${new Date(inv.date).toLocaleDateString('en-IN')} - ${formatIndianCurrency(inv.amount_due || inv.total_amount)}`;
+        option.dataset.totalAmount = inv.total_amount || 0;
+        option.dataset.amountPaid = inv.amount_paid || 0;
+        option.dataset.amountDue = inv.amount_due || inv.total_amount || 0;
+        select.appendChild(option);
+    });
+    
+    // Set default payment date to today
+    document.getElementById('paymentDate').valueAsDate = new Date();
+    
+    // Show modal
+    modal.style.display = 'flex';
+}
+
+/**
+ * Close payment modal
+ */
+function closePaymentModal() {
+    document.getElementById('paymentModal').style.display = 'none';
+}
+
+/**
+ * Update payment details when invoice is selected
+ */
+function updatePaymentDetails() {
+    const select = document.getElementById('paymentInvoiceSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const summary = document.getElementById('paymentInvoiceSummary');
+    
+    if (!select.value) {
+        summary.style.display = 'none';
+        return;
+    }
+    
+    const totalAmount = parseFloat(selectedOption.dataset.totalAmount);
+    const amountPaid = parseFloat(selectedOption.dataset.amountPaid);
+    const amountDue = parseFloat(selectedOption.dataset.amountDue);
+    
+    document.getElementById('paymentInvoiceTotal').textContent = formatIndianCurrency(totalAmount);
+    document.getElementById('paymentAlreadyPaid').textContent = formatIndianCurrency(amountPaid);
+    document.getElementById('paymentAmountDue').textContent = formatIndianCurrency(amountDue);
+    
+    // Set max amount for payment input
+    document.getElementById('paymentAmount').max = amountDue;
+    document.getElementById('paymentAmount').value = amountDue; // Default to full amount
+    
+    summary.style.display = 'block';
+}
+
+/**
+ * Handle payment form submission
+ */
+async function handlePaymentSubmit(event) {
+    event.preventDefault();
+    
+    const submitBtn = document.getElementById('submitPaymentBtn');
+    const invoiceId = document.getElementById('paymentInvoiceSelect').value;
+    const amount = parseFloat(document.getElementById('paymentAmount').value);
+    const paymentDate = document.getElementById('paymentDate').value;
+    const paymentMethod = document.getElementById('paymentMethod').value;
+    const notes = document.getElementById('paymentNotes').value.trim();
+    
+    // Get selected invoice details
+    const select = document.getElementById('paymentInvoiceSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const amountDue = parseFloat(selectedOption.dataset.amountDue);
+    
+    // Validation
+    if (amount <= 0) {
+        document.getElementById('paymentAmountError').textContent = 'Amount must be greater than zero';
+        return;
+    }
+    
+    if (amount > amountDue) {
+        document.getElementById('paymentAmountError').textContent = `Amount cannot exceed ${formatIndianCurrency(amountDue)}`;
+        return;
+    }
+    
+    // Disable button and show loading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="material-icons rotating">sync</span> Recording...';
+    
+    try {
+        // Record payment
+        const result = await supabaseRecordPayment({
+            invoiceId: invoiceId,
+            customerId: currentCustomer.id,
+            amount: amount,
+            paymentDate: paymentDate,
+            paymentMethod: paymentMethod,
+            notes: notes || null
+        });
+        
+        if (!result.success) {
+            throw new Error(result.error || 'Failed to record payment');
+        }
+        
+        // Show success message
+        if (typeof showToast === 'function') {
+            showToast('Payment recorded successfully! Outstanding balance updated.', 'success');
+        } else {
+            alert('✅ Payment recorded successfully!');
+        }
+        
+        // Close modal
+        closePaymentModal();
+        
+        // Reload customer data to reflect changes
+        await loadCustomerData(currentCustomer.id);
+        
+    } catch (error) {
+        console.error('Error recording payment:', error);
+        document.getElementById('paymentAmountError').textContent = error.message;
+        
+        if (typeof showToast === 'function') {
+            showToast('Error: ' + error.message, 'error');
+        } else {
+            alert('❌ Error: ' + error.message);
+        }
+    } finally {
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span class="material-icons">check</span> Record Payment';
+    }
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('paymentModal');
+    if (e.target === modal) {
+        closePaymentModal();
+    }
+});

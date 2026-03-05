@@ -173,6 +173,18 @@
 
             <!-- Summary Stats -->
             <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 24px;">
+                <div class="stat-card" style="border-left: 4px solid #f44336;" id="outstandingCard">
+                    <div class="stat-card-header">
+                        <span class="material-icons">pending_actions</span>
+                        <span class="stat-card-label">Outstanding Balance</span>
+                    </div>
+                    <div class="stat-card-value" id="outstandingBalance" style="color: #f44336;">₹0</div>
+                    <div style="font-size: 12px; color: #666; margin-top: 4px;" id="pendingCount">0 pending invoices</div>
+                    <button class="btn-primary" id="recordPaymentBtn" onclick="openPaymentModal()" style="margin-top: 12px; display: none;">
+                        <span class="material-icons" style="font-size: 16px;">payment</span>
+                        Record Payment
+                    </button>
+                </div>
                 <div class="stat-card">
                     <div class="stat-card-header">
                         <span class="material-icons">account_balance_wallet</span>
@@ -249,6 +261,99 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Payment Recording Modal -->
+    <div class="modal-overlay" id="paymentModal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="material-icons">payment</span>
+                    Record Payment
+                </h2>
+                <button class="btn-icon" onclick="closePaymentModal()" style="background: none; border: none; cursor: pointer;">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <form id="paymentForm" onsubmit="handlePaymentSubmit(event)">
+                <div class="modal-body">
+                    <!-- Select Invoice -->
+                    <div class="form-row">
+                        <label>
+                            Select Invoice: <span class="required">*</span>
+                            <select id="paymentInvoiceSelect" required onchange="updatePaymentDetails()">
+                                <option value="">-- Select an unpaid invoice --</option>
+                            </select>
+                        </label>
+                        <small class="format-hint">Choose which invoice to apply this payment to</small>
+                    </div>
+
+                    <!-- Payment Summary -->
+                    <div id="paymentInvoiceSummary" class="credit-summary" style="display: none; margin-bottom: 16px;">
+                        <div class="credit-row">
+                            <span>Invoice Total:</span>
+                            <span id="paymentInvoiceTotal">₹0.00</span>
+                        </div>
+                        <div class="credit-row">
+                            <span>Already Paid:</span>
+                            <span id="paymentAlreadyPaid">₹0.00</span>
+                        </div>
+                        <div class="credit-row highlight">
+                            <span><strong>Amount Due:</strong></span>
+                            <span id="paymentAmountDue"><strong>₹0.00</strong></span>
+                        </div>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="form-row">
+                        <label>
+                            Amount Received: <span class="required">*</span>
+                            <input type="number" id="paymentAmount" placeholder="0.00" min="0.01" step="0.01" required>
+                        </label>
+                        <small class="format-hint">Enter the amount received from customer</small>
+                        <span class="error-message" id="paymentAmountError"></span>
+                    </div>
+
+                    <!-- Payment Date -->
+                    <div class="form-row">
+                        <label>
+                            Payment Date: <span class="required">*</span>
+                            <input type="date" id="paymentDate" required>
+                        </label>
+                    </div>
+
+                    <!-- Payment Method -->
+                    <div class="form-row">
+                        <label>
+                            Payment Method:
+                            <select id="paymentMethod">
+                                <option value="Cash">Cash</option>
+                                <option value="UPI">UPI</option>
+                                <option value="Card">Card</option>
+                                <option value="Cheque">Cheque</option>
+                                <option value="Bank Transfer">Bank Transfer</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </label>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-row">
+                        <label>
+                            Notes: <span class="optional">(optional)</span>
+                            <textarea id="paymentNotes" rows="3" placeholder="Add any additional notes about this payment"></textarea>
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="submitPaymentBtn">
+                        <span class="material-icons">check</span>
+                        Record Payment
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
