@@ -385,6 +385,27 @@
         </div>
     </div>
 
+    <!-- Floating Action Button (FAB) -->
+    <div class="fab-container" id="fabContainer">
+        <button class="fab-button" id="fabButton" aria-label="Quick Actions">
+            <span class="material-icons fab-icon">add</span>
+        </button>
+        <div class="fab-menu" id="fabMenu">
+            <button class="fab-action fab-action-expense" data-action="expense" onclick="window.location.href='expenses.html'">
+                <span class="fab-action-icon material-icons">payments</span>
+                <span class="fab-action-label">Add Expense</span>
+            </button>
+            <button class="fab-action fab-action-stock" data-action="stock" onclick="window.location.href='inventory.html'">
+                <span class="fab-action-icon material-icons">inventory_2</span>
+                <span class="fab-action-label">Add Stock</span>
+            </button>
+            <a href="create-bill.html" class="fab-action fab-action-invoice" data-action="invoice">
+                <span class="fab-action-icon material-icons">receipt_long</span>
+                <span class="fab-action-label">Create Invoice</span>
+            </a>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -394,6 +415,8 @@
     <script src="../scripts/validation.js"></script>
     <script src="../scripts/supabase.js"></script>
     <script src="../scripts/auth.js"></script>
+    <script src="../scripts/backup.js"></script>
+    <script src="../scripts/fab.js"></script>
     <script src="../scripts/dashboard-modern.js"></script>
 </body>
 </html>

@@ -724,15 +724,30 @@ async function downloadSupabaseBackup() {
     try {
         showLoading('Downloading backup from cloud...');
         
+        // Fetch all user data
         const inventoryResult = await supabaseGetInventory();
         const invoicesResult = await supabaseGetInvoices();
+        const customersResult = await supabaseGetCustomers();
+        const expensesResult = await supabaseGetExpenses();
+        const profileResult = await supabaseGetUserProfile();
         
         const backup = {
-            version: '1.0',
+            version: '2.0',
             timestamp: new Date().toISOString(),
             source: 'supabase',
-            inventory: inventoryResult.data || [],
-            invoices: invoicesResult.data || []
+            data: {
+                inventory: inventoryResult.data || [],
+                invoices: invoicesResult.data || [],
+                customers: customersResult.data || [],
+                expenses: expensesResult.data || [],
+                profile: profileResult.data || null
+            },
+            stats: {
+                totalInventoryItems: (inventoryResult.data || []).length,
+                totalInvoices: (invoicesResult.data || []).length,
+                totalCustomers: (customersResult.data || []).length,
+                totalExpenses: (expensesResult.data || []).length
+            }
         };
         
         const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });

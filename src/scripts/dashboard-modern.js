@@ -1376,3 +1376,43 @@ async function checkLowStockBanner() {
 function resetLowStockBannerFlag() {
     sessionStorage.removeItem('lowStockBannerShown');
 }
+// ===== BACKUP & RESTORE FUNCTIONALITY =====
+
+// Export all data as JSON backup from Supabase
+async function exportBackup() {
+    try {
+        const result = await downloadSupabaseBackup();
+        if (result.success) {
+            showToast('✅ Backup downloaded successfully', 'success');
+        } else {
+            showToast('❌ Backup failed: ' + result.error, 'error');
+        }
+    } catch (error) {
+        console.error('Backup error:', error);
+        showToast('❌ Backup failed: ' + error.message, 'error');
+    }
+}
+
+// Import and restore data from JSON backup
+async function importBackup(event) {
+    const file = event.target.files[0];
+    
+    if (!file) {
+        return;
+    }
+    
+    // Validate file type
+    if (!file.name.endsWith('.json')) {
+        showToast('❌ Invalid file type. Please select a JSON backup file.', 'error');
+        event.target.value = '';
+        return;
+    }
+    
+    // Note: Restore from file not implemented for Supabase
+    showDialog({
+        title: 'Restore Not Available',
+        message: 'Backup restore from file is not yet available with Supabase.\n\nPlease use the Supabase Dashboard to manage your data.',
+        type: 'info'
+    });
+    event.target.value = '';
+}
