@@ -466,6 +466,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!isAuthPage) {
         // Only check OAuth callback on non-auth pages
-        handleOAuthCallback();
+        // Ensure Supabase is ready before handling the OAuth callback
+        ensureSupabaseReady().then(() => {
+            handleOAuthCallback();
+        }).catch(error => {
+            console.error('❌ Error ensuring Supabase ready for OAuth callback:', error);
+        });
     }
 });
