@@ -489,10 +489,26 @@ async function supabaseSignInWithGoogle() {
         const client = await ensureSupabaseReady();
         if (!client) throw new Error('Supabase client not initialized');
         
+        // Build the correct redirect URL for both local dev and GitHub Pages
+        let redirectUrl = window.location.origin;
+        
+        // Detect if running on GitHub Pages or local dev
+        const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        
+        if (isDev) {
+            // Local dev: redirect to /src/pages/index.html
+            redirectUrl = window.location.origin + '/src/pages/index.html';
+        } else {
+            // GitHub Pages production: redirect to /kounterpro/ (app root on GitHub Pages)
+            redirectUrl = window.location.origin + '/kounterpro/';
+        }
+        
+        console.log('🔐 OAuth redirect URL:', redirectUrl);
+        
         const { data, error } = await client.auth.signInWithOAuth({
             provider: 'google',
             options: {
-                redirectTo: window.location.origin + '/src/pages/index.html',
+                redirectTo: redirectUrl,
                 queryParams: {
                     access_type: 'offline',
                     prompt: 'consent'

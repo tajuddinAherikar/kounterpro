@@ -272,7 +272,13 @@ async function handleOAuthCallback() {
         const currentPage = window.location.pathname;
         if (currentPage.includes('signup') || currentPage.includes('login') || currentPage.includes('forgot-password')) {
             console.log('📍 Redirecting to dashboard...');
-            window.location.href = '/src/pages/index.html';
+            // Build the correct redirect URL for both local dev and GitHub Pages
+            const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            const dashboardUrl = isDev 
+                ? '/src/pages/index.html'
+                : '/kounterpro/src/pages/index.html';
+            console.log('📍 Dashboard URL:', dashboardUrl);
+            window.location.href = dashboardUrl;
         }
 
     } catch (error) {
