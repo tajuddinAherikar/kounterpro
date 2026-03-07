@@ -227,59 +227,68 @@ async function signUpWithGoogle() {
  */
 async function handleOAuthCallback() {
     try {
-        // Get current session
-        const sessionResult = await supabaseGetSessionData();
-
-        if (!sessionResult.success || !sessionResult.data) {
-            // No active session, user not logged in via OAuth
+        // Wait for Supabase to be ready and get the client
+        const client = await ensureSupabaseReady();
+        if (!client) {
+            console.warn('⚠️ Supabase client not ready');
             return;
         }
 
-        const session = sessionResult.data;
-        const user = session.user;
-        console.log('✅ OAuth session found for user:', user.email);
+        // Use onAuthStateChange to properly handle session initialization
+        // This is the recommended way to handle OAuth redirects
+        const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
+            console.log('🔐 Auth state changed:', event, session?.user?.email);
 
-        // Check if user_profile exists
-        const profileResult = await supabaseGetUserProfile(user.id);
+            if (event === 'SIGNED_IN' && session) {
+                const user = session.user;
+                console.log('✅ OAuth session found for user:', user.email);
 
-        if (!profileResult.success || !profileResult.data) {
-            // New user from OAuth - create profile
-            console.log('👤 Creating user_profile for new OAuth user...');
-            
-            const createResult = await supabaseCreateOAuthUserProfile(user);
+                // Check if user_profile exists
+                const profileResult = await supabaseGetUserProfile(user.id);
 
-            if (!createResult.success) {
-                console.error('❌ Error creating user profile:', createResult.error);
-                showToast('Welcome! Please complete your profile.', 'info');
-            } else {
-                console.log('✅ User profile created successfully');
+                if (!profileResult.success || !profileResult.data) {
+                    // New user from OAuth - create profile
+                    console.log('👤 Creating user_profile for new OAuth user...');
+                    
+                    const createResult = await supabaseCreateOAuthUserProfile(user);
+
+                    if (!createResult.success) {
+                        console.error('❌ Error creating user profile:', createResult.error);
+                        showToast('Welcome! Please complete your profile.', 'info');
+                    } else {
+                        console.log('✅ User profile created successfully');
+                    }
+                } else {
+                    console.log('✅ User profile already exists');
+                }
+
+                // Update last login
+                const updateResult = await supabaseUpdateUserProfile(user.id, {
+                    last_login_at: new Date().toISOString(),
+                    last_login_ip: await getClientIp()
+                });
+
+                if (!updateResult.success) {
+                    console.warn('⚠️ Could not update last login:', updateResult.error);
+                }
+
+                // Only redirect if we're on a non-dashboard page
+                const currentPage = window.location.pathname;
+                if (currentPage.includes('signup') || currentPage.includes('login') || currentPage.includes('forgot-password')) {
+                    console.log('📍 Redirecting to dashboard...');
+                    // Build the correct redirect URL for both local dev and GitHub Pages
+                    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    const dashboardUrl = isDev 
+                        ? '/src/pages/index.html'
+                        : '/kounterpro/src/pages/index.html';
+                    console.log('📍 Dashboard URL:', dashboardUrl);
+                    window.location.href = dashboardUrl;
+                }
+
+                // Cleanup subscription after handling
+                subscription?.unsubscribe();
             }
-        } else {
-            console.log('✅ User profile already exists');
-        }
-
-        // Update last login
-        const updateResult = await supabaseUpdateUserProfile(user.id, {
-            last_login_at: new Date().toISOString(),
-            last_login_ip: await getClientIp()
         });
-
-        if (!updateResult.success) {
-            console.warn('⚠️ Could not update last login:', updateResult.error);
-        }
-
-        // Only redirect if we're on a non-dashboard page
-        const currentPage = window.location.pathname;
-        if (currentPage.includes('signup') || currentPage.includes('login') || currentPage.includes('forgot-password')) {
-            console.log('📍 Redirecting to dashboard...');
-            // Build the correct redirect URL for both local dev and GitHub Pages
-            const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-            const dashboardUrl = isDev 
-                ? '/src/pages/index.html'
-                : '/kounterpro/src/pages/index.html';
-            console.log('📍 Dashboard URL:', dashboardUrl);
-            window.location.href = dashboardUrl;
-        }
 
     } catch (error) {
         console.error('❌ OAuth callback error:', error);
@@ -466,11 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (!isAuthPage) {
         // Only check OAuth callback on non-auth pages
-        // Ensure Supabase is ready before handling the OAuth callback
-        ensureSupabaseReady().then(() => {
-            handleOAuthCallback();
-        }).catch(error => {
-            console.error('❌ Error ensuring Supabase ready for OAuth callback:', error);
-        });
+        // handleOAuthCallback will use onAuthStateChange for proper session handling
+        handleOAuthCallback();
     }
 });
