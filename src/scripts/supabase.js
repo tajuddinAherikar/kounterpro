@@ -13,14 +13,7 @@ let supabaseInitPromise = null; // Promise for initialization
 // Initialize as soon as the library is available
 if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
     try {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                autoRefreshSession: true,
-                persistSession: true,
-                detectSessionInUrl: true,
-                flowType: 'pkce',
-            },
-        });
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing Supabase:', error);
@@ -38,14 +31,7 @@ function initSupabase() {
     }
     
     try {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                autoRefreshSession: true,
-                persistSession: true,
-                detectSessionInUrl: true,
-                flowType: 'pkce',
-            },
-        });
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('✅ Supabase initialized successfully');
         return supabaseClient;
     } catch (error) {

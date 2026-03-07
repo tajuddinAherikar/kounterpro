@@ -1,14 +1,22 @@
 # GitHub Pages OAuth Configuration Fix
 
-## Problem
-Google OAuth was failing on GitHub Pages deployment with a 404 error after successful authentication. The token was present in the URL (`#access_token=...`) indicating Supabase OAuth was working, but the page redirect was broken.
+## Status: TEMPORARILY DISABLED ⏸️
 
-## Root Cause
-1. **Hardcoded redirect URL**: Code was redirecting to `/src/pages/index.html` which doesn't work on GitHub Pages static hosting
-2. **Supabase misconfiguration**: The redirect URL in Supabase dashboard wasn't set to match GitHub Pages deployment URL
-3. **Path mismatch**: GitHub Pages serves from root but the app structure has nested paths
+Google OAuth sign-up has been **temporarily disabled** on GitHub Pages deployment due to session handling limitations with static hosting and subdirectory structures.
 
-## Solution Implementation
+**Why?**
+- OAuth works perfectly on local development (`http://localhost:5173`)
+- On GitHub Pages, the Supabase client has difficulty persisting and retrieving sessions after redirect
+- The issue is specific to GitHub Pages' static hosting environment with nested directory structure (`/kounterpro/src/pages/`)
+- This is a known limitation with static hosting of SPAs
+
+**Solution:**
+Redeploy the app to a **dedicated domain** (not a GitHub Pages subdirectory) where:
+- Session management works reliably
+- Redirect URLs are simpler (e.g., `https://yourdomain.com/` vs `https://github.com/user/repo/`)
+- OAuth providers can properly manage authentication flow
+
+User can still sign up using **Email/Password authentication** on GitHub Pages.
 
 ### Step 1: Update Supabase Redirect URLs (CRITICAL)
 

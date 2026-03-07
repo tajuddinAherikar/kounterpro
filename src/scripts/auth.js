@@ -146,13 +146,32 @@ async function handleLogin(e) {
 async function logout() {
     const confirmed = await showLogoutConfirm();
     if (confirmed) {
-        await supabaseSignOut();
+        console.log('🔴 Starting logout process...');
+        
+        try {
+            // Attempt to sign out from Supabase
+            const result = await supabaseSignOut();
+            console.log('✅ Supabase sign out:', result);
+        } catch (error) {
+            console.warn('⚠️ Error during Supabase sign out:', error);
+            // Continue with logout even if Supabase fails
+        }
         
         // Reset auth check state for fresh login
         authCheckComplete = false;
         isUserAuthenticated = false;
         clearUserCache(); // Clear user cache from supabase.js
         
+        // Clear session storage and localStorage
+        try {
+            sessionStorage.clear();
+            localStorage.clear();
+            console.log('✅ Cleared browser storage');
+        } catch (error) {
+            console.warn('⚠️ Could not clear storage:', error);
+        }
+        
+        console.log('🔴 Redirecting to login page...');
         window.location.href = 'login.html';
     }
 }
@@ -224,75 +243,28 @@ async function signUpWithGoogle() {
 
 /**
  * Handle OAuth callback (runs on all pages after OAuth redirect)
+ * NOTE: Simplified for local testing - Google OAuth is disabled on GitHub Pages
  */
 async function handleOAuthCallback() {
     try {
-        // Wait for Supabase to be ready and get the client
-        const client = await ensureSupabaseReady();
-        if (!client) {
-            console.warn('⚠️ Supabase client not ready');
+        // Only run on non-auth pages
+        const currentPage = window.location.pathname;
+        const isAuthPage = currentPage.includes('login') || 
+                          currentPage.includes('signup') || 
+                          currentPage.includes('forgot-password') ||
+                          currentPage.includes('reset-password');
+        
+        if (isAuthPage) {
+            // Don't run callback on auth pages
             return;
         }
 
-        // Use onAuthStateChange to properly handle session initialization
-        // This is the recommended way to handle OAuth redirects
-        const { data: { subscription } } = client.auth.onAuthStateChange(async (event, session) => {
-            console.log('🔐 Auth state changed:', event, session?.user?.email);
-
-            if (event === 'SIGNED_IN' && session) {
-                const user = session.user;
-                console.log('✅ OAuth session found for user:', user.email);
-
-                // Check if user_profile exists
-                const profileResult = await supabaseGetUserProfile(user.id);
-
-                if (!profileResult.success || !profileResult.data) {
-                    // New user from OAuth - create profile
-                    console.log('👤 Creating user_profile for new OAuth user...');
-                    
-                    const createResult = await supabaseCreateOAuthUserProfile(user);
-
-                    if (!createResult.success) {
-                        console.error('❌ Error creating user profile:', createResult.error);
-                        showToast('Welcome! Please complete your profile.', 'info');
-                    } else {
-                        console.log('✅ User profile created successfully');
-                    }
-                } else {
-                    console.log('✅ User profile already exists');
-                }
-
-                // Update last login
-                const updateResult = await supabaseUpdateUserProfile(user.id, {
-                    last_login_at: new Date().toISOString(),
-                    last_login_ip: await getClientIp()
-                });
-
-                if (!updateResult.success) {
-                    console.warn('⚠️ Could not update last login:', updateResult.error);
-                }
-
-                // Only redirect if we're on a non-dashboard page
-                const currentPage = window.location.pathname;
-                if (currentPage.includes('signup') || currentPage.includes('login') || currentPage.includes('forgot-password')) {
-                    console.log('📍 Redirecting to dashboard...');
-                    // Build the correct redirect URL for both local dev and GitHub Pages
-                    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                    const dashboardUrl = isDev 
-                        ? '/src/pages/index.html'
-                        : '/kounterpro/src/pages/index.html';
-                    console.log('📍 Dashboard URL:', dashboardUrl);
-                    window.location.href = dashboardUrl;
-                }
-
-                // Cleanup subscription after handling
-                subscription?.unsubscribe();
-            }
-        });
-
+        // For dashboard pages, just verify user is authenticated
+        // If they are, they're already logged in (done by auth.js checks)
+        console.log('✅ User is authenticated on dashboard');
+        
     } catch (error) {
         console.error('❌ OAuth callback error:', error);
-        // Don't show error - callback runs on every page load
     }
 }
 
