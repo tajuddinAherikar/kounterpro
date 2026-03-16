@@ -4,6 +4,7 @@ let inventory = [];
 let customers = [];
 let userProfile = null;
 let editingInvoiceId = null;
+let taxMode = 'with-tax'; // Track current tax mode
 
 // Load customers from database
 async function loadCustomers() {
@@ -88,6 +89,7 @@ function loadInvoiceForEditing() {
                     <input type="text" class="item-description" value="${escapeHtml(item.description || item.name || '')}" required>
                     <span class="error-message item-error"></span>
                 </td>
+                <td><input type="text" class="item-hsn" value="${escapeHtml(item.hsn_code || item.hsnCode || '')}" placeholder="Optional" maxlength="8"></td>
                 <td><textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || '')}</textarea></td>
                 <td>
                     <input type="number" class="item-quantity" min="1" value="${item.quantity || 1}" required>
@@ -367,53 +369,105 @@ function calculateAmounts() {
     const sgstRate = parseFloat(document.getElementById('sgstRate').value) || 0;
     const cgstRate = parseFloat(document.getElementById('cgstRate').value) || 0;
     const totalGstRate = sgstRate + cgstRate;
-    const gstMultiplier = 1 + (totalGstRate / 100);
     
-    // Update total GST display
-    document.getElementById('totalGstRate').textContent = totalGstRate.toFixed(2);
-    
-    let subtotalExclGST = 0;
-    let grandTotal = 0;
-    
-    rows.forEach(row => {
-        const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
-        const rateInclGST = parseFloat(row.querySelector('.item-rate').value) || 0;
+    if (taxMode === 'with-tax') {
+        const gstMultiplier = 1 + (totalGstRate / 100);
         
-        // Update serial number placeholder based on quantity
-        const serialTextarea = row.querySelector('.item-serial');
-        if (quantity > 1) {
-            serialTextarea.placeholder = `Enter ${quantity} serial numbers (one per line)`;
-            serialTextarea.rows = Math.min(quantity, 5); // Max 5 rows visible
-        } else {
-            serialTextarea.placeholder = 'Optional';
-            serialTextarea.rows = 1;
-        }
+        // Update total GST display
+        document.getElementById('totalGstRate').textContent = totalGstRate.toFixed(2);
         
-        // Calculate base rate (excluding GST from the entered rate)
-        const rateExclGST = rateInclGST / gstMultiplier;
-        const amountExclGST = quantity * rateExclGST;
-        const amountInclGST = quantity * rateInclGST;
+        let subtotalExclGST = 0;
+        let grandTotal = 0;
         
-        row.querySelector('.item-amount').textContent = formatIndianCurrency(amountInclGST);
-        subtotalExclGST += amountExclGST;
-        grandTotal += amountInclGST;
-    });
-    
-    const totalGstAmount = grandTotal - subtotalExclGST;
-    const sgstAmount = subtotalExclGST * (sgstRate / 100);
-    const cgstAmount = subtotalExclGST * (cgstRate / 100);
-    
-    document.getElementById('subtotal').textContent = `₹${formatIndianCurrency(subtotalExclGST)}`;
-    document.getElementById('sgstAmount').textContent = `₹${formatIndianCurrency(sgstAmount)}`;
-    document.getElementById('cgstAmount').textContent = `₹${formatIndianCurrency(cgstAmount)}`;
-    document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
-    document.getElementById('displaySgstRate').textContent = sgstRate.toFixed(2);
-    document.getElementById('displayCgstRate').textContent = cgstRate.toFixed(2);
+        rows.forEach(row => {
+            const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+            const rateInclGST = parseFloat(row.querySelector('.item-rate').value) || 0;
+            
+            // Update serial number placeholder based on quantity
+            const serialTextarea = row.querySelector('.item-serial');
+            if (quantity > 1) {
+                serialTextarea.placeholder = `Enter ${quantity} serial numbers (one per line)`;
+                serialTextarea.rows = Math.min(quantity, 5); // Max 5 rows visible
+            } else {
+                serialTextarea.placeholder = 'Optional';
+                serialTextarea.rows = 1;
+            }
+            
+            // Calculate base rate (excluding GST from the entered rate)
+            const rateExclGST = rateInclGST / gstMultiplier;
+            const amountExclGST = quantity * rateExclGST;
+            const amountInclGST = quantity * rateInclGST;
+            
+            row.querySelector('.item-amount').textContent = formatIndianCurrency(amountInclGST);
+            subtotalExclGST += amountExclGST;
+            grandTotal += amountInclGST;
+        });
+        
+        const totalGstAmount = grandTotal - subtotalExclGST;
+        const sgstAmount = subtotalExclGST * (sgstRate / 100);
+        const cgstAmount = subtotalExclGST * (cgstRate / 100);
+        
+        document.getElementById('subtotal').textContent = `₹${formatIndianCurrency(subtotalExclGST)}`;
+        document.getElementById('sgstAmount').textContent = `₹${formatIndianCurrency(sgstAmount)}`;
+        document.getElementById('cgstAmount').textContent = `₹${formatIndianCurrency(cgstAmount)}`;
+        document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
+        document.getElementById('displaySgstRate').textContent = sgstRate.toFixed(2);
+        document.getElementById('displayCgstRate').textContent = cgstRate.toFixed(2);
+    } else {
+        // Without tax mode
+        let grandTotal = 0;
+        
+        rows.forEach(row => {
+            const quantity = parseFloat(row.querySelector('.item-quantity').value) || 0;
+            const rate = parseFloat(row.querySelector('.item-rate').value) || 0;
+            
+            // Update serial number placeholder based on quantity
+            const serialTextarea = row.querySelector('.item-serial');
+            if (quantity > 1) {
+                serialTextarea.placeholder = `Enter ${quantity} serial numbers (one per line)`;
+                serialTextarea.rows = Math.min(quantity, 5);
+            } else {
+                serialTextarea.placeholder = 'Optional';
+                serialTextarea.rows = 1;
+            }
+            
+            const amount = quantity * rate;
+            row.querySelector('.item-amount').textContent = formatIndianCurrency(amount);
+            grandTotal += amount;
+        });
+        
+        document.getElementById('grandTotal').textContent = `₹${formatIndianCurrency(grandTotal)}`;
+    }
     
     // Update credit calculation if partial payment is visible
     const partialSection = document.getElementById('partialPaymentSection');
     if (partialSection && partialSection.style.display !== 'none') {
         calculateCredit();
+    }
+}
+
+// Update tax mode display - show/hide GST fields based on mode
+function updateTaxModeDisplay() {
+    const gstRatesSection = document.getElementById('gstRatesSection');
+    const subtotalRow = document.getElementById('subtotalRow');
+    const sgstRow = document.getElementById('sgstRow');
+    const cgstRow = document.getElementById('cgstRow');
+    const grandTotalLabel = document.querySelector('.grand-total span:first-child');
+    
+    if (taxMode === 'without-tax') {
+        // Hide GST-related elements
+        if (gstRatesSection) gstRatesSection.style.display = 'none';
+        if (subtotalRow) subtotalRow.style.display = 'none';
+        if (sgstRow) sgstRow.style.display = 'none';
+        if (cgstRow) cgstRow.style.display = 'none';
+        if (grandTotalLabel) grandTotalLabel.textContent = 'Total Amount:';
+    } else {
+        // Show GST-related elements
+        if (gstRatesSection) gstRatesSection.style.display = 'flex';
+        if (subtotalRow) subtotalRow.style.display = 'flex';
+        if (sgstRow) sgstRow.style.display = 'flex';
+        if (cgstRow) cgstRow.style.display = 'flex';
+        if (grandTotalLabel) grandTotalLabel.textContent = 'Grand Total:';
     }
 }
 
@@ -430,6 +484,7 @@ function addItem() {
             <input type="text" class="item-description" required>
             <span class="error-message item-error"></span>
         </td>
+        <td><input type="text" class="item-hsn" placeholder="Optional" maxlength="8"></td>
         <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
         <td>
             <input type="number" class="item-quantity" min="1" value="1" required>
@@ -727,7 +782,7 @@ async function generateInvoiceNumber() {
     }
 }
 
-// Collect form data (Rate is GST-inclusive)
+// Collect form data (Rate is GST-inclusive or not based on tax mode)
 async function collectFormData() {
     const customerName = document.getElementById('customerName').value.trim();
     const customerAddress = document.getElementById('customerAddress').value.trim();
@@ -736,7 +791,6 @@ async function collectFormData() {
     const sgstRate = parseFloat(document.getElementById('sgstRate').value) || 0;
     const cgstRate = parseFloat(document.getElementById('cgstRate').value) || 0;
     const gstRate = sgstRate + cgstRate;
-    const gstMultiplier = 1 + (gstRate / 100);
     const termsConditions = document.getElementById('termsConditions').value.trim();
     
     // Validation
@@ -778,8 +832,10 @@ async function collectFormData() {
         }
     }
     
-    if (isNaN(gstRate) || gstRate < 0 || gstRate > 50) {
-        throw new Error('GST rate must be between 0 and 50');
+    if (taxMode === 'with-tax') {
+        if (isNaN(gstRate) || gstRate < 0 || gstRate > 50) {
+            throw new Error('GST rate must be between 0 and 50');
+        }
     }
     
     if (!termsConditions || termsConditions.length < 10) {
@@ -799,6 +855,7 @@ async function collectFormData() {
     
     rows.forEach((row, index) => {
         const description = row.querySelector('.item-description').value.trim();
+        const hsnCode = row.querySelector('.item-hsn').value.trim();
         const serialNo = row.querySelector('.item-serial').value.trim();
         const quantityInput = row.querySelector('.item-quantity').value;
         const rateInput = row.querySelector('.item-rate').value;
@@ -847,14 +904,25 @@ async function collectFormData() {
             throw new Error(`Insufficient stock for "${description}". Available: ${product.stock}, Required: ${quantity}`);
         }
         
-        // Calculate base rate (excluding GST)
-        const rateExclGST = rateInclGST / gstMultiplier;
-        const amountExclGST = quantity * rateExclGST;
-        const amountInclGST = quantity * rateInclGST;
+        // Calculate based on tax mode
+        let rateExclGST, amountExclGST, amountInclGST;
+        
+        if (taxMode === 'with-tax') {
+            const gstMultiplier = 1 + (gstRate / 100);
+            rateExclGST = rateInclGST / gstMultiplier;
+            amountExclGST = quantity * rateExclGST;
+            amountInclGST = quantity * rateInclGST;
+        } else {
+            // Without tax mode - rate is the final rate
+            rateExclGST = rateInclGST;
+            amountExclGST = quantity * rateInclGST;
+            amountInclGST = quantity * rateInclGST;
+        }
         
         items.push({
             slNo: index + 1,
             description,
+            hsnCode: hsnCode || '',  // Store HSN code (empty string if not provided)
             serialNo: serialNo || '',  // Store serial number (empty string if not provided)
             quantity,
             rate: rateExclGST,  // Store the GST-exclusive rate for PDF
@@ -867,9 +935,9 @@ async function collectFormData() {
         totalUnits += quantity;
     });
     
-    const gstAmount = grandTotal - subtotal;
-    const sgstAmount = subtotal * (sgstRate / 100);
-    const cgstAmount = subtotal * (cgstRate / 100);
+    const gstAmount = taxMode === 'with-tax' ? (grandTotal - subtotal) : 0;
+    const sgstAmount = taxMode === 'with-tax' ? (subtotal * (sgstRate / 100)) : 0;
+    const cgstAmount = taxMode === 'with-tax' ? (subtotal * (cgstRate / 100)) : 0;
     
     // Get invoice number from field (may have been manually edited)
     const invoiceNumberField = document.getElementById('invoiceNumber');
@@ -925,15 +993,16 @@ async function collectFormData() {
         customerGST,
         gstNumber: customerGST, // Add alias for Supabase
         items,
-        gstRate,
-        sgstRate,
-        cgstRate,
-        subtotal,
-        gstAmount,
-        sgstAmount,
-        cgstAmount,
-        grandTotal,
-        totalAmount: grandTotal, // Add alias for Supabase
+        taxMode: taxMode, // Store tax mode
+        gstRate: taxMode === 'with-tax' ? gstRate : 0,
+        sgstRate: taxMode === 'with-tax' ? sgstRate : 0,
+        cgstRate: taxMode === 'with-tax' ? cgstRate : 0,
+        subtotal: taxMode === 'with-tax' ? subtotal : 0,
+        gstAmount: taxMode === 'with-tax' ? gstAmount : 0,
+        sgstAmount: taxMode === 'with-tax' ? sgstAmount : 0,
+        cgstAmount: taxMode === 'with-tax' ? cgstAmount : 0,
+        grandTotal: taxMode === 'with-tax' ? grandTotal : subtotal,
+        totalAmount: taxMode === 'with-tax' ? grandTotal : subtotal, // Add alias for Supabase
         totalUnits,
         termsConditions,
         // Credit payment fields
@@ -1681,6 +1750,18 @@ async function initForm() {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.innerHTML = '<span class="material-icons">save</span> Update Invoice';
     }
+    
+    // Setup tax mode toggle
+    const taxModeRadios = document.querySelectorAll('input[name="taxMode"]');
+    taxModeRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            taxMode = e.target.value;
+            updateTaxModeDisplay();
+            calculateAmounts();
+        });
+    });
+    
+    updateTaxModeDisplay();
     
     // Load user profile and inventory data
     await loadUserProfile();

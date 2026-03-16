@@ -815,7 +815,7 @@ textarea#termsConditions {
 }
 
 .gst-control input {
-    width: 100px;
+    width: auto;
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;

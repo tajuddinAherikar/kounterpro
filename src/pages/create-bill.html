@@ -203,7 +203,15 @@
             <div class="form-section">
                 <h2>Invoice Items</h2>
                 <div class="gst-control">
-                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="taxMode" value="with-tax" checked> With GST
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="radio" name="taxMode" value="without-tax"> Without GST
+                        </label>
+                    </div>
+                    <div id="gstRatesSection" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
                         <label style="display: flex; align-items: center; gap: 8px;">
                             <span>SGST (%):</span>
                             <input type="number" id="sgstRate" value="9" min="0" max="50" step="0.01" style="width: 80px;">
@@ -221,6 +229,7 @@
                             <tr>
                                 <th style="width: 60px;">Sl No</th>
                                 <th>Description of Goods <span style="font-weight: normal; font-size: 11px;">(start typing to search inventory)</span></th>
+                                <th style="width: 120px;">HSN Code <span style="font-weight: normal; font-size: 11px;">(Optional)</span></th>
                                 <th style="width: 180px;">Serial No(s) <span style="font-weight: normal; font-size: 11px;">(Optional, one per line)</span></th>
                                 <th style="width: 100px;">Quantity</th>
                                 <th style="width: 140px;">Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
@@ -235,6 +244,7 @@
                                     <input type="text" class="item-description" required>
                                     <span class="error-message item-error"></span>
                                 </td>
+                                <td><input type="text" class="item-hsn" placeholder="Optional" maxlength="8"></td>
                                 <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
                                 <td>
                                     <input type="number" class="item-quantity" min="1" value="1" required>
@@ -253,16 +263,16 @@
                 <button type="button" class="btn-secondary" onclick="addItem()">+ Add Item</button>
                 <span class="error-message" id="itemsError"></span>
 
-                <div class="totals-section">
-                    <div class="total-row">
+                <div class="totals-section" id="totalsSection">
+                    <div class="total-row" id="subtotalRow">
                         <span>Subtotal (excl. GST):</span>
                         <span id="subtotal">₹0.00</span>
                     </div>
-                    <div class="total-row">
+                    <div class="total-row" id="sgstRow">
                         <span>SGST (<span id="displaySgstRate">9</span>%):</span>
                         <span id="sgstAmount">₹0.00</span>
                     </div>
-                    <div class="total-row">
+                    <div class="total-row" id="cgstRow">
                         <span>CGST (<span id="displayCgstRate">9</span>%):</span>
                         <span id="cgstAmount">₹0.00</span>
                     </div>

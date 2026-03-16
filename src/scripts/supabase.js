@@ -745,7 +745,8 @@ async function supabaseAddInvoice(invoice) {
                     payment_type: invoice.paymentType || 'cash',
                     payment_status: paymentStatus,
                     amount_paid: amountPaid,
-                    amount_due: amountDue
+                    amount_due: amountDue,
+                    tax_mode: invoice.taxMode || 'with-tax'
                 }
             ])
             .select();
@@ -803,7 +804,7 @@ async function supabaseUpdateInvoice(id, invoice) {
                 payment_status: paymentStatus,
                 amount_paid: amountPaid,
                 amount_due: amountDue,
-                updated_at: new Date().toISOString()
+                tax_mode: invoice.taxMode || 'with-tax'
             })
             .eq('id', id)
             .select();
