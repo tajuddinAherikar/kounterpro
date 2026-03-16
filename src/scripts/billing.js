@@ -53,6 +53,12 @@ function loadInvoiceForEditing() {
             invoiceNumberField.value = invoice.invoice_number || '';
         }
         
+        // Populate invoice date
+        const invoiceDateField = document.getElementById('invoiceDate');
+        if (invoiceDateField && invoice.date) {
+            invoiceDateField.value = invoice.date.split('T')[0]; // Extract YYYY-MM-DD part
+        }
+        
         // Populate customer details
         document.getElementById('customerName').value = invoice.customer_name || '';
         document.getElementById('customerSearch').value = invoice.customer_name || '';
@@ -873,14 +879,28 @@ async function collectFormData() {
         throw new Error('Invoice number is required');
     }
     
-    // For editing, use the original invoice date. For creating, use current date
+    // For editing, use the original invoice date. For creating, use date from form field
     let dateString;
-    const editingDateFromSession = sessionStorage.getItem('editingInvoiceDate');
-    if (editingInvoiceId && editingDateFromSession) {
-        // Use the original invoice date
-        dateString = editingDateFromSession.split('T')[0]; // Extract YYYY-MM-DD part
+    const invoiceDateField = document.getElementById('invoiceDate');
+    
+    if (invoiceDateField && invoiceDateField.value) {
+        // Use date from the form field
+        dateString = invoiceDateField.value;
+    } else if (editingInvoiceId) {
+        // Use the original invoice date for editing
+        const editingDateFromSession = sessionStorage.getItem('editingInvoiceDate');
+        if (editingDateFromSession) {
+            dateString = editingDateFromSession.split('T')[0]; // Extract YYYY-MM-DD part
+        } else {
+            // Fallback to today
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            dateString = `${year}-${month}-${day}`;
+        }
     } else {
-        // Generate new date for new invoices
+        // Default to today for new invoices if no date selected
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -1674,6 +1694,16 @@ async function initForm() {
             const generatedNumber = await generateInvoiceNumber();
             invoiceNumberField.value = generatedNumber;
         }
+        
+        // Set default date to today
+        const invoiceDateField = document.getElementById('invoiceDate');
+        if (invoiceDateField) {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            invoiceDateField.value = `${year}-${month}-${day}`;
+        }
     }
     
     // Setup invoice number edit functionality
@@ -1834,17 +1864,17 @@ async function loadCustomerBalance(customerId) {
  * Find customer ID from saved customers by name or mobile
  */
 function findCustomerId(customerName, customerMobile) {
-    if (!savedCustomers || savedCustomers.length === 0) return null;
+    if (!customers || customers.length === 0) return null;
     
     // Try to find by exact name match first
-    let customer = savedCustomers.find(c => 
+    let customer = customers.find(c => 
         c.name.toLowerCase() === customerName.toLowerCase()
     );
     
     // If not found by name, try mobile
     if (!customer && customerMobile) {
         const cleanMobile = customerMobile.replace(/[\s\-\+]/g, '');
-        customer = savedCustomers.find(c => 
+        customer = customers.find(c => 
             c.mobile && c.mobile.replace(/[\s\-\+]/g, '') === cleanMobile
         );
     }
