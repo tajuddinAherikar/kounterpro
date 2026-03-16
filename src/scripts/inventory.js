@@ -248,6 +248,7 @@ function editItem(itemId) {
     document.getElementById('editItemId').value = itemId;
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemDescription').value = item.description || '';
+    document.getElementById('itemBarcode').value = item.barcode || '';
     document.getElementById('itemOpeningStock').value = item.openingStock || 0;
     document.getElementById('itemStock').value = item.stock;
     document.getElementById('itemPurchasePrice').value = item.purchasePrice;
@@ -326,6 +327,7 @@ async function handleFormSubmit(e) {
     
     const name = document.getElementById('itemName').value.trim();
     const description = document.getElementById('itemDescription').value.trim();
+    const barcode = document.getElementById('itemBarcode').value.trim();
     const stockInput = document.getElementById('itemStock').value;
     const purchasePriceInput = document.getElementById('itemPurchasePrice').value;
     const salePriceInput = document.getElementById('itemSalePrice').value;
@@ -423,6 +425,7 @@ async function handleFormSubmit(e) {
     const itemData = {
         name,
         description,
+        barcode: barcode || null,
         openingStock,
         stock,
         purchasePrice,
@@ -514,6 +517,123 @@ function initInventory() {
             searchInventory();
         }
     });
+}
+
+// ============================================
+// BARCODE SCANNER FUNCTIONALITY
+// ============================================
+
+let html5QrcodeScanner = null;
+let barcodeScannerActive = false;
+
+function openBarcodeScanner() {
+    document.getElementById('barcodeScannerModal').style.display = 'flex';
+    
+    if (!barcodeScannerActive) {
+        initializeBarcodeScanner();
+    }
+}
+
+function closeBarcodeScanner() {
+    document.getElementById('barcodeScannerModal').style.display = 'none';
+    stopBarcodeScanner();
+}
+
+function initializeBarcodeScanner() {
+    try {
+        // Check if html5QrcodeScanner is available
+        if (typeof Html5Qrcode === 'undefined') {
+            alert('⚠️ QR code scanner library not loaded yet. Please try again.');
+            return;
+        }
+        
+        html5QrcodeScanner = new Html5Qrcode('qr-reader');
+        
+        const qrConfig = {
+            fps: 10,
+            qrbox: { width: 300, height: 300 },
+            isShowTorchButtonIfSupported: true,
+            disableFlip: false,
+            rememberLastUsedCamera: true
+        };
+        
+        html5QrcodeScanner.start(
+            { facingMode: 'environment' },
+            qrConfig,
+            onBarcodeSuccess,
+            onBarcodeScannerError
+        ).catch(err => {
+            console.error('Failed to start scanner:', err);
+            alert('❌ Camera access denied or not available. Please check permissions.');
+        });
+        
+        barcodeScannerActive = true;
+    } catch (error) {
+        console.error('Error initializing scanner:', error);
+        alert('❌ Error initializing barcode scanner: ' + error.message);
+    }
+}
+
+function stopBarcodeScanner() {
+    if (html5QrcodeScanner && barcodeScannerActive) {
+        html5QrcodeScanner.stop().then(() => {
+            html5QrcodeScanner.clear();
+            html5QrcodeScanner = null;
+            barcodeScannerActive = false;
+        }).catch(err => {
+            console.error('Error stopping scanner:', err);
+        });
+    }
+}
+
+function onBarcodeSuccess(decodedText, decodedResult) {
+    console.log('✅ Barcode scanned:', decodedText);
+    
+    // Stop scanner
+    stopBarcodeScanner();
+    
+    // Populate barcode field
+    document.getElementById('itemBarcode').value = decodedText;
+    
+    // Look up product by barcode in existing inventory
+    const existingProduct = inventory.find(item => 
+        item.barcode && item.barcode.toLowerCase() === decodedText.toLowerCase()
+    );
+    
+    if (existingProduct) {
+        // Product found - show option to update or create new
+        const userChoice = confirm(
+            `Product found: "${existingProduct.name}"\n\n` +
+            `Current Stock: ${existingProduct.stock}\n` +
+            `Sale Price: ₹${existingProduct.salePrice}\n\n` +
+            `Click OK to update this product, or Cancel to add a new one.`
+        );
+        
+        if (userChoice) {
+            // Edit the existing product
+            editItem(existingProduct.id);
+            closeBarcodeScanner();
+            return;
+        }
+    }
+    
+    // Auto-fill just the product name from barcode if available
+    // For standard barcodes, we can try to extract a meaningful name
+    if (!document.getElementById('itemName').value) {
+        // Use barcode as a starting point
+        document.getElementById('itemName').value = decodedText.substring(0, 50);
+        document.getElementById('itemName').focus();
+    }
+    
+    // Close scanner modal
+    closeBarcodeScanner();
+}
+
+function onBarcodeScannerError(error) {
+    // Ignore permission denied errors on repeated attempts
+    if (error && error.name !== 'NotAllowedError') {
+        console.warn('Barcode scanner error:', error);
+    }
 }
 
 // Initialize when page loads

@@ -594,6 +594,7 @@ async function supabaseAddInventoryItem(item) {
                     user_id: user.id,
                     name: item.name,
                     description: item.description || '',
+                    barcode: item.barcode || null,
                     opening_stock: item.openingStock || 0,
                     stock: item.stock || 0,
                     rate: item.salePrice || item.purchasePrice || 0, // For backwards compatibility
@@ -619,12 +620,12 @@ async function supabaseUpdateInventoryItem(id, updates) {
             .update({
                 name: updates.name,
                 description: updates.description,
+                barcode: updates.barcode || null,
                 opening_stock: updates.openingStock,
                 stock: updates.stock,
                 purchase_price: updates.purchasePrice,
                 sale_price: updates.salePrice,
-                low_stock_threshold: updates.lowStockThreshold,
-                updated_at: new Date().toISOString()
+                low_stock_threshold: updates.lowStockThreshold
             })
             .eq('id', id)
             .select();

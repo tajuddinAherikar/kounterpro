@@ -228,6 +228,19 @@
                     </label>
                     <textarea id="itemDescription" rows="3" maxlength="255" placeholder="Additional details about the item"></textarea>
                 </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">qr_code_2</span>
+                        <span>Barcode/SKU <span class="optional">(optional)</span></span>
+                    </label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="itemBarcode" maxlength="100" placeholder="Scan or enter barcode/SKU" style="flex: 1;">
+                        <button type="button" class="btn-secondary" onclick="openBarcodeScanner()" title="Scan Barcode" style="padding: 8px 12px;">
+                            <span class="material-icons">qr_code_scanner</span>
+                        </button>
+                    </div>
+                    <small class="form-hint">Scan or manually enter product barcode/SKU (UPC, EAN, QR code, etc.)</small>
+                </div>
                 <div class="form-row-group">
                     <div class="form-row form-row-half">
                         <label class="form-label-with-icon">
@@ -297,6 +310,27 @@
         </div>
     </div>
 
+    <!-- Barcode Scanner Modal -->
+    <div id="barcodeScannerModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Scan Barcode/QR Code</h2>
+                <span class="close" onclick="closeBarcodeScanner()">&times;</span>
+            </div>
+            <div style="padding: 20px; text-align: center;">
+                <div id="qr-reader" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
+                <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                    Allow camera access and point your device at a barcode or QR code
+                </p>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" onclick="closeBarcodeScanner()" style="flex: 1;">
+                        <span class="material-icons">cancel</span> Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- CSV Import Preview Modal -->
     <div id="csvPreviewModal" class="modal">
         <div class="modal-content" style="max-width: 900px;">
@@ -345,6 +379,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <script src="../scripts/dialog.js"></script>
     <script src="../scripts/toast.js"></script>
     <script src="../scripts/validation.js"></script>
