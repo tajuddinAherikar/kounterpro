@@ -5,12 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KounterPro</title>
     <script>
-        // Store the current path
-        const path = window.location.pathname;
-        
-        // Redirect to index.html to let it handle routing
-        // This is needed for GitHub Pages to handle client-side routing properly
-        window.location.href = window.location.origin + '/index.html';
+        // Redirect to index.html - works for localhost and GitHub Pages
+        // Get the base path (handles repo name for GitHub Pages)
+        const pathSegments = window.location.pathname.split('/').filter(s => s);
+        // For GitHub Pages, first segment is usually the repo name
+        // For localhost or custom domain, redirect to root
+        const basePath = window.location.hostname.includes('github.io') && pathSegments[0] 
+            ? `/${pathSegments[0]}/` 
+            : '/';
+        window.location.href = window.location.origin + basePath + 'index.html';
     </script>
 </head>
 <body></body>
