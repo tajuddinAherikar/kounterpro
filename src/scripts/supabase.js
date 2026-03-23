@@ -10,6 +10,24 @@ let cachedUser = null; // Cache for current user to avoid multiple auth calls
 let userCachePromise = null; // Promise for concurrent requests
 let supabaseInitPromise = null; // Promise for initialization
 
+// ============================================
+// ACTIVE SHOP STATE
+// ============================================
+let activeShopId = localStorage.getItem('activeShopId') || null;
+
+function getActiveShopId() {
+    return activeShopId;
+}
+
+function setActiveShopId(shopId) {
+    activeShopId = shopId;
+    if (shopId) {
+        localStorage.setItem('activeShopId', shopId);
+    } else {
+        localStorage.removeItem('activeShopId');
+    }
+}
+
 // Initialize as soon as the library is available
 if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
     try {
@@ -405,6 +423,190 @@ async function supabaseUpdateUserProfile(userId, profileData) {
 }
 
 // ============================================
+// SHOP MANAGEMENT FUNCTIONS
+// ============================================
+
+async function supabaseGetShops() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabaseClient
+            .from('shops')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get shops error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+async function supabaseCreateShop(shopData) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabaseClient
+            .from('shops')
+            .insert([{
+                user_id: user.id,
+                shop_name: shopData.shop_name || 'New Shop',
+                business_name: shopData.business_name || null,
+                business_address: shopData.business_address || null,
+                contact_number_1: shopData.contact_number_1 || null,
+                contact_number_2: shopData.contact_number_2 || null,
+                business_email: shopData.business_email || null,
+                gst_number: shopData.gst_number || null,
+                upi_id: shopData.upi_id || null,
+                terms_conditions: shopData.terms_conditions || null,
+                brand_color: shopData.brand_color || '#2845D6',
+                invoice_template: shopData.invoice_template || 'classic',
+                invoice_prefix: shopData.invoice_prefix || 'INV',
+                starting_invoice_number: shopData.starting_invoice_number || 1,
+                is_default: false
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Create shop error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseUpdateShop(shopId, shopData) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('shops')
+            .update({
+                shop_name: shopData.shop_name,
+                business_name: shopData.business_name,
+                business_address: shopData.business_address,
+                contact_number_1: shopData.contact_number_1,
+                contact_number_2: shopData.contact_number_2,
+                business_email: shopData.business_email,
+                gst_number: shopData.gst_number,
+                upi_id: shopData.upi_id,
+                terms_conditions: shopData.terms_conditions,
+                logo_url: shopData.logo_url,
+                brand_color: shopData.brand_color,
+                show_logo: shopData.show_logo,
+                logo_position: shopData.logo_position,
+                invoice_template: shopData.invoice_template,
+                invoice_prefix: shopData.invoice_prefix,
+                starting_invoice_number: shopData.starting_invoice_number,
+                current_invoice_counter: shopData.current_invoice_counter,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', shopId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Update shop error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseDeleteShop(shopId) {
+    try {
+        const { error } = await supabaseClient
+            .from('shops')
+            .delete()
+            .eq('id', shopId);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Delete shop error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseSetDefaultShop(shopId) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        await supabaseClient
+            .from('shops')
+            .update({ is_default: false })
+            .eq('user_id', user.id);
+
+        const { data, error } = await supabaseClient
+            .from('shops')
+            .update({ is_default: true })
+            .eq('id', shopId)
+            .select()
+            .single();
+
+        if (error) throw error;
+        return { success: true, data };
+    } catch (error) {
+        console.error('Set default shop error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseGetActiveShop() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        let shopId = getActiveShopId();
+
+        if (shopId) {
+            const { data, error } = await supabaseClient
+                .from('shops')
+                .select('*')
+                .eq('id', shopId)
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (!error && data) return { success: true, data };
+        }
+
+        const { data: defaultShop, error: defaultError } = await supabaseClient
+            .from('shops')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('is_default', true)
+            .maybeSingle();
+
+        if (!defaultError && defaultShop) {
+            setActiveShopId(defaultShop.id);
+            return { success: true, data: defaultShop };
+        }
+
+        const { data: firstShop, error: firstError } = await supabaseClient
+            .from('shops')
+            .select('*')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+
+        if (!firstError && firstShop) {
+            setActiveShopId(firstShop.id);
+            return { success: true, data: firstShop };
+        }
+
+        return { success: false, data: null };
+    } catch (error) {
+        console.error('Get active shop error:', error);
+        return { success: false, error: error.message, data: null };
+    }
+}
+
+// ============================================
 // LOGO UPLOAD FUNCTIONS
 // ============================================
 
@@ -571,13 +773,17 @@ async function supabaseGetInventory() {
     try {
         const user = await supabaseGetCurrentUser();
         if (!user) throw new Error('User not authenticated');
-        
-        const { data, error } = await supabaseClient
+
+        const shopId = getActiveShopId();
+        let query = supabaseClient
             .from('inventory')
             .select('*')
-            .eq('user_id', user.id)
-            .order('name', { ascending: true });
-        
+            .eq('user_id', user.id);
+
+        if (shopId) query = query.eq('shop_id', shopId);
+
+        const { data, error } = await query.order('name', { ascending: true });
+
         if (error) throw error;
         return { success: true, data: data || [] };
     } catch (error) {
@@ -596,6 +802,7 @@ async function supabaseAddInventoryItem(item) {
             .insert([
                 {
                     user_id: user.id,
+                    shop_id: getActiveShopId() || null,
                     name: item.name,
                     description: item.description || '',
                     barcode: item.barcode || null,
@@ -693,11 +900,19 @@ async function supabaseUpdateStock(itemName, quantitySold) {
 
 async function supabaseGetInvoices() {
     try {
-        const { data, error } = await supabaseClient
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const shopId = getActiveShopId();
+        let query = supabaseClient
             .from('invoices')
             .select('*')
-            .order('created_at', { ascending: false });
-        
+            .eq('user_id', user.id);
+
+        if (shopId) query = query.eq('shop_id', shopId);
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
         if (error) throw error;
         return { success: true, data: data || [] };
     } catch (error) {
@@ -733,6 +948,7 @@ async function supabaseAddInvoice(invoice) {
             .insert([
                 {
                     user_id: user.id,
+                    shop_id: getActiveShopId() || null,
                     invoice_number: invoice.invoiceNumber,
                     date: invoice.date,
                     customer_id: invoice.customerId || null,
@@ -988,13 +1204,17 @@ async function supabaseGetCustomers() {
     try {
         const user = await supabaseGetCurrentUser();
         if (!user) throw new Error('User not authenticated');
-        
-        const { data, error } = await supabaseClient
+
+        const shopId = getActiveShopId();
+        let query = supabaseClient
             .from('customers')
             .select('*')
-            .eq('user_id', user.id)
-            .order('name', { ascending: true });
-        
+            .eq('user_id', user.id);
+
+        if (shopId) query = query.eq('shop_id', shopId);
+
+        const { data, error } = await query.order('name', { ascending: true });
+
         if (error) throw error;
         return { success: true, data: data || [] };
     } catch (error) {
@@ -1014,6 +1234,7 @@ async function supabaseAddCustomer(customer) {
             .insert([
                 {
                     user_id: user.id,
+                    shop_id: getActiveShopId() || null,
                     name: customer.name,
                     mobile: customer.mobile,
                     email: customer.email || null,
@@ -1075,11 +1296,19 @@ async function supabaseDeleteCustomer(id) {
 
 async function supabaseGetExpenses() {
     try {
-        const { data, error } = await supabaseClient
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const shopId = getActiveShopId();
+        let query = supabaseClient
             .from('expenses')
             .select('*')
-            .order('date', { ascending: false });
-        
+            .eq('user_id', user.id);
+
+        if (shopId) query = query.eq('shop_id', shopId);
+
+        const { data, error } = await query.order('date', { ascending: false });
+
         if (error) throw error;
         return { success: true, data: data || [] };
     } catch (error) {
@@ -1098,6 +1327,7 @@ async function supabaseAddExpense(expense) {
             .insert([
                 {
                     user_id: user.id,
+                    shop_id: getActiveShopId() || null,
                     amount: expense.amount,
                     description: expense.description,
                     category: expense.category,

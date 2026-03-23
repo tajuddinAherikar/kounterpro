@@ -188,8 +188,102 @@ async function addUserProfileDropdown() {
             const businessName = profileData?.business_name || 'Business Name';
             const logoUrl = profileData?.logo_url || profileData?.business_logo || null;
 
-            // Find header-right and add user profile button
+            // ---- Shop Switcher ----
             const headerRight = document.querySelector('.header-right');
+            if (headerRight && !document.getElementById('shopSwitcherContainer')) {
+                // Load shops in background and render switcher
+                supabaseGetShops().then(result => {
+                    const shops = result.data || [];
+                    if (shops.length === 0) return;
+
+                    const currentShopId = getActiveShopId();
+                    const activeShop = shops.find(s => s.id === currentShopId) || shops.find(s => s.is_default) || shops[0];
+
+                    // Ensure activeShopId is set
+                    if (activeShop && !currentShopId) setActiveShopId(activeShop.id);
+
+                    const switcher = document.createElement('div');
+                    switcher.id = 'shopSwitcherContainer';
+                    switcher.className = 'shop-switcher-wrapper';
+                    switcher.innerHTML = `
+                        <button class="shop-switcher-btn" id="shopSwitcherBtn" onclick="toggleShopDropdown(event)" title="Switch Shop">
+                            <span class="material-icons shop-switcher-icon">storefront</span>
+                            <span class="shop-switcher-name" id="shopSwitcherName">${activeShop?.shop_name || activeShop?.business_name || 'My Shop'}</span>
+                            <span class="material-icons shop-switcher-arrow">expand_more</span>
+                        </button>
+                        <div class="shop-dropdown" id="shopDropdown" style="display:none;">
+                            <div class="shop-dropdown-header">Switch Shop</div>
+                            ${shops.map(shop => `
+                                <button class="shop-dropdown-item ${shop.id === (activeShop?.id) ? 'active' : ''}"
+                                    onclick="switchShop('${shop.id}', '${(shop.shop_name || shop.business_name || 'Shop').replace(/'/g, "\\'")}')">
+                                    <span class="material-icons">${shop.id === (activeShop?.id) ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
+                                    <span>${shop.shop_name || shop.business_name || 'Shop'}</span>
+                                    ${shop.is_default ? '<span class="shop-default-badge">Default</span>' : ''}
+                                </button>
+                            `).join('')}
+                            <div class="shop-dropdown-divider"></div>
+                            <a href="profile.html?tab=my-shops" class="shop-dropdown-manage">
+                                <span class="material-icons">settings</span> Manage Shops
+                            </a>
+                        </div>
+                    `;
+                    headerRight.insertBefore(switcher, headerRight.firstChild);
+
+                    // --- Mobile: inject shop trigger button into .mobile-header-right ---
+                    const mobileHeaderRight = document.querySelector('.mobile-header-right');
+                    if (mobileHeaderRight && !document.getElementById('mobileShopTrigger')) {
+                        const btn = document.createElement('button');
+                        btn.id = 'mobileShopTrigger';
+                        btn.className = 'mobile-shop-trigger';
+                        btn.title = 'Switch Shop';
+                        btn.onclick = toggleMobileShopSheet;
+                        btn.innerHTML = `
+                            <span class="material-icons">storefront</span>
+                            <span class="mobile-shop-trigger-name" id="mobileShopBarName">${activeShop?.shop_name || activeShop?.business_name || 'Shop'}</span>
+                            ${shops.length > 1 ? '<span class="material-icons mobile-shop-trigger-chevron">expand_more</span>' : ''}
+                        `;
+                        // Insert before the first child (before dark-mode toggle)
+                        mobileHeaderRight.insertBefore(btn, mobileHeaderRight.firstChild);
+                    }
+
+                    if (!document.getElementById('shopBottomSheet')) {
+                        const backdrop = document.createElement('div');
+                        backdrop.id = 'shopSheetBackdrop';
+                        backdrop.className = 'shop-sheet-backdrop';
+                        backdrop.onclick = closeMobileShopSheet;
+                        document.body.appendChild(backdrop);
+
+                        const sheet = document.createElement('div');
+                        sheet.id = 'shopBottomSheet';
+                        sheet.className = 'shop-bottom-sheet';
+                        sheet.innerHTML = `
+                            <div class="shop-sheet-handle-bar"><div class="shop-sheet-handle"></div></div>
+                            <div class="shop-sheet-title">Switch Shop</div>
+                            <div class="shop-sheet-list">
+                                ${shops.map(shop => `
+                                    <button class="shop-sheet-item ${shop.id === activeShop?.id ? 'active' : ''}"
+                                        onclick="switchShop('${shop.id}', '${(shop.shop_name || shop.business_name || 'Shop').replace(/'/g, "'")}')">
+                                        <span class="material-icons">${shop.id === activeShop?.id ? 'radio_button_checked' : 'radio_button_unchecked'}</span>
+                                        <div class="shop-sheet-item-info">
+                                            <div class="shop-sheet-item-name">${shop.shop_name || shop.business_name || 'Shop'}</div>
+                                            ${shop.business_name && shop.shop_name !== shop.business_name ? `<div class="shop-sheet-item-sub">${shop.business_name}</div>` : ''}
+                                        </div>
+                                        ${shop.is_default ? '<span class="shop-default-badge">Default</span>' : ''}
+                                    </button>
+                                `).join('')}
+                            </div>
+                            <div class="shop-sheet-footer">
+                                <a href="profile.html?tab=my-shops" class="shop-sheet-manage">
+                                    <span class="material-icons">settings</span> Manage Shops
+                                </a>
+                            </div>
+                        `;
+                        document.body.appendChild(sheet);
+                    }
+                });
+            }
+
+            // Find header-right and add user profile button
             if (headerRight && !document.getElementById('userProfileButton')) {
                 const userProfileContainer = document.createElement('div');
                 userProfileContainer.className = 'user-profile-dropdown';
@@ -212,6 +306,65 @@ async function addUserProfileDropdown() {
         }
     }
 }
+
+function toggleShopDropdown(event) {
+    event.stopPropagation();
+    const dropdown = document.getElementById('shopDropdown');
+    if (!dropdown) return;
+    const isOpen = dropdown.style.display !== 'none';
+    dropdown.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) {
+        // Close on outside click
+        setTimeout(() => {
+            document.addEventListener('click', closeShopDropdown, { once: true });
+        }, 0);
+    }
+}
+
+function closeShopDropdown() {
+    const dropdown = document.getElementById('shopDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+}
+
+function toggleMobileShopSheet() {
+    const sheet = document.getElementById('shopBottomSheet');
+    const backdrop = document.getElementById('shopSheetBackdrop');
+    if (!sheet) return;
+    if (sheet.classList.contains('open')) {
+        closeMobileShopSheet();
+    } else {
+        if (backdrop) backdrop.classList.add('open');
+        sheet.classList.add('open');
+    }
+}
+
+function closeMobileShopSheet() {
+    const sheet = document.getElementById('shopBottomSheet');
+    const backdrop = document.getElementById('shopSheetBackdrop');
+    if (sheet) sheet.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+}
+
+function switchShop(shopId, shopName) {
+    setActiveShopId(shopId);
+    // Update desktop switcher label
+    const nameEl = document.getElementById('shopSwitcherName');
+    if (nameEl) nameEl.textContent = shopName;
+    // Update mobile trigger label
+    const mobileBarName = document.getElementById('mobileShopBarName');
+    if (mobileBarName) mobileBarName.textContent = shopName;
+    // Update active state in desktop dropdown
+    document.querySelectorAll('.shop-dropdown-item').forEach(btn => {
+        const isActive = btn.getAttribute('onclick')?.includes(`'${shopId}'`);
+        btn.classList.toggle('active', isActive);
+        const icon = btn.querySelector('.material-icons');
+        if (icon) icon.textContent = isActive ? 'radio_button_checked' : 'radio_button_unchecked';
+    });
+    closeShopDropdown();
+    closeMobileShopSheet();
+    window.location.reload();
+}
+
 
 // Apply (or clear) the business logo on the mobile avatar button
 function applyLogoToMobileAvatar(logoUrl) {

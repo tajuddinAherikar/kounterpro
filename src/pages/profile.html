@@ -151,6 +151,10 @@
                 <span class="material-icons">lock</span>
                 Password & Security
             </button>
+            <button class="tab-btn" data-tab="my-shops">
+                <span class="material-icons">storefront</span>
+                My Shops
+            </button>
         </div>
 
         <!-- Profile Settings Tab -->
@@ -502,12 +506,68 @@
                 </div>
             </form>
         </div>
-        </div>
-    </div>
-        </div>
-    </div>
 
-    <!-- Template Preview Modal -->
+        <!-- My Shops Tab -->
+        <div id="my-shops" class="tab-content">
+            <div class="form-section">
+                <div class="section-header-row">
+                    <h3 class="section-title"><span class="material-icons">storefront</span> My Shops</h3>
+                    <button type="button" class="btn-primary btn-sm" onclick="openAddShopModal()">
+                        <span class="material-icons">add</span> Add Shop
+                    </button>
+                </div>
+                <div id="shopsList" class="shops-list">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- end .main-content -->
+
+    <!-- Add/Edit Shop Modal -->
+    <div id="shopModal" class="shop-modal-overlay" style="display:none;">
+        <div class="shop-modal-box">
+            <div class="modal-header">
+                <h2 id="shopModalTitle"><span class="material-icons">storefront</span> Add New Shop</h2>
+                <button class="modal-close" onclick="closeShopModal()" aria-label="Close"><span class="material-icons">close</span></button>
+            </div>
+            <div class="modal-body" style="padding:20px; overflow-y:auto; max-height:60vh;">
+                <input type="hidden" id="editingShopId">
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">store</span><span>Shop Name <span class="required">*</span></span></label>
+                    <input type="text" id="shopNameInput" placeholder="e.g., Main Branch" maxlength="100">
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">business</span><span>Business Name</span></label>
+                    <input type="text" id="shopBusinessNameInput" placeholder="e.g., Keen Batteries" maxlength="100">
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">phone</span><span>Phone Number</span></label>
+                    <input type="tel" id="shopPhoneInput" placeholder="e.g., 9876543210" maxlength="15">
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">email</span><span>Email</span></label>
+                    <input type="email" id="shopEmailInput" placeholder="shop@example.com">
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">receipt</span><span>GST Number</span></label>
+                    <input type="text" id="shopGstInput" placeholder="e.g., 29ABCDE1234F1Z5" maxlength="15">
+                </div>
+                <div class="form-row">
+                    <label class="form-label-with-icon"><span class="material-icons label-icon">home</span><span>Address</span></label>
+                    <textarea id="shopAddressInput" rows="2" placeholder="Shop address" maxlength="200"></textarea>
+                </div>
+                <div class="form-row" style="flex-direction:row; align-items:center; gap:10px;">
+                    <input type="checkbox" id="shopIsDefaultCheck" style="width:auto;">
+                    <label for="shopIsDefaultCheck" style="margin:0;">Set as default shop</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeShopModal()"><span class="material-icons">close</span> Cancel</button>
+                <button type="button" class="btn-primary" onclick="saveShop()"><span class="material-icons">save</span> Save Shop</button>
+            </div>
+        </div>
+    </div>
     <div id="templatePreviewModal">
         <div class="modal-overlay" onclick="closeTemplatePreview()"></div>
         <div class="modal-container">
@@ -1271,6 +1331,161 @@
         document.getElementById('showLogo').addEventListener('change', updateShowLogoLabel);
 
         // Initialize
+        // ===== MY SHOPS TAB =====
+
+        async function loadMyShopsTab() {
+            const listEl = document.getElementById('shopsList');
+            if (!listEl) return;
+            listEl.innerHTML = '<div class="loading-spinner"></div>';
+
+            const result = await supabaseGetShops();
+            const shops = result.data || [];
+
+            if (shops.length === 0) {
+                listEl.innerHTML = `
+                    <div class="empty-state" style="text-align:center; padding:40px 20px;">
+                        <span class="material-icons" style="font-size:48px; color:#9ca3af;">storefront</span>
+                        <p style="color:#6b7280; margin:12px 0;">No shops yet. Click "Add Shop" to create your first shop.</p>
+                    </div>`;
+                return;
+            }
+
+            const activeShopId = getActiveShopId();
+            listEl.innerHTML = shops.map(shop => `
+                <div class="shop-card ${shop.id === activeShopId ? 'shop-card-active' : ''}">
+                    <div class="shop-card-info">
+                        <div class="shop-card-name">
+                            <span class="material-icons">storefront</span>
+                            ${shop.shop_name || shop.business_name || 'Unnamed Shop'}
+                            ${shop.is_default ? '<span class="shop-default-badge" style="margin-left:8px;">Default</span>' : ''}
+                            ${shop.id === activeShopId ? '<span class="shop-default-badge" style="margin-left:4px; background:#d1fae5; color:#065f46;">Active</span>' : ''}
+                        </div>
+                        ${shop.business_name ? `<div class="shop-card-sub">${shop.business_name}</div>` : ''}
+                        ${shop.contact_number_1 ? `<div class="shop-card-sub"><span class="material-icons" style="font-size:13px;">phone</span> ${shop.contact_number_1}</div>` : ''}
+                    </div>
+                    <div class="shop-card-actions">
+                        ${shop.id !== activeShopId ? `<button class="btn-sm btn-secondary" onclick="activateShop('${shop.id}', '${(shop.shop_name || shop.business_name || 'Shop').replace(/'/g, "\\'")}')"><span class="material-icons">swap_horiz</span> Switch</button>` : ''}
+                        ${!shop.is_default ? `<button class="btn-sm btn-secondary" onclick="makeDefaultShop('${shop.id}')"><span class="material-icons">star</span> Set Default</button>` : ''}
+                        <button class="btn-sm btn-secondary" onclick="openEditShopModal('${shop.id}')"><span class="material-icons">edit</span> Edit</button>
+                        ${shops.length > 1 ? `<button class="btn-sm btn-danger" onclick="confirmDeleteShop('${shop.id}', '${(shop.shop_name || 'Shop').replace(/'/g, "\\'")}')"><span class="material-icons">delete</span></button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAddShopModal() {
+            document.getElementById('editingShopId').value = '';
+            document.getElementById('shopModalTitle').innerHTML = '<span class="material-icons">storefront</span> Add New Shop';
+            document.getElementById('shopNameInput').value = '';
+            document.getElementById('shopBusinessNameInput').value = '';
+            document.getElementById('shopPhoneInput').value = '';
+            document.getElementById('shopEmailInput').value = '';
+            document.getElementById('shopGstInput').value = '';
+            document.getElementById('shopAddressInput').value = '';
+            document.getElementById('shopIsDefaultCheck').checked = false;
+            document.getElementById('shopModal').style.display = 'flex';
+        }
+
+        async function openEditShopModal(shopId) {
+            const result = await supabaseGetShops();
+            const shop = (result.data || []).find(s => s.id === shopId);
+            if (!shop) return;
+            document.getElementById('editingShopId').value = shopId;
+            document.getElementById('shopModalTitle').innerHTML = '<span class="material-icons">edit</span> Edit Shop';
+            document.getElementById('shopNameInput').value = shop.shop_name || '';
+            document.getElementById('shopBusinessNameInput').value = shop.business_name || '';
+            document.getElementById('shopPhoneInput').value = shop.contact_number_1 || '';
+            document.getElementById('shopEmailInput').value = shop.business_email || '';
+            document.getElementById('shopGstInput').value = shop.gst_number || '';
+            document.getElementById('shopAddressInput').value = shop.business_address || '';
+            document.getElementById('shopIsDefaultCheck').checked = !!shop.is_default;
+            document.getElementById('shopModal').style.display = 'flex';
+        }
+
+        function closeShopModal() {
+            document.getElementById('shopModal').style.display = 'none';
+        }
+
+        async function saveShop() {
+            const shopName = document.getElementById('shopNameInput').value.trim();
+            if (!shopName) { showToast('Shop name is required.', 'error'); return; }
+
+            const shopData = {
+                shop_name: shopName,
+                business_name: document.getElementById('shopBusinessNameInput').value.trim() || null,
+                contact_number_1: document.getElementById('shopPhoneInput').value.trim() || null,
+                business_email: document.getElementById('shopEmailInput').value.trim() || null,
+                gst_number: document.getElementById('shopGstInput').value.trim() || null,
+                business_address: document.getElementById('shopAddressInput').value.trim() || null,
+            };
+            const makeDefault = document.getElementById('shopIsDefaultCheck').checked;
+            const editingId = document.getElementById('editingShopId').value;
+
+            let result;
+            if (editingId) {
+                result = await supabaseUpdateShop(editingId, shopData);
+            } else {
+                result = await supabaseCreateShop(shopData);
+            }
+
+            if (result.error) {
+                showToast('Error saving shop: ' + (result.error.message || result.error), 'error');
+                return;
+            }
+
+            const savedShopId = result.data?.[0]?.id || editingId;
+            if (makeDefault && savedShopId) {
+                await supabaseSetDefaultShop(savedShopId);
+            }
+
+            closeShopModal();
+            showToast(editingId ? 'Shop updated!' : 'Shop created!', 'success');
+            loadMyShopsTab();
+        }
+
+        async function makeDefaultShop(shopId) {
+            const result = await supabaseSetDefaultShop(shopId);
+            if (result.error) {
+                showToast('Could not update default shop.', 'error');
+                return;
+            }
+            showToast('Default shop updated.', 'success');
+            loadMyShopsTab();
+        }
+
+        function activateShop(shopId, shopName) {
+            setActiveShopId(shopId);
+            showToast(`Switched to ${shopName}`, 'success');
+            setTimeout(() => window.location.reload(), 800);
+        }
+
+        async function confirmDeleteShop(shopId, shopName) {
+            const confirmed = await showDialog({
+                title: 'Delete Shop',
+                message: `Are you sure you want to delete "${shopName}"? This will not delete the shop's data, but it will no longer appear in the shop list.`,
+                confirmText: 'Delete',
+                cancelText: 'Cancel',
+                type: 'danger'
+            });
+            if (!confirmed) return;
+            const result = await supabaseDeleteShop(shopId);
+            if (result.error) {
+                showToast('Could not delete shop.', 'error');
+                return;
+            }
+            if (getActiveShopId() === shopId) setActiveShopId(null);
+            showToast('Shop deleted.', 'success');
+            loadMyShopsTab();
+        }
+
+        // Close shop modal on overlay click
+        document.addEventListener('click', function(e) {
+            const modal = document.getElementById('shopModal');
+            if (modal && e.target === modal) closeShopModal();
+        });
+
+        // ===== END MY SHOPS TAB =====
+
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProfile();
             await loadTemplateSettings();
@@ -1343,8 +1558,24 @@
                     // Show corresponding content
                     const tabId = btn.getAttribute('data-tab');
                     document.getElementById(tabId).classList.add('active');
+
+                    if (tabId === 'my-shops') loadMyShopsTab();
                 });
             });
+
+            // Auto-activate tab from URL param ?tab=...
+            const tabParam = new URLSearchParams(window.location.search).get('tab');
+            if (tabParam) {
+                const targetBtn = document.querySelector(`.tab-btn[data-tab="${tabParam}"]`);
+                if (targetBtn) {
+                    tabBtns.forEach(b => b.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    targetBtn.classList.add('active');
+                    document.getElementById(tabParam)?.classList.add('active');
+                    if (tabParam === 'my-shops') loadMyShopsTab();
+                    history.replaceState(null, '', window.location.pathname);
+                }
+            }
             
             if (window.innerWidth > 768) {
                 const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';

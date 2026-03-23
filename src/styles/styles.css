@@ -1592,6 +1592,466 @@ button .material-icons {
     display: block;
 }
 
+/* ===== SHOP SWITCHER ===== */
+.shop-switcher-wrapper {
+    position: relative;
+    margin-right: 8px;
+}
+
+.shop-switcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.2s;
+}
+
+.shop-switcher-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.shop-switcher-icon {
+    font-size: 18px !important;
+}
+
+.shop-switcher-name {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shop-switcher-arrow {
+    font-size: 18px !important;
+    opacity: 0.8;
+}
+
+.shop-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 230px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.shop-dropdown-header {
+    padding: 10px 14px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.shop-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 14px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+    text-align: left;
+    transition: background 0.15s;
+}
+
+.shop-dropdown-item:hover {
+    background: #f9fafb;
+}
+
+.shop-dropdown-item.active {
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-weight: 600;
+}
+
+.shop-dropdown-item .material-icons {
+    font-size: 18px !important;
+    flex-shrink: 0;
+}
+
+.shop-default-badge {
+    margin-left: auto;
+    font-size: 10px;
+    font-weight: 600;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-radius: 4px;
+    padding: 2px 6px;
+}
+
+.shop-dropdown-divider {
+    height: 1px;
+    background: #f3f4f6;
+    margin: 4px 0;
+}
+
+.shop-dropdown-manage {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #2845D6;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+
+.shop-dropdown-manage:hover {
+    background: #f0f4ff;
+}
+
+.shop-dropdown-manage .material-icons {
+    font-size: 18px !important;
+}
+/* ===== END SHOP SWITCHER ===== */
+
+/* ===== MOBILE SHOP BAR + BOTTOM SHEET ===== */
+.mobile-shop-trigger {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 20px;
+    padding: 5px 10px 5px 8px;
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+    transition: background 0.15s;
+}
+
+.mobile-shop-trigger:active {
+    background: rgba(255, 255, 255, 0.28);
+}
+
+.mobile-shop-trigger .material-icons {
+    font-size: 17px !important;
+    flex-shrink: 0;
+}
+
+.mobile-shop-trigger-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 80px;
+}
+
+.mobile-shop-trigger-chevron {
+    font-size: 15px !important;
+    opacity: 0.8;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .mobile-shop-trigger {
+        display: flex;
+    }
+}
+
+.shop-sheet-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1500;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.shop-sheet-backdrop.open {
+    display: block;
+    opacity: 1;
+}
+
+.shop-bottom-sheet {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -4px 32px rgba(0, 0, 0, 0.18);
+    z-index: 1600;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.shop-bottom-sheet.open {
+    transform: translateY(0);
+}
+
+.shop-sheet-handle-bar {
+    display: flex;
+    justify-content: center;
+    padding: 12px 0 4px;
+    flex-shrink: 0;
+}
+
+.shop-sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+}
+
+.shop-sheet-title {
+    padding: 4px 20px 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: #111827;
+    border-bottom: 1px solid #f3f4f6;
+    flex-shrink: 0;
+}
+
+.shop-sheet-list {
+    overflow-y: auto;
+    flex: 1;
+    -webkit-overflow-scrolling: touch;
+}
+
+.shop-sheet-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 14px 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+    transition: background 0.15s;
+    border-bottom: 1px solid #f9fafb;
+}
+
+.shop-sheet-item:active {
+    background: #f3f4f6;
+}
+
+.shop-sheet-item.active {
+    background: #eff6ff;
+}
+
+.shop-sheet-item.active .shop-sheet-item-name {
+    color: #1d4ed8;
+}
+
+.shop-sheet-item .material-icons {
+    font-size: 22px !important;
+    color: #2845D6;
+    flex-shrink: 0;
+}
+
+.shop-sheet-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.shop-sheet-item-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.shop-sheet-item-sub {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 2px;
+}
+
+.shop-sheet-footer {
+    border-top: 1px solid #f3f4f6;
+    flex-shrink: 0;
+    padding: 4px 0 env(safe-area-inset-bottom, 0);
+}
+
+.shop-sheet-manage {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2845D6;
+    text-decoration: none;
+}
+
+.shop-sheet-manage .material-icons {
+    font-size: 20px !important;
+}
+/* ===== END MOBILE SHOP BAR + BOTTOM SHEET ===== */
+
+/* ===== MY SHOPS TAB ===== */
+.section-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.shops-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.shop-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #fff;
+    gap: 12px;
+    flex-wrap: wrap;
+    transition: box-shadow 0.2s;
+}
+
+.shop-card:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.shop-card-active {
+    border-color: #2845D6;
+    background: #f0f4ff;
+}
+
+.shop-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.shop-card-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.shop-card-name .material-icons {
+    font-size: 18px !important;
+    color: #2845D6;
+}
+
+.shop-card-sub {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.shop-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-family: inherit;
+}
+
+.btn-sm.btn-secondary {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.btn-sm.btn-secondary:hover {
+    background: #e5e7eb;
+}
+
+.btn-sm.btn-danger {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.btn-sm.btn-danger:hover {
+    background: #fecaca;
+}
+
+.btn-sm .material-icons {
+    font-size: 14px !important;
+}
+/* ===== END MY SHOPS TAB ===== */
+
+/* Shop modal */
+.shop-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.shop-modal-box {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+[data-theme="dark"] .shop-modal-box {
+    background: #1e2433;
+    color: #e5e7eb;
+}
+
 .user-profile-menu {
     position: absolute;
     top: calc(100% + 8px);
