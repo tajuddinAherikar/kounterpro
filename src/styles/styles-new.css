@@ -4389,3 +4389,65 @@ body.dark-mode .modal-body label {
 body.dark-mode .format-hint {
     color: #9ca3af;
 }
+
+/* Load More button — mobile only */
+@media (min-width: 1025px) {
+    #loadMoreInvoicesContainer {
+        display: none !important;
+    }
+}
+
+/* ===== Dark mode: responsive-card-table ===== */
+[data-theme="dark"] .responsive-card-table tr {
+    background: #1e2433;
+    border-color: #2e3650;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .responsive-card-table td[data-label]:not([data-label="Actions"]) {
+    background: #252d40;
+    border-color: #2e3650;
+}
+
+[data-theme="dark"] .responsive-card-table .mobile-field-label {
+    color: #8b97b8;
+}
+
+[data-theme="dark"] .responsive-card-table .field-value {
+    color: #e2e8f0;
+}
+
+/* Action buttons in dark mode */
+[data-theme="dark"] .responsive-card-table td[data-label="Actions"] .action-link {
+    background: #1e2433;
+}
+
+[data-theme="dark"] .dashboard-invoices-table .action-link.edit-link {
+    color: #7b9ef0;
+    border-color: rgba(123, 158, 240, 0.35);
+    background: rgba(123, 158, 240, 0.08);
+}
+
+[data-theme="dark"] .dashboard-invoices-table .action-link.view-link {
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.35);
+    background: rgba(56, 189, 248, 0.08);
+}
+
+[data-theme="dark"] .dashboard-invoices-table .action-link.delete-link {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.08);
+}
+
+[data-theme="dark"] .inventory-items-table .action-link.view {
+    color: #7b9ef0;
+    border-color: rgba(123, 158, 240, 0.35);
+    background: rgba(123, 158, 240, 0.08);
+}
+
+[data-theme="dark"] .inventory-items-table .action-link.delete {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.08);
+}

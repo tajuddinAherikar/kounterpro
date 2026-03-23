@@ -131,6 +131,9 @@ async function initializeDashboard() {
         // Fetch invoices
         const result = await supabaseGetInvoices();
         const invoices = result.success ? result.data : [];
+
+        // Cache for search (avoids re-fetch on first search)
+        allInvoicesCache = invoices;
         
         // Fetch inventory for activity feed
         const inventoryResult = await supabaseGetInventory();
@@ -595,17 +598,92 @@ function getTimeAgo(dateString) {
 }
 
 // Update invoice table
-function updateInvoiceTable(invoices) {
+// Invoice pagination state
+let allInvoicesData = [];      // full sorted list — source of truth
+let invoicesShownCount = 0;    // how many rows are currently in the DOM
+const INVOICES_INITIAL = 10;
+const INVOICES_PAGE = 10;
+
+function buildInvoiceRow(invoice) {
+    const row = document.createElement('tr');
+    row.className = 'invoice-row';
+
+    const date = invoice.date ? new Date(invoice.date).toLocaleDateString('en-IN') : '-';
+    const amount = parseFloat(invoice.total_amount) || 0;
+
+    let units = 0;
+    try {
+        const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
+        units = Array.isArray(items) ? items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0) : 0;
+    } catch (e) { units = 0; }
+
+    row.innerHTML = `
+        <td data-label="Invoice No"><span class="mobile-field-label">Invoice No</span><div class="field-value"><strong>${invoice.invoice_number || '-'}</strong></div></td>
+        <td data-label="Date"><span class="mobile-field-label">Date</span><div class="field-value">${date}</div></td>
+        <td data-label="Customer"><span class="mobile-field-label">Customer</span><div class="field-value">${invoice.customer_name || '-'}</div></td>
+        <td data-label="Units"><span class="mobile-field-label">Units</span><div class="field-value">${units}</div></td>
+        <td data-label="Amount"><span class="mobile-field-label">Amount</span><div class="field-value">₹${formatIndianCurrency(amount)}</div></td>
+        <td class="action-cell" data-label="Actions">
+            <span class="mobile-field-label">Actions</span>
+            <div class="field-value card-actions">
+            <a href="#" class="action-link edit-link" data-id="${invoice.id}">
+                <span class="material-icons">edit</span>
+                Edit
+            </a>
+            <a href="#" class="action-link view-link" data-id="${invoice.id}">
+                <span class="material-icons">visibility</span>
+                View
+            </a>
+            <a href="#" class="action-link delete-link" data-id="${invoice.id}">
+                <span class="material-icons">delete</span>
+                Delete
+            </a>
+            </div>
+        </td>
+    `;
+
+    row.querySelector('.edit-link').addEventListener('click', (e) => { e.preventDefault(); editInvoice(invoice.id); });
+    row.querySelector('.view-link').addEventListener('click', (e) => { e.preventDefault(); viewInvoice(invoice.id); });
+    row.querySelector('.delete-link').addEventListener('click', (e) => { e.preventDefault(); deleteInvoice(invoice.id); });
+
+    return row;
+}
+
+function updateLoadMoreButton() {
+    const container = document.getElementById('loadMoreInvoicesContainer');
+    const label = document.getElementById('loadMoreInvoicesLabel');
+    if (!container) return;
+    const remaining = allInvoicesData.length - invoicesShownCount;
+    if (remaining > 0) {
+        container.style.display = 'block';
+        label.textContent = `Load more (${remaining} remaining)`;
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function loadMoreInvoices() {
     const tbody = document.getElementById('invoicesTableBody');
     if (!tbody) return;
-    
+    const nextBatch = allInvoicesData.slice(invoicesShownCount, invoicesShownCount + INVOICES_PAGE);
+    nextBatch.forEach(invoice => tbody.appendChild(buildInvoiceRow(invoice)));
+    invoicesShownCount += nextBatch.length;
+    updateLoadMoreButton();
+}
+
+function updateInvoiceTable(invoices, showAll = false) {
+    const tbody = document.getElementById('invoicesTableBody');
+    if (!tbody) return;
+
+    // On desktop (> 1024px) always render everything — scrollable table handles it fine
+    const isMobile = window.innerWidth <= 1024;
+
     // Sort by date (most recent first)
-    const sortedInvoices = [...invoices]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    
+    const sorted = [...invoices].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
     tbody.innerHTML = '';
-    
-    if (sortedInvoices.length === 0) {
+
+    if (sorted.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
@@ -614,72 +692,27 @@ function updateInvoiceTable(invoices) {
                 </td>
             </tr>
         `;
+        const container = document.getElementById('loadMoreInvoicesContainer');
+        if (container) container.style.display = 'none';
         return;
     }
-    
-    sortedInvoices.forEach(invoice => {
-        const row = document.createElement('tr');
-        row.className = 'invoice-row';
-        
-        const date = invoice.date ? new Date(invoice.date).toLocaleDateString('en-IN') : '-';
-        const amount = parseFloat(invoice.total_amount) || 0;
-        
-        // Count units
-        let units = 0;
-        try {
-            const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : invoice.items;
-            units = Array.isArray(items) ? items.reduce((sum, item) => sum + (parseInt(item.quantity) || 0), 0) : 0;
-        } catch (e) {
-            units = 0;
-        }
-        
-        row.innerHTML = `
-            <td data-label="Invoice No"><span class="mobile-field-label">Invoice No</span><div class="field-value"><strong>${invoice.invoice_number || '-'}</strong></div></td>
-            <td data-label="Date"><span class="mobile-field-label">Date</span><div class="field-value">${date}</div></td>
-            <td data-label="Customer"><span class="mobile-field-label">Customer</span><div class="field-value">${invoice.customer_name || '-'}</div></td>
-            <td data-label="Units"><span class="mobile-field-label">Units</span><div class="field-value">${units}</div></td>
-            <td data-label="Amount"><span class="mobile-field-label">Amount</span><div class="field-value">₹${formatIndianCurrency(amount)}</div></td>
-            <td class="action-cell" data-label="Actions">
-                <span class="mobile-field-label">Actions</span>
-                <div class="field-value card-actions">
-                <a href="#" class="action-link edit-link" data-id="${invoice.id}">
-                    <span class="material-icons">edit</span>
-                    Edit
-                </a>
-                <a href="#" class="action-link view-link" data-id="${invoice.id}">
-                    <span class="material-icons">visibility</span>
-                    View
-                </a>
-                <a href="#" class="action-link delete-link" data-id="${invoice.id}">
-                    <span class="material-icons">delete</span>
-                    Delete
-                </a>
-                </div>
-            </td>
-        `;
-        
-        // Add event listeners
-        const editLink = row.querySelector('.edit-link');
-        const viewLink = row.querySelector('.view-link');
-        const deleteLink = row.querySelector('.delete-link');
-        
-        editLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            editInvoice(invoice.id);
-        });
-        
-        viewLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            viewInvoice(invoice.id);
-        });
-        
-        deleteLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            deleteInvoice(invoice.id);
-        });
-        
-        tbody.appendChild(row);
-    });
+
+    if (!isMobile || showAll) {
+        // Desktop or search/filter mode: render everything, hide Load More
+        allInvoicesData = sorted;
+        invoicesShownCount = sorted.length;
+        sorted.forEach(invoice => tbody.appendChild(buildInvoiceRow(invoice)));
+        const container = document.getElementById('loadMoreInvoicesContainer');
+        if (container) container.style.display = 'none';
+    } else {
+        // Mobile normal mode: paginate
+        allInvoicesData = sorted;
+        invoicesShownCount = 0;
+        const initial = sorted.slice(0, INVOICES_INITIAL);
+        initial.forEach(invoice => tbody.appendChild(buildInvoiceRow(invoice)));
+        invoicesShownCount = initial.length;
+        updateLoadMoreButton();
+    }
 }
 
 // View invoice details
@@ -1069,21 +1102,30 @@ let allInvoicesCache = [];
 
 async function searchInvoices(query) {
     if (!query || query.trim() === '') {
-        await initializeDashboard();
+        // Restore paginated view from cached data (no re-fetch needed)
+        if (allInvoicesData.length > 0) {
+            updateInvoiceTable(allInvoicesData, false);
+        } else {
+            await initializeDashboard();
+        }
         return;
     }
-    
-    const result = await supabaseGetInvoices();
-    const allInvoices = result.success ? result.data : [];
-    
+
+    // Use cached full list if available, otherwise fetch once
+    if (allInvoicesCache.length === 0) {
+        const result = await supabaseGetInvoices();
+        allInvoicesCache = result.success ? result.data : [];
+    }
+
     const searchTerm = query.toLowerCase();
-    const filtered = allInvoices.filter(inv => 
+    const filtered = allInvoicesCache.filter(inv =>
         inv.invoice_number?.toLowerCase().includes(searchTerm) ||
         inv.customer_name?.toLowerCase().includes(searchTerm) ||
         inv.customer_mobile?.includes(searchTerm)
     );
-    
-    updateInvoiceTable(filtered);
+
+    // Show all matches — no pagination when searching
+    updateInvoiceTable(filtered, true);
 }
 
 // Filter Modal
@@ -1112,7 +1154,7 @@ async function applyDateFilter() {
         return invDate >= fromDate && invDate <= toDate;
     });
     
-    updateInvoiceTable(filtered);
+    updateInvoiceTable(filtered, true);
     updateStatistics(filtered);
     closeFilterModal();
     showSuccess(`Showing ${filtered.length} invoices from ${fromDate} to ${toDate}`);
