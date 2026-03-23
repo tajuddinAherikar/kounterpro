@@ -1274,6 +1274,13 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadProfile();
             await loadTemplateSettings();
+
+            // Welcome new users who just signed up
+            if (new URLSearchParams(window.location.search).get('new') === '1') {
+                showToast('Welcome to KounterPro! Please complete your business profile below.', 'success');
+                // Remove the param from URL without reload
+                history.replaceState(null, '', window.location.pathname);
+            }
             
             // Sidebar toggle functionality
             const sidebar = document.querySelector('.sidebar');

@@ -784,54 +784,63 @@ function generatePDFFromInvoice(invoiceData) {
         y = 20;
     }
     
-    // Add UPI QR Code
-    const upiId = userProfile?.upi_id || 'mahammad.aherikar@ybl';
-    const payeeName = userProfile?.business_name || 'KEEN BATTERIES';
+    const upiId = userProfile?.upi_id;
+
+    const finalisePDF = () => {
+        // Stamp/Seal placeholder - moved to right side
+        pdf.setFontSize(9);
+        pdf.text('[Stamp/Seal]', 155, y + 15);
+        pdf.rect(150, y + 5, 40, 25);
+
+        // Footer
+        pdf.setFontSize(8);
+        pdf.text('This is a Computer Generated copy', 105, 285, { align: 'center' });
+
+        // Save PDF
+        pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
+    };
+
+    // Add UPI QR Code only if UPI ID is configured
+    if (!upiId) {
+        finalisePDF();
+        return;
+    }
+
+    const payeeName = userProfile?.business_name || 'Business';
     const amount = invoiceData.grandTotal.toFixed(2);
     const upiString = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR&tn=Invoice ${invoiceData.invoiceNo}`;
-    
+
     // Generate QR code
     const qrContainer = document.createElement('div');
     qrContainer.style.display = 'none';
     document.body.appendChild(qrContainer);
-    
+
     const qr = new QRCode(qrContainer, {
         text: upiString,
         width: 120,
         height: 120
     });
-    
+
     // Wait for QR code to be generated then add to PDF
     setTimeout(() => {
         const qrCanvas = qrContainer.querySelector('canvas');
         if (qrCanvas) {
             const qrImage = qrCanvas.toDataURL('image/png');
-            
+
             pdf.setFontSize(10);
             pdf.setFont(undefined, 'bold');
             pdf.text('Scan to Pay', 15, y);
             pdf.addImage(qrImage, 'PNG', 15, y + 2, 35, 35);
-            
+
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'normal');
             pdf.text(`UPI ID: ${upiId}`, 52, y + 10);
-            pdf.text(`Amount: ${amount}`, 52, y + 15);
+            pdf.text(`Amount: Rs ${amount}`, 52, y + 15);
             pdf.text('Scan QR to pay via any UPI app', 52, y + 25);
         }
-        
+
         document.body.removeChild(qrContainer);
-        
-        // Stamp/Seal placeholder - moved to right side
-        pdf.setFontSize(9);
-        pdf.text('[Stamp/Seal]', 155, y + 15);
-        pdf.rect(150, y + 5, 40, 25);
-        
-        // Footer
-        pdf.setFontSize(8);
-        pdf.text('This is a Computer Generated copy', 105, 285, { align: 'center' });
-        
-        // Save PDF
-        pdf.save(`Invoice_${invoiceData.invoiceNo.replace(/\//g, '_')}.pdf`);
+        finalisePDF();
     }, 100);
 }
 

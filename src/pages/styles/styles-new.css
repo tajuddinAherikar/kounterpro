@@ -723,6 +723,7 @@ img, video, canvas, svg {
 
 .activity-icon .material-icons {
     font-size: 20px;
+    margin: 0;
 }
 
 .activity-content {
