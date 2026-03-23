@@ -8,10 +8,10 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/styles-new.css">
-    <link rel="stylesheet" href="../styles/dark-mode.css">
-    <script src="../scripts/dark-mode.js"></script>
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles-new.css">
+    <link rel="stylesheet" href="./styles/dark-mode.css">
+    <script src="./scripts/dark-mode.js"></script>
 </head>
 <body class="modern-layout">
     <!-- Sidebar Navigation -->
@@ -141,14 +141,14 @@
                 <span class="material-icons">add_circle</span> Add New Item
             </button>
             <button class="btn-secondary" onclick="document.getElementById('csvFileInput').click()" style="margin-left: 12px;">
-                <span class="material-icons">upload_file</span> Import CSV
+                <span class="material-icons">upload_file</span> Import Excel
             </button>
-            <button class="btn-secondary" onclick="downloadCSVTemplate()" style="margin-left: 12px;">
+            <button class="btn-secondary" onclick="downloadExcelTemplate()" style="margin-left: 12px;">
                 <span class="material-icons">download</span> Download Template
             </button>
         </div>
         
-        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+        <input type="file" id="csvFileInput" accept=".xlsx,.xls" style="display: none;" onchange="handleExcelUpload(event)">
 
         <div class="stats-container">
             <div class="stat-card">
@@ -169,18 +169,30 @@
         </div>
 
         <div class="invoices-section">
-            <div class="section-header">
+            <div class="section-header" style="flex-wrap: wrap; gap: 12px;">
                 <h2>Inventory Items</h2>
-                <div class="inventory-search">
-                    <div class="search-input-wrapper">
-                        <span class="material-icons search-icon">search</span>
-                        <input type="text" id="searchInput" placeholder="Search by name or description..." oninput="searchInventory()">
-                        <span class="material-icons search-clear" id="clearSearchIcon" onclick="clearSearch()" style="display: none;">cancel</span>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <button class="btn-secondary" onclick="showInventoryFilterModal()" id="invFilterBtn" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="material-icons">filter_alt</span> Filter
+                        <span id="inventoryFilterBadge" style="display:none; background:#2845d6; color:#fff; border-radius:999px; font-size:11px; padding:1px 7px; margin-left:2px;">●</span>
+                    </button>
+                    <button class="btn-secondary" onclick="downloadInventoryPDF()" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="material-icons">picture_as_pdf</span> PDF
+                    </button>
+                    <button class="btn-secondary" onclick="downloadInventoryExcel()" style="display: flex; align-items: center; gap: 6px;">
+                        <span class="material-icons">table_chart</span> Excel
+                    </button>
+                    <div class="inventory-search">
+                        <div class="search-input-wrapper">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" id="searchInput" placeholder="Search by name or description..." oninput="searchInventory()">
+                            <span class="material-icons search-clear" id="clearSearchIcon" onclick="clearSearch()" style="display: none;">cancel</span>
+                        </div>
                     </div>
                 </div>
             </div>
             <div class="table-wrapper">
-                <table class="invoices-table">
+                <table class="invoices-table inventory-items-table responsive-card-table">
                     <thead>
                         <tr>
                             <th>Item Name</th>
@@ -331,11 +343,43 @@
         </div>
     </div>
 
-    <!-- CSV Import Preview Modal -->
+    <!-- Inventory Filter Modal -->
+    <div id="inventoryFilterModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2><span class="material-icons">filter_alt</span> Filter by Date Added</h2>
+                <button class="btn-close-modal" onclick="closeInventoryFilterModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label>From Date:
+                        <input type="date" id="invFilterFromDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px;">
+                    </label>
+                </div>
+                <div class="form-row" style="margin-top: 12px;">
+                    <label>To Date:
+                        <input type="date" id="invFilterToDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; margin-top: 4px;">
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="clearInventoryFilter()">
+                    <span class="material-icons">clear</span> Clear Filter
+                </button>
+                <button class="btn-primary" onclick="applyInventoryFilter()">
+                    <span class="material-icons">check</span> Apply Filter
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Excel Import Preview Modal -->
     <div id="csvPreviewModal" class="modal">
         <div class="modal-content" style="max-width: 900px;">
             <div class="modal-header">
-                <h2><span class="material-icons">upload_file</span> CSV Import Preview</h2>
+                <h2><span class="material-icons">upload_file</span> Excel Import Preview</h2>
                 <button class="btn-close-modal" onclick="closeCSVPreviewModal()">
                     <span class="material-icons">close</span>
                 </button>
@@ -380,13 +424,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <script src="../scripts/dialog.js"></script>
-    <script src="../scripts/toast.js"></script>
-    <script src="../scripts/validation.js"></script>
-    <script src="../scripts/supabase.js"></script>
-    <script src="../scripts/auth.js"></script>
-    <script src="../scripts/notifications.js"></script>
-    <script src="../scripts/inventory.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="./scripts/dialog.js"></script>
+    <script src="./scripts/toast.js"></script>
+    <script src="./scripts/pwa.js"></script>
+    <script src="./scripts/validation.js"></script>
+    <script src="./scripts/supabase.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/notifications.js"></script>
+    <script src="./scripts/inventory.js"></script>
     <script>
         // Sidebar toggle functionality
         document.addEventListener('DOMContentLoaded', () => {

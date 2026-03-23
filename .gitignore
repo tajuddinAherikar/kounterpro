@@ -106,3 +106,8 @@ jspm_packages/
 
 # Temporary files
 .env.*.example (if you create examples, keep these)
+
+# Android / Capacitor (native build — not tracked in this repo)
+android/
+capacitor.config.ts
+setup-android.sh

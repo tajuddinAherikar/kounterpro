@@ -660,6 +660,15 @@ h3 {
     word-wrap: break-word;
 }
 
+@media (max-width: 1024px) {
+    .invoices-table th:nth-child(2),
+    .invoices-table td:nth-child(2) {
+        max-width: none;
+        width: auto;
+        overflow-wrap: anywhere;
+    }
+}
+
 .invoices-table th {
     background-color: #2845D6;
     color: white;
@@ -1566,12 +1575,21 @@ button .material-icons {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .user-avatar .material-icons {
     color: white;
     font-size: 28px;
     margin: 0;
+}
+
+.user-avatar-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
 }
 
 .user-profile-menu {

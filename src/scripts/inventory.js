@@ -1,6 +1,8 @@
 // Inventory management functionality with Supabase
 let inventory = [];
 let editingItemId = null;
+let inventoryDateFrom = null;
+let inventoryDateTo = null;
 
 // Format number in Indian numbering system (e.g., 8,21,000)
 function formatIndianCurrency(amount) {
@@ -79,7 +81,8 @@ async function loadInventory() {
                 stock: item.stock,
                 purchasePrice: parseFloat(item.purchase_price || 0),
                 salePrice: parseFloat(item.sale_price || 0),
-                lowStockThreshold: item.low_stock_threshold
+                lowStockThreshold: item.low_stock_threshold,
+                createdAt: item.created_at
             }));
             displayInventory();
             updateStats();
@@ -179,7 +182,7 @@ function displayInventory(items = inventory) {
     const tbody = document.getElementById('inventoryTableBody');
     
     if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px;">No items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No items found.</td></tr>';
         return;
     }
     
@@ -207,22 +210,25 @@ function displayInventory(items = inventory) {
             
             return `
                 <tr style="${item.stock === 0 ? 'background-color: #ffebee;' : item.stock <= threshold ? 'background-color: #fff8f0;' : ''}">
-                    <td><strong>${item.name}</strong></td>
-                    <td>${item.description || '-'}</td>
-                    <td>${item.openingStock || 0} units</td>
-                    <td>${stockDisplay}</td>
-                    <td>${consumed} units</td>
-                    <td>₹${formatIndianCurrency(item.purchasePrice)}</td>
-                    <td>₹${formatIndianCurrency(item.salePrice)}</td>
-                    <td><span style="color: ${profitMargin >= 0 ? '#28a745' : '#c62828'}; font-weight: 600;">${profitMargin}%</span></td>
-                    <td><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></td>
-                    <td>
+                    <td data-label="Item Name"><span class="mobile-field-label">Item Name</span><div class="field-value"><strong>${item.name}</strong></div></td>
+                    <td data-label="Description"><span class="mobile-field-label">Description</span><div class="field-value">${item.description || '-'}</div></td>
+                    <td data-label="Opening Stock"><span class="mobile-field-label">Opening Stock</span><div class="field-value">${item.openingStock || 0} units</div></td>
+                    <td data-label="Current Stock"><span class="mobile-field-label">Current Stock</span><div class="field-value">${stockDisplay}</div></td>
+                    <td data-label="Consumed"><span class="mobile-field-label">Consumed</span><div class="field-value">${consumed} units</div></td>
+                    <td data-label="Purchase Price (₹)"><span class="mobile-field-label">Purchase Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.purchasePrice)}</div></td>
+                    <td data-label="Sale Price (₹)"><span class="mobile-field-label">Sale Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.salePrice)}</div></td>
+                    <td data-label="Profit %"><span class="mobile-field-label">Profit %</span><div class="field-value"><span style="color: ${profitMargin >= 0 ? '#28a745' : '#c62828'}; font-weight: 600;">${profitMargin}%</span></div></td>
+                    <td data-label="Status"><span class="mobile-field-label">Status</span><div class="field-value"><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></div></td>
+                    <td data-label="Actions">
+                        <span class="mobile-field-label">Actions</span>
+                        <div class="field-value card-actions">
                         <a href="#" class="action-link view" onclick="editItem('${item.id}'); return false;">
                             <span class="material-icons">edit</span> Edit
                         </a>
                         <a href="#" class="action-link delete" onclick="deleteItem('${item.id}'); return false;">
                             <span class="material-icons">delete</span> Delete
                         </a>
+                        </div>
                     </td>
                 </tr>
             `;
@@ -314,6 +320,207 @@ async function deleteItem(itemId) {
             alert('❌ Error deleting product: ' + result.error);
         }
     }
+}
+
+// ==================== Inventory Filter ====================
+
+function showInventoryFilterModal() {
+    document.getElementById('inventoryFilterModal').classList.add('show');
+}
+
+function closeInventoryFilterModal() {
+    document.getElementById('inventoryFilterModal').classList.remove('show');
+}
+
+function applyInventoryFilter() {
+    const fromDate = document.getElementById('invFilterFromDate').value;
+    const toDate = document.getElementById('invFilterToDate').value;
+
+    if (!fromDate || !toDate) {
+        alert('Please select both From and To dates');
+        return;
+    }
+
+    inventoryDateFrom = fromDate;
+    inventoryDateTo = toDate;
+
+    const filtered = inventory.filter(item => {
+        if (!item.createdAt) return true;
+        const d = item.createdAt.split('T')[0];
+        return d >= fromDate && d <= toDate;
+    });
+
+    displayInventory(filtered);
+    closeInventoryFilterModal();
+
+    const badge = document.getElementById('inventoryFilterBadge');
+    if (badge) badge.style.display = 'inline';
+}
+
+function clearInventoryFilter() {
+    document.getElementById('invFilterFromDate').value = '';
+    document.getElementById('invFilterToDate').value = '';
+    inventoryDateFrom = null;
+    inventoryDateTo = null;
+    displayInventory();
+    closeInventoryFilterModal();
+    const badge = document.getElementById('inventoryFilterBadge');
+    if (badge) badge.style.display = 'none';
+}
+
+// ==================== Inventory PDF Export ====================
+
+function downloadInventoryPDF() {
+    if (!window.jspdf) {
+        alert('PDF library not loaded. Please refresh the page.');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+
+    const items = inventoryDateFrom
+        ? inventory.filter(item => {
+            if (!item.createdAt) return true;
+            const d = item.createdAt.split('T')[0];
+            return d >= inventoryDateFrom && d <= inventoryDateTo;
+        })
+        : inventory;
+
+    if (items.length === 0) {
+        alert('No items to export');
+        return;
+    }
+
+    const pdf = new jsPDF({ orientation: 'landscape' });
+
+    // Title
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Inventory Report', 148, 14, { align: 'center' });
+
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    const genDate = new Date().toLocaleDateString('en-IN');
+    pdf.text(`Generated: ${genDate}`, 148, 21, { align: 'center' });
+    if (inventoryDateFrom) {
+        pdf.text(`Period: ${inventoryDateFrom} to ${inventoryDateTo}`, 148, 27, { align: 'center' });
+    }
+
+    let y = inventoryDateFrom ? 36 : 30;
+
+    // Column definitions
+    const cols = [
+        { label: 'Item Name',       x: 10  },
+        { label: 'Description',     x: 52  },
+        { label: 'Open.Stock',      x: 94  },
+        { label: 'Curr.Stock',      x: 116 },
+        { label: 'Consumed',        x: 138 },
+        { label: 'Pur.Price (\u20b9)',   x: 158 },
+        { label: 'Sale Price (\u20b9)',  x: 185 },
+        { label: 'Profit %',        x: 212 },
+        { label: 'Status',          x: 233 },
+    ];
+
+    // Header bar
+    pdf.setFillColor(40, 69, 214);
+    pdf.rect(8, y - 5, 282, 8, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(8);
+    cols.forEach(col => pdf.text(col.label, col.x, y));
+    y += 6;
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFont(undefined, 'normal');
+
+    items.forEach((item, i) => {
+        if (y > 185) { pdf.addPage(); y = 20; }
+
+        if (i % 2 === 0) {
+            pdf.setFillColor(248, 250, 252);
+            pdf.rect(8, y - 4, 282, 7, 'F');
+        }
+
+        const consumed = (item.openingStock || 0) - item.stock;
+        const profitMargin = item.purchasePrice > 0
+            ? (((item.salePrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(1)
+            : '0';
+        const stockInfo = getStockStatus(item);
+        const truncate = (str, n) => str && str.length > n ? str.substring(0, n - 1) + '\u2026' : (str || '-');
+
+        pdf.setFontSize(7.5);
+        pdf.text(truncate(item.name, 22), cols[0].x, y);
+        pdf.text(truncate(item.description, 22), cols[1].x, y);
+        pdf.text(`${item.openingStock || 0}`, cols[2].x, y);
+        pdf.text(`${item.stock}`, cols[3].x, y);
+        pdf.text(`${consumed}`, cols[4].x, y);
+        pdf.text(`${formatIndianCurrency(item.purchasePrice)}`, cols[5].x, y);
+        pdf.text(`${formatIndianCurrency(item.salePrice)}`, cols[6].x, y);
+        pdf.text(`${profitMargin}%`, cols[7].x, y);
+        pdf.text(stockInfo.label, cols[8].x, y);
+        y += 7;
+    });
+
+    // Summary footer
+    y += 4;
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(9);
+    const totalStock = items.reduce((s, i) => s + i.stock, 0);
+    const lowCount = items.filter(i => { const t = i.lowStockThreshold || 10; return i.stock > 0 && i.stock <= t; }).length;
+    const outCount = items.filter(i => i.stock === 0).length;
+    pdf.text(`Total Items: ${items.length}   Total Stock: ${totalStock} units   Low Stock: ${lowCount}   Out of Stock: ${outCount}`, 10, y);
+
+    pdf.save(`Inventory_Report_${new Date().toISOString().split('T')[0]}.pdf`);
+}
+
+// ==================== Inventory Excel Export ====================
+
+function downloadInventoryExcel() {
+    if (!window.XLSX) {
+        alert('Excel library not loaded. Please refresh the page.');
+        return;
+    }
+
+    const items = inventoryDateFrom
+        ? inventory.filter(item => {
+            if (!item.createdAt) return true;
+            const d = item.createdAt.split('T')[0];
+            return d >= inventoryDateFrom && d <= inventoryDateTo;
+        })
+        : inventory;
+
+    if (items.length === 0) {
+        alert('No items to export');
+        return;
+    }
+
+    const rows = items.map(item => {
+        const consumed = (item.openingStock || 0) - item.stock;
+        const profitMargin = item.purchasePrice > 0
+            ? parseFloat((((item.salePrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(2))
+            : 0;
+        const stockInfo = getStockStatus(item);
+        return {
+            'Item Name':        item.name,
+            'Description':      item.description || '',
+            'Opening Stock':    item.openingStock || 0,
+            'Current Stock':    item.stock,
+            'Consumed':         consumed,
+            'Purchase Price (\u20b9)': item.purchasePrice,
+            'Sale Price (\u20b9)':   item.salePrice,
+            'Profit %':         profitMargin,
+            'Status':           stockInfo.label,
+            'Added Date':       item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN') : '-',
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Auto-fit column widths
+    ws['!cols'] = Object.keys(rows[0]).map(key => ({
+        wch: Math.max(key.length, ...rows.map(r => String(r[key] || '').length)) + 2
+    }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, `Inventory_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 // Generate unique ID
@@ -665,80 +872,82 @@ async function importBackup(event) {
     alert('ℹ️ Backup restore from file is not yet available with Supabase.\n\nPlease use the Supabase Dashboard to manage your data.\n\nTo migrate localStorage data to Supabase, open console and run:\nmigrateLocalStorageToSupabase()');
     event.target.value = '';
 }
-// ===== CSV IMPORT FUNCTIONALITY =====
+// ===== EXCEL IMPORT FUNCTIONALITY =====
 
 let csvImportData = [];
 
-// Download CSV template
-function downloadCSVTemplate() {
-    const template = [
-        ['Item Name', 'Description', 'Opening Stock', 'Purchase Price', 'Sale Price', 'Low Stock Threshold'],
-        ['iPhone 14 Pro', '256GB Space Black', '50', '95000', '110000', '5'],
-        ['Samsung Galaxy S23', '128GB Phantom Black', '30', '65000', '75000', '5'],
-        ['MacBook Air M2', '8GB RAM 256GB SSD', '15', '110000', '125000', '3']
-    ];
-    
-    const csvContent = template.map(row => row.join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'inventory_template.csv');
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('✅ CSV template downloaded successfully', 'success');
-}
-
-// Handle CSV file upload
-function handleCSVUpload(event) {
-    const file = event.target.files[0];
-    
-    if (!file) {
+// Download Excel template (headers only — no sample data to avoid re-importing existing items)
+function downloadExcelTemplate() {
+    if (!window.XLSX) {
+        alert('Excel library not loaded. Please refresh the page.');
         return;
     }
-    
-    if (!file.name.endsWith('.csv')) {
-        showToast('❌ Please select a CSV file', 'error');
+    const headers = [['Item Name', 'Description', 'Opening Stock', 'Purchase Price', 'Sale Price', 'Low Stock Threshold']];
+    const ws = XLSX.utils.aoa_to_sheet(headers);
+    // Set column widths
+    ws['!cols'] = [{ wch: 25 }, { wch: 35 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 22 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Inventory');
+    XLSX.writeFile(wb, 'inventory_template.xlsx');
+    showToast('✅ Excel template downloaded successfully', 'success');
+}
+
+// Handle Excel file upload
+function handleExcelUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') {
+        showToast('❌ Please select an Excel file (.xlsx or .xls)', 'error');
         event.target.value = '';
         return;
     }
-    
+    if (!window.XLSX) {
+        showToast('❌ Excel library not loaded. Please refresh the page.', 'error');
+        event.target.value = '';
+        return;
+    }
+
     const reader = new FileReader();
     reader.onload = function(e) {
-        const csvText = e.target.result;
-        parseCSV(csvText);
+        try {
+            const wb = XLSX.read(e.target.result, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            // header:1 returns array-of-arrays; skip header row
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+            if (rows.length < 2) {
+                showToast('❌ Excel file is empty or has no data rows', 'error');
+                return;
+            }
+            parseImportRows(rows.slice(1)); // skip header row
+        } catch (err) {
+            showToast('❌ Could not read Excel file. Please use the downloaded template.', 'error');
+        }
     };
-    reader.readAsText(file);
-    
+    reader.readAsArrayBuffer(file);
+
     // Reset file input
     event.target.value = '';
 }
 
-// Parse CSV and validate data
-function parseCSV(csvText) {
-    const lines = csvText.split('\n').filter(line => line.trim());
-    
-    if (lines.length < 2) {
-        showToast('❌ CSV file is empty or invalid', 'error');
-        return;
-    }
-    
-    // Skip header row
-    const dataRows = lines.slice(1);
+// Parse imported rows and validate data
+function parseImportRows(dataRows) {
     csvImportData = [];
     
     let validCount = 0;
     let errorCount = 0;
     
-    dataRows.forEach((line, index) => {
-        // Simple CSV parsing - split by comma and trim
-        const values = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
-        
-        if (values.length < 6) {
+    dataRows.forEach((row, index) => {
+        // Each row is already an array from XLSX; stringify to trim strings
+        const values = Array.isArray(row)
+            ? row.map(v => String(v === null || v === undefined ? '' : v).trim())
+            : String(row).split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+
+        // Skip completely empty rows
+        if (values.every(v => v === '')) return;
+
+        if (values.length < 6 || values.slice(0, 6).every(v => v === '')) {
             csvImportData.push({
                 valid: false,
                 error: 'Incomplete data (6 columns required)',

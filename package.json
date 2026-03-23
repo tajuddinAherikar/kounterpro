@@ -1,0 +1,58 @@
+{
+  "name": "kounterpro",
+  "version": "1.0.0",
+  "description": "KounterPro - Billing, Inventory & Accounting Software",
+  "main": "src/pages/index.html",
+  "scripts": {
+    "start": "capacitor serve",
+    "build": "echo 'Build step - your app files are already in src/'",
+    "dev": "capacitor serve",
+    "android:build": "cd android && ./gradlew build",
+    "android:open": "capacitor open android",
+    "android:run": "capacitor run android",
+    "android:sync": "capacitor sync android",
+    "android:copy": "capacitor copy android",
+    "iOS:build": "cd ios && xcodebuild -workspace App.xcworkspace -scheme App -configuration Release",
+    "iOS:open": "capacitor open ios",
+    "iOS:run": "capacitor run ios",
+    "iOS:sync": "capacitor sync ios",
+    "copy": "capacitor copy",
+    "sync": "capacitor sync",
+    "doctor": "capacitor doctor"
+  },
+  "dependencies": {
+    "@capacitor/app": "^5.0.0",
+    "@capacitor/camera": "^5.0.0",
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/device": "^5.0.0",
+    "@capacitor/filesystem": "^5.0.0",
+    "@capacitor/geolocation": "^5.0.0",
+    "@capacitor/local-notifications": "^5.0.0",
+    "@capacitor/network": "^5.0.0",
+    "@capacitor/preferences": "^5.0.0",
+    "@capacitor/splash-screen": "^5.0.0",
+    "@capacitor/status-bar": "^5.0.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "html5-qrcode": "^2.3.8"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^5.7.8",
+    "@capacitor/cli": "^5.0.0",
+    "typescript": "^5.9.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/kounterpro.git"
+  },
+  "keywords": [
+    "billing",
+    "invoice",
+    "inventory",
+    "accounting",
+    "GST",
+    "mobile",
+    "PWA"
+  ],
+  "author": "KounterPro Team",
+  "license": "MIT"
+}

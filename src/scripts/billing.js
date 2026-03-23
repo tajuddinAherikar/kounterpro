@@ -84,23 +84,35 @@ function loadInvoiceForEditing() {
             row.setAttribute('data-row', itemCounter);
             
             row.innerHTML = `
-                <td>${itemCounter}</td>
-                <td>
+                <td class="item-slno" data-label="Sl no">${itemCounter}</td>
+                <td data-label="Description of Goods (start typing to search inventory)">
+                    <span class="mobile-field-label">Description</span>
                     <input type="text" class="item-description" value="${escapeHtml(item.description || item.name || '')}" required>
                     <span class="error-message item-error"></span>
                 </td>
-                <td><input type="text" class="item-hsn" value="${escapeHtml(item.hsn_code || item.hsnCode || '')}" placeholder="Optional" maxlength="8"></td>
-                <td><textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || '')}</textarea></td>
-                <td>
+                <td data-label="HSN Code">
+                    <span class="mobile-field-label">HSN Code</span>
+                    <input type="text" class="item-hsn" value="${escapeHtml(item.hsn_code || item.hsnCode || '')}" placeholder="Optional" maxlength="8">
+                </td>
+                <td data-label="Serial No(s) (Optional, one per line)">
+                    <span class="mobile-field-label">Serial No(s)</span>
+                    <textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || '')}</textarea>
+                </td>
+                <td data-label="Quantity">
+                    <span class="mobile-field-label">Quantity</span>
                     <input type="number" class="item-quantity" min="1" value="${item.quantity || 1}" required>
                     <span class="error-message item-error"></span>
                 </td>
-                <td>
+                <td data-label="Rate (₹) (incl. GST)">
+                    <span class="mobile-field-label">Rate (₹)</span>
                     <input type="number" class="item-rate" min="0" step="0.01" value="${item.rate || ''}" required>
                     <span class="error-message item-error"></span>
                 </td>
-                <td class="item-amount">0.00</td>
-                <td><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
+                <td class="item-amount" data-label="Amount (₹)">
+                    <span class="mobile-field-label">Amount (₹)</span>
+                    <span class="item-amount-value">0.00</span>
+                </td>
+                <td data-label="Action"><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
             `;
             
             itemsTableBody.appendChild(row);
@@ -398,7 +410,13 @@ function calculateAmounts() {
             const amountExclGST = quantity * rateExclGST;
             const amountInclGST = quantity * rateInclGST;
             
-            row.querySelector('.item-amount').textContent = formatIndianCurrency(amountInclGST);
+            const amountCell = row.querySelector('.item-amount');
+            const amountValue = row.querySelector('.item-amount-value');
+            if (amountValue) {
+                amountValue.textContent = formatIndianCurrency(amountInclGST);
+            } else {
+                amountCell.textContent = formatIndianCurrency(amountInclGST);
+            }
             subtotalExclGST += amountExclGST;
             grandTotal += amountInclGST;
         });
@@ -432,7 +450,13 @@ function calculateAmounts() {
             }
             
             const amount = quantity * rate;
-            row.querySelector('.item-amount').textContent = formatIndianCurrency(amount);
+            const amountCell = row.querySelector('.item-amount');
+            const amountValue = row.querySelector('.item-amount-value');
+            if (amountValue) {
+                amountValue.textContent = formatIndianCurrency(amount);
+            } else {
+                amountCell.textContent = formatIndianCurrency(amount);
+            }
             grandTotal += amount;
         });
         
@@ -479,23 +503,35 @@ function addItem() {
     newRow.className = 'item-row';
     newRow.setAttribute('data-row', itemCounter);
     newRow.innerHTML = `
-        <td>${itemCounter}</td>
-        <td>
+        <td class="item-slno" data-label="Sl no">${itemCounter}</td>
+        <td data-label="Description of Goods (start typing to search inventory)">
+            <span class="mobile-field-label">Description</span>
             <input type="text" class="item-description" required>
             <span class="error-message item-error"></span>
         </td>
-        <td><input type="text" class="item-hsn" placeholder="Optional" maxlength="8"></td>
-        <td><textarea class="item-serial" rows="1" placeholder="Optional"></textarea></td>
-        <td>
+        <td data-label="HSN Code">
+            <span class="mobile-field-label">HSN Code</span>
+            <input type="text" class="item-hsn" placeholder="Optional" maxlength="8">
+        </td>
+        <td data-label="Serial No(s) (Optional, one per line)">
+            <span class="mobile-field-label">Serial No(s)</span>
+            <textarea class="item-serial" rows="1" placeholder="Optional"></textarea>
+        </td>
+        <td data-label="Quantity">
+            <span class="mobile-field-label">Quantity</span>
             <input type="number" class="item-quantity" min="1" value="1" required>
             <span class="error-message item-error"></span>
         </td>
-        <td>
+        <td data-label="Rate (₹) (incl. GST)">
+            <span class="mobile-field-label">Rate (₹)</span>
             <input type="number" class="item-rate" min="0" step="0.01" required>
             <span class="error-message item-error"></span>
         </td>
-        <td class="item-amount">0.00</td>
-        <td><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
+        <td class="item-amount" data-label="Amount (₹)">
+            <span class="mobile-field-label">Amount (₹)</span>
+            <span class="item-amount-value">0.00</span>
+        </td>
+        <td data-label="Action"><button type="button" class="btn-remove" onclick="removeItem(${itemCounter})">✕</button></td>
     `;
     tbody.appendChild(newRow);
     
@@ -524,7 +560,8 @@ function removeItem(rowNumber) {
 function renumberRows() {
     const rows = document.querySelectorAll('.item-row');
     rows.forEach((row, index) => {
-        row.querySelector('td:first-child').textContent = index + 1;
+        const slNoCell = row.querySelector('.item-slno') || row.querySelector('td:first-child');
+        slNoCell.textContent = index + 1;
         row.setAttribute('data-row', index + 1);
         const removeBtn = row.querySelector('.btn-remove');
         removeBtn.setAttribute('onclick', `removeItem(${index + 1})`);

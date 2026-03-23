@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/styles-new.css">
-    <link rel="stylesheet" href="../styles/dark-mode.css">
-    <link rel="stylesheet" href="../styles/invoice-templates.css">
-    <script src="../scripts/dark-mode.js"></script>
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles-new.css">
+    <link rel="stylesheet" href="./styles/dark-mode.css">
+    <link rel="stylesheet" href="./styles/invoice-templates.css">
+    <script src="./scripts/dark-mode.js"></script>
 </head>
 <body class="modern-layout">
     <!-- Sidebar Navigation -->
@@ -91,8 +91,9 @@
                 <span class="material-icons">notifications</span>
                 <span class="notification-badge" id="mobileNotificationBadge" style="display: none;">0</span>
             </button>
-            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
-                <span class="material-icons">account_circle</span>
+            <button class="mobile-profile-btn" id="mobileAvatarBtn" onclick="window.location.href='profile.html'" title="Business Profile">
+                <img id="mobileBusinessLogo" class="header-avatar-img" src="" alt="" style="display:none;">
+                <span class="material-icons" id="mobileAvatarIcon">account_circle</span>
             </button>
         </div>
     </div>
@@ -197,6 +198,62 @@
                             <span>Business Email <span class="required">*</span></span>
                         </label>
                         <input type="email" id="businessEmail" required placeholder="e.g., business@example.com">
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3 class="section-title"><span class="material-icons">image</span> Business Logo</h3>
+                    <p class="section-description">Upload your business logo to appear on invoices. Recommended size: 300x100px</p>
+                    
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">cloud_upload</span>
+                            <span>Logo Image <span class="optional">(optional)</span></span>
+                        </label>
+                        
+                        <div class="logo-upload-container">
+                            <div class="logo-preview" id="logoPreview">
+                                <span class="material-icons">add_photo_alternate</span>
+                                <p>No logo uploaded</p>
+                            </div>
+                            <div class="logo-upload-actions">
+                                <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" style="display: none;">
+                                <button type="button" class="btn-secondary" onclick="document.getElementById('logoUpload').click()">
+                                    <span class="material-icons">file_upload</span> Upload Logo
+                                </button>
+                                <button type="button" class="btn-secondary" id="removeLogoBtn" onclick="removeLogo()" style="display: none;">
+                                    <span class="material-icons">delete</span> Remove
+                                </button>
+                            </div>
+                        </div>
+                        <small class="form-hint">Supported formats: PNG, JPEG, SVG. Maximum size: 2MB</small>
+                    </div>
+
+                    <div class="form-row-group">
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">location_searching</span>
+                                <span>Logo Position in Invoice</span>
+                            </label>
+                            <select id="logoPosition">
+                                <option value="left">Left</option>
+                                <option value="center">Center</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                        <div class="form-row form-row-half">
+                            <label class="form-label-with-icon">
+                                <span class="material-icons label-icon">visibility</span>
+                                <span>Show Logo on Invoices</span>
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 12px; height: 42px;">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="showLogo" checked>
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <span id="showLogoLabel" style="font-size: 14px; color: #2845D6; font-weight: 500;">Enabled</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -353,62 +410,6 @@
                 </div>
 
                 <div class="form-section">
-                    <h3 class="section-title"><span class="material-icons">image</span> Business Logo</h3>
-                    <p class="section-description">Upload your business logo to appear on invoices. Recommended size: 300x100px</p>
-                    
-                    <div class="form-row">
-                        <label class="form-label-with-icon">
-                            <span class="material-icons label-icon">cloud_upload</span>
-                            <span>Logo Image <span class="optional">(optional)</span></span>
-                        </label>
-                        
-                        <div class="logo-upload-container">
-                            <div class="logo-preview" id="logoPreview">
-                                <span class="material-icons">add_photo_alternate</span>
-                                <p>No logo uploaded</p>
-                            </div>
-                            <div class="logo-upload-actions">
-                                <input type="file" id="logoUpload" accept="image/png,image/jpeg,image/svg+xml" style="display: none;">
-                                <button type="button" class="btn-secondary" onclick="document.getElementById('logoUpload').click()">
-                                    <span class="material-icons">file_upload</span> Upload Logo
-                                </button>
-                                <button type="button" class="btn-secondary" id="removeLogoBtn" onclick="removeLogo()" style="display: none;">
-                                    <span class="material-icons">delete</span> Remove
-                                </button>
-                            </div>
-                        </div>
-                        <small class="form-hint">Supported formats: PNG, JPEG, SVG. Maximum size: 2MB</small>
-                    </div>
-
-                    <div class="form-row-group">
-                        <div class="form-row form-row-half">
-                            <label class="form-label-with-icon">
-                                <span class="material-icons label-icon">location_searching</span>
-                                <span>Logo Position</span>
-                            </label>
-                            <select id="logoPosition">
-                                <option value="left">Left</option>
-                                <option value="center">Center</option>
-                                <option value="right">Right</option>
-                            </select>
-                        </div>
-                        <div class="form-row form-row-half">
-                            <label class="form-label-with-icon">
-                                <span class="material-icons label-icon">visibility</span>
-                                <span>Show Logo on Invoices</span>
-                            </label>
-                            <div style="display: flex; align-items: center; gap: 12px; height: 42px;">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="showLogo" checked>
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <span id="showLogoLabel" style="font-size: 14px; color: #2845D6; font-weight: 500;">Enabled</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-section">
                     <h3 class="section-title"><span class="material-icons">color_lens</span> Brand Colors</h3>
                     <p class="section-description">Choose your primary brand color to apply to invoice headers and highlights.</p>
                     
@@ -535,15 +536,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="../scripts/dialog.js"></script>
-    <script src="../scripts/toast.js"></script>
-    <script src="../scripts/supabase.js"></script>
-    <script src="../scripts/auth.js"></script>
-    <script src="../scripts/backup.js"></script>
-    <script src="../scripts/notifications.js"></script>
+    <script src="./scripts/dialog.js"></script>
+    <script src="./scripts/toast.js"></script>
+    <script src="./scripts/pwa.js"></script>
+    <script src="./scripts/supabase.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/backup.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../scripts/invoice-templates.js"></script>
+    <script src="./scripts/invoice-templates.js"></script>
     <script>
         let currentUser = null;
 
@@ -675,7 +677,9 @@
                     upi_id: upiId || null,
                     invoice_prefix: invoicePrefix || null,
                     starting_invoice_number: startingInvoiceNumber,
-                    terms_conditions: termsConditions
+                    terms_conditions: termsConditions,
+                    logo_position: document.getElementById('logoPosition').value,
+                    show_logo: document.getElementById('showLogo').checked
                 };
 
                 const result = await supabaseUpdateUserProfile(currentUser.id, profileData);
@@ -833,10 +837,11 @@
                     document.getElementById('brandColorHex').value = brandColor;
                     updateBrandColorPreview(brandColor);
                     
-                    // Set logo
-                    if (profile.logo_url) {
-                        currentLogoPath = profile.logo_url;
-                        updateLogoPreview(profile.logo_url);
+                    // Set logo — fall back to business_logo if logo_url is not populated
+                    const resolvedLogoUrl = profile.logo_url || profile.business_logo || null;
+                    if (resolvedLogoUrl) {
+                        currentLogoPath = resolvedLogoUrl;
+                        updateLogoPreview(resolvedLogoUrl);
                     }
                     
                     // Set logo settings
@@ -859,15 +864,16 @@
             });
         }
 
-        // Update logo preview
+        // Update logo preview and header avatar
         function updateLogoPreview(url) {
             const preview = document.getElementById('logoPreview');
             preview.innerHTML = `<img src="${url}" alt="Business Logo">`;
             preview.classList.add('has-logo');
             document.getElementById('removeLogoBtn').style.display = 'block';
+            setHeaderAvatar(url);
         }
 
-        // Remove logo preview
+        // Remove logo preview and reset header avatar
         function clearLogoPreview() {
             const preview = document.getElementById('logoPreview');
             preview.innerHTML = `
@@ -876,6 +882,24 @@
             `;
             preview.classList.remove('has-logo');
             document.getElementById('removeLogoBtn').style.display = 'none';
+            setHeaderAvatar(null);
+        }
+
+        // Sync the logo into the header avatar (auth.js-injected #desktopUserAvatar)
+        function setHeaderAvatar(url) {
+            // Desktop: update the user-avatar div that auth.js injects
+            const desktopAvatar = document.getElementById('desktopUserAvatar');
+            if (desktopAvatar) {
+                if (url) {
+                    desktopAvatar.innerHTML = `<img src="${url}" alt="Business Logo" class="user-avatar-logo">`;
+                } else {
+                    desktopAvatar.innerHTML = `<span class="material-icons">account_circle</span>`;
+                }
+            }
+            // Mobile: use auth.js helper if available, otherwise do it directly
+            if (typeof applyLogoToMobileAvatar === 'function') {
+                applyLogoToMobileAvatar(url);
+            }
         }
 
         // Update brand color preview
@@ -919,7 +943,8 @@
                 
                 // Update profile to remove logo URL
                 const result = await supabaseUpdateUserProfile(currentUser.id, {
-                    logo_url: null
+                    logo_url: null,
+                    business_logo: null
                 });
                 
                 if (result.success) {
@@ -1177,9 +1202,9 @@
                 
                 if (result.success) {
                     currentLogoPath = uploadResult.url;
-                    // Update currentUser object so it persists
                     if (currentUser) {
                         currentUser.logo_url = uploadResult.url;
+                        currentUser.business_logo = uploadResult.url;
                     }
                     updateLogoPreview(uploadResult.url);
                     showToast('Logo uploaded successfully!', 'success');

@@ -2,19 +2,29 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#2845D6">
+    <meta name="description" content="KounterPro - Billing, Inventory & Accounting Software">
     <title>Dashboard - KounterPro</title>
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%232845D6' width='192' height='192'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='80' fill='white' font-weight='bold' font-family='Arial'>KP</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect fill='%232845D6' width='180' height='180' rx='40'/><text x='90' y='90' dominant-baseline='middle' text-anchor='middle' font-size='70' fill='white' font-weight='bold' font-family='Arial'>KP</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link rel="stylesheet" href="../styles/styles.css">
-    <link rel="stylesheet" href="../styles/styles-new.css">
-    <link rel="stylesheet" href="../styles/dark-mode.css">
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles-new.css">
+    <link rel="stylesheet" href="./styles/dark-mode.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script src="../scripts/dark-mode.js"></script>
+    <script src="./scripts/dark-mode.js"></script>
 </head>
 <body class="modern-layout">
+    <!-- Offline/Online Indicator -->
+    <div id="offlineIndicator" class="offline-indicator">
+        You are offline - Changes will sync when online
+    </div>
+    
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -57,6 +67,10 @@
                 <span class="nav-text">Profile</span>
             </a>
             <div class="nav-divider"></div>
+            <a href="#" class="nav-item" id="installAppBtn" onclick="window.PWA ? window.PWA.promptToInstall() : alert('Installation not available in this browser'); return false;" title="Install App">
+                <span class="material-icons">download</span>
+                <span class="nav-text">Install App</span>
+            </a>
             <a href="#" class="nav-item" onclick="exportBackup(); return false;" title="Backup Data">
                 <span class="material-icons">cloud_download</span>
                 <span class="nav-text">Backup</span>
@@ -222,7 +236,7 @@
             </div>
             <div class="card-body">
                 <div class="table-wrapper">
-                    <table class="modern-table">
+                    <table class="modern-table dashboard-invoices-table responsive-card-table">
                         <thead>
                             <tr>
                                 <th>Invoice No</th>
@@ -410,13 +424,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <script src="../scripts/dialog.js"></script>
-    <script src="../scripts/toast.js"></script>
-    <script src="../scripts/validation.js"></script>
-    <script src="../scripts/supabase.js"></script>
-    <script src="../scripts/auth.js"></script>
-    <script src="../scripts/backup.js"></script>
-    <script src="../scripts/fab.js"></script>
-    <script src="../scripts/dashboard-modern.js"></script>
+    <script src="./scripts/dialog.js"></script>
+    <script src="./scripts/toast.js"></script>
+    <script src="./scripts/pwa.js"></script>
+    <script src="./scripts/indexed-db.js"></script>
+    <script src="./scripts/offline-sync.js"></script>
+    <script src="./scripts/inventory-sync.js"></script>
+    <script src="./scripts/validation.js"></script>
+    <script src="./scripts/supabase.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/backup.js"></script>
+    <script src="./scripts/fab.js"></script>
+    <script src="./scripts/dashboard-modern.js"></script>
 </body>
 </html>
