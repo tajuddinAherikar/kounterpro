@@ -194,7 +194,7 @@ function addUPIQRCodeToPDF(pdf, profile, invoiceData, x, y) {
                     pdf.setFontSize(8);
                     pdf.setFont(undefined, 'normal');
                     pdf.text(`UPI ID: ${upiId}`, x + 37, y + 10);
-                    pdf.text(`Amount: ₹${amount}`, x + 37, y + 15);
+                    pdf.text(`Amount: Rs ${amount}`, x + 37, y + 15);
                     pdf.text('Scan QR to pay via any UPI app', x + 37, y + 25);
                 }
                 

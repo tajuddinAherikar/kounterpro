@@ -4390,10 +4390,34 @@ body.dark-mode .format-hint {
     color: #9ca3af;
 }
 
-/* Load More button — mobile only */
+/* Load More buttons — mobile only */
 @media (min-width: 1025px) {
-    #loadMoreInvoicesContainer {
+    #loadMoreInvoicesContainer,
+    #loadMoreInventoryContainer {
         display: none !important;
+    }
+}
+
+/* Inventory desktop: scrollable tbody */
+@media (min-width: 769px) {
+    .invoices-section .inventory-items-table {
+        display: block;
+    }
+    .invoices-section .inventory-items-table thead {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+    .invoices-section .inventory-items-table tbody {
+        display: block;
+        max-height: 500px;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    .invoices-section .inventory-items-table tbody tr {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
     }
 }
 

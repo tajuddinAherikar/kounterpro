@@ -562,8 +562,8 @@ function generatePDFDownload(invoiceData) {
         pdf.text(descLines[0], 35, y);
         pdf.text(item.serialNo || '-', 100, y);
         pdf.text(`${item.quantity}`, 135, y);
-        pdf.text(`₹${parseFloat(item.rate).toFixed(2)}`, 155, y);
-        pdf.text(`₹${(item.quantity * parseFloat(item.rate)).toFixed(2)}`, 180, y);
+        pdf.text(`Rs ${parseFloat(item.rate).toFixed(2)}`, 155, y);
+        pdf.text(`Rs ${(item.quantity * parseFloat(item.rate)).toFixed(2)}`, 180, y);
         y += 6;
     });
     
@@ -575,13 +575,13 @@ function generatePDFDownload(invoiceData) {
     pdf.setFont(undefined, 'bold');
     pdf.text('Subtotal:', 155, y, { align: 'right' });
     pdf.setFont(undefined, 'normal');
-    pdf.text(`₹${invoiceData.subtotal.toFixed(2)}`, 195, y, { align: 'right' });
+    pdf.text(`Rs ${invoiceData.subtotal.toFixed(2)}`, 195, y, { align: 'right' });
     
     y += 6;
     pdf.setFont(undefined, 'bold');
     pdf.text(`GST (${invoiceData.gstRate}%):`, 155, y, { align: 'right' });
     pdf.setFont(undefined, 'normal');
-    pdf.text(`₹${invoiceData.gstAmount.toFixed(2)}`, 195, y, { align: 'right' });
+    pdf.text(`Rs ${invoiceData.gstAmount.toFixed(2)}`, 195, y, { align: 'right' });
     
     y += 6;
     pdf.line(155, y, 200, y);
@@ -590,7 +590,7 @@ function generatePDFDownload(invoiceData) {
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(11);
     pdf.text('Grand Total:', 155, y, { align: 'right' });
-    pdf.text(`₹${invoiceData.grandTotal.toFixed(2)}`, 195, y, { align: 'right' });
+    pdf.text(`Rs ${invoiceData.grandTotal.toFixed(2)}`, 195, y, { align: 'right' });
     
     // Footer
     y += 15;
@@ -747,17 +747,17 @@ function generatePDFFromInvoice(invoiceData) {
     // Totals
     y += 5;
     pdf.text('Subtotal:', 130, y);
-    pdf.text(`₹${invoiceData.subtotal.toFixed(2)}`, 165, y);
+    pdf.text(`Rs ${invoiceData.subtotal.toFixed(2)}`, 165, y);
     
     y += 6;
     pdf.text(`GST (${invoiceData.gstRate}%)`, 130, y);
-    pdf.text(`₹${invoiceData.gstAmount.toFixed(2)}`, 165, y);
+    pdf.text(`Rs ${invoiceData.gstAmount.toFixed(2)}`, 165, y);
     
     y += 6;
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(11);
     pdf.text('Grand Total:', 130, y);
-    pdf.text(`₹${invoiceData.grandTotal.toFixed(2)}`, 165, y);
+    pdf.text(`Rs ${invoiceData.grandTotal.toFixed(2)}`, 165, y);
     
     // Terms & Conditions
     y += 15;

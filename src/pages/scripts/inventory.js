@@ -178,61 +178,113 @@ function updateStats() {
 }
 
 // Display inventory items in table
-function displayInventory(items = inventory) {
+// Inventory pagination state
+let allInventoryData = [];
+let inventoryShownCount = 0;
+const INVENTORY_INITIAL = 10;
+const INVENTORY_PAGE = 10;
+
+function buildInventoryRow(item) {
+    const stockInfo = getStockStatus(item);
+    const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+    const consumed = (item.openingStock || 0) - item.stock;
+    const profitMargin = item.purchasePrice > 0 ? (((item.salePrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(2) : 0;
+    const stockDisplay = item.stock === 0 ?
+        `<strong style="color: #c62828;">${item.stock} units</strong>` :
+        item.stock <= threshold ?
+        `<strong style="color: #f68048;">${item.stock} units</strong> <small style="color: #666;">(Alert: ≤${threshold})</small>` :
+        `${item.stock} units`;
+
+    const tr = document.createElement('tr');
+    tr.style.cssText = item.stock === 0 ? 'background-color: #ffebee;' : item.stock <= threshold ? 'background-color: #fff8f0;' : '';
+    tr.innerHTML = `
+        <td data-label="Item Name"><span class="mobile-field-label">Item Name</span><div class="field-value"><strong>${item.name}</strong></div></td>
+        <td data-label="Description"><span class="mobile-field-label">Description</span><div class="field-value">${item.description || '-'}</div></td>
+        <td data-label="Opening Stock"><span class="mobile-field-label">Opening Stock</span><div class="field-value">${item.openingStock || 0} units</div></td>
+        <td data-label="Current Stock"><span class="mobile-field-label">Current Stock</span><div class="field-value">${stockDisplay}</div></td>
+        <td data-label="Consumed"><span class="mobile-field-label">Consumed</span><div class="field-value">${consumed} units</div></td>
+        <td data-label="Purchase Price (₹)"><span class="mobile-field-label">Purchase Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.purchasePrice)}</div></td>
+        <td data-label="Sale Price (₹)"><span class="mobile-field-label">Sale Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.salePrice)}</div></td>
+        <td data-label="Profit %"><span class="mobile-field-label">Profit %</span><div class="field-value"><span style="color: ${profitMargin >= 0 ? '#28a745' : '#c62828'}; font-weight: 600;">${profitMargin}%</span></div></td>
+        <td data-label="Status"><span class="mobile-field-label">Status</span><div class="field-value"><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></div></td>
+        <td data-label="Actions">
+            <span class="mobile-field-label">Actions</span>
+            <div class="field-value card-actions">
+            <a href="#" class="action-link view" onclick="editItem('${item.id}'); return false;">
+                <span class="material-icons">edit</span> Edit
+            </a>
+            <a href="#" class="action-link delete" onclick="deleteItem('${item.id}'); return false;">
+                <span class="material-icons">delete</span> Delete
+            </a>
+            </div>
+        </td>
+    `;
+    return tr;
+}
+
+function updateInventoryLoadMoreButton() {
+    const container = document.getElementById('loadMoreInventoryContainer');
+    const label = document.getElementById('loadMoreInventoryLabel');
+    if (!container) return;
+    const remaining = allInventoryData.length - inventoryShownCount;
+    if (remaining > 0) {
+        container.style.display = 'block';
+        label.textContent = `Load more (${remaining} remaining)`;
+    } else {
+        container.style.display = 'none';
+    }
+}
+
+function loadMoreInventoryItems() {
     const tbody = document.getElementById('inventoryTableBody');
-    
-    if (items.length === 0) {
+    if (!tbody) return;
+    const nextBatch = allInventoryData.slice(inventoryShownCount, inventoryShownCount + INVENTORY_PAGE);
+    nextBatch.forEach(item => tbody.appendChild(buildInventoryRow(item)));
+    inventoryShownCount += nextBatch.length;
+    updateInventoryLoadMoreButton();
+}
+
+// Display inventory items in table
+function displayInventory(items = inventory, showAll = false) {
+    const tbody = document.getElementById('inventoryTableBody');
+    const isMobile = window.innerWidth <= 1024;
+
+    // Sort: out of stock first, then low stock, then alphabetical
+    const sorted = [...items].sort((a, b) => {
+        const aStatus = getStockStatus(a);
+        const bStatus = getStockStatus(b);
+        const statusOrder = { out: 0, low: 1, ok: 2 };
+        if (statusOrder[aStatus.status] !== statusOrder[bStatus.status]) {
+            return statusOrder[aStatus.status] - statusOrder[bStatus.status];
+        }
+        return a.name.localeCompare(b.name);
+    });
+
+    tbody.innerHTML = '';
+
+    if (sorted.length === 0) {
         tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; padding: 40px;">No items found.</td></tr>';
+        const container = document.getElementById('loadMoreInventoryContainer');
+        if (container) container.style.display = 'none';
         return;
     }
-    
-    tbody.innerHTML = items
-        .sort((a, b) => {
-            // Sort by stock status (out of stock first, then low stock, then in stock)
-            const aStatus = getStockStatus(a);
-            const bStatus = getStockStatus(b);
-            const statusOrder = { out: 0, low: 1, ok: 2 };
-            if (statusOrder[aStatus.status] !== statusOrder[bStatus.status]) {
-                return statusOrder[aStatus.status] - statusOrder[bStatus.status];
-            }
-            return a.name.localeCompare(b.name);
-        })
-        .map(item => {
-            const stockInfo = getStockStatus(item);
-            const threshold = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
-            const consumed = (item.openingStock || 0) - item.stock;
-            const profitMargin = item.purchasePrice > 0 ? (((item.salePrice - item.purchasePrice) / item.purchasePrice) * 100).toFixed(2) : 0;
-            const stockDisplay = item.stock === 0 ? 
-                `<strong style="color: #c62828;">${item.stock} units</strong>` :
-                item.stock <= threshold ?
-                `<strong style="color: #f68048;">${item.stock} units</strong> <small style="color: #666;">(Alert: ≤${threshold})</small>` :
-                `${item.stock} units`;
-            
-            return `
-                <tr style="${item.stock === 0 ? 'background-color: #ffebee;' : item.stock <= threshold ? 'background-color: #fff8f0;' : ''}">
-                    <td data-label="Item Name"><span class="mobile-field-label">Item Name</span><div class="field-value"><strong>${item.name}</strong></div></td>
-                    <td data-label="Description"><span class="mobile-field-label">Description</span><div class="field-value">${item.description || '-'}</div></td>
-                    <td data-label="Opening Stock"><span class="mobile-field-label">Opening Stock</span><div class="field-value">${item.openingStock || 0} units</div></td>
-                    <td data-label="Current Stock"><span class="mobile-field-label">Current Stock</span><div class="field-value">${stockDisplay}</div></td>
-                    <td data-label="Consumed"><span class="mobile-field-label">Consumed</span><div class="field-value">${consumed} units</div></td>
-                    <td data-label="Purchase Price (₹)"><span class="mobile-field-label">Purchase Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.purchasePrice)}</div></td>
-                    <td data-label="Sale Price (₹)"><span class="mobile-field-label">Sale Price (₹)</span><div class="field-value">₹${formatIndianCurrency(item.salePrice)}</div></td>
-                    <td data-label="Profit %"><span class="mobile-field-label">Profit %</span><div class="field-value"><span style="color: ${profitMargin >= 0 ? '#28a745' : '#c62828'}; font-weight: 600;">${profitMargin}%</span></div></td>
-                    <td data-label="Status"><span class="mobile-field-label">Status</span><div class="field-value"><span class="status-badge status-${stockInfo.status}" style="background-color: ${stockInfo.color}20; color: ${stockInfo.color}; border: 1px solid ${stockInfo.color};">${stockInfo.icon} ${stockInfo.label}</span></div></td>
-                    <td data-label="Actions">
-                        <span class="mobile-field-label">Actions</span>
-                        <div class="field-value card-actions">
-                        <a href="#" class="action-link view" onclick="editItem('${item.id}'); return false;">
-                            <span class="material-icons">edit</span> Edit
-                        </a>
-                        <a href="#" class="action-link delete" onclick="deleteItem('${item.id}'); return false;">
-                            <span class="material-icons">delete</span> Delete
-                        </a>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+
+    if (!isMobile || showAll) {
+        // Desktop or search/filter: render all rows, hide Load More
+        allInventoryData = sorted;
+        inventoryShownCount = sorted.length;
+        sorted.forEach(item => tbody.appendChild(buildInventoryRow(item)));
+        const container = document.getElementById('loadMoreInventoryContainer');
+        if (container) container.style.display = 'none';
+    } else {
+        // Mobile normal mode: paginate
+        allInventoryData = sorted;
+        inventoryShownCount = 0;
+        const initial = sorted.slice(0, INVENTORY_INITIAL);
+        initial.forEach(item => tbody.appendChild(buildInventoryRow(item)));
+        inventoryShownCount = initial.length;
+        updateInventoryLoadMoreButton();
+    }
 }
 
 // Show add/edit item modal
@@ -350,7 +402,7 @@ function applyInventoryFilter() {
         return d >= fromDate && d <= toDate;
     });
 
-    displayInventory(filtered);
+    displayInventory(filtered, true);
     closeInventoryFilterModal();
 
     const badge = document.getElementById('inventoryFilterBadge');
@@ -414,8 +466,8 @@ function downloadInventoryPDF() {
         { label: 'Open.Stock',      x: 94  },
         { label: 'Curr.Stock',      x: 116 },
         { label: 'Consumed',        x: 138 },
-        { label: 'Pur.Price (₹)',   x: 158 },
-        { label: 'Sale Price (₹)',  x: 185 },
+        { label: 'Pur.Price (Rs)',   x: 158 },
+        { label: 'Sale Price (Rs)',  x: 185 },
         { label: 'Profit %',        x: 212 },
         { label: 'Status',          x: 233 },
     ];
@@ -680,7 +732,7 @@ function searchInventory() {
         (item.description && item.description.toLowerCase().includes(searchTerm))
     );
     
-    displayInventory(filtered);
+    displayInventory(filtered, true);
 }
 
 // Clear search
