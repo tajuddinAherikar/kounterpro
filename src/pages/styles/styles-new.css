@@ -1084,7 +1084,11 @@ img, video, canvas, svg {
     border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
     cursor: pointer;
-    padding: 8px;
+    padding: 0;
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
