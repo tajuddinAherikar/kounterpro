@@ -526,8 +526,9 @@ function updatePaymentDetails() {
     document.getElementById('paymentAmountDue').textContent = formatIndianCurrency(amountDue);
     
     // Set max amount for payment input
-    document.getElementById('paymentAmount').max = amountDue;
-    document.getElementById('paymentAmount').value = amountDue; // Default to full amount
+    const amountDueRounded = parseFloat(amountDue).toFixed(2);
+    document.getElementById('paymentAmount').max = amountDueRounded;
+    document.getElementById('paymentAmount').value = amountDueRounded; // Default to full amount
     
     summary.style.display = 'block';
 }

@@ -10,7 +10,7 @@
  * - Offline page fallback
  */
 
-const CACHE_NAME = 'kounterpro-v1';
+const CACHE_NAME = 'kounterpro-v2';
 const OFFLINE_URL = './index.html';
 
 // Files to cache on install

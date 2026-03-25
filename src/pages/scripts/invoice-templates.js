@@ -329,7 +329,12 @@ async function renderModernTemplate(pdf, invoiceData, profile, settings) {
     // Header with brand color background
     applyBrandFillColor(pdf, brandColor);
     pdf.rect(0, 0, 210, 35, 'F');
-    
+
+    // Logo (centre of header banner, if enabled)
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 130, 3, 20, 29);
+    }
+
     // White text for header
     pdf.setTextColor(255, 255, 255);
     pdf.setFontSize(24);
@@ -436,7 +441,12 @@ async function renderModernTemplate(pdf, invoiceData, profile, settings) {
 async function renderGSTFormatTemplate(pdf, invoiceData, profile, settings) {
     const brandColor = settings.brand_color || '#2845D6';
     let y = 15;
-    
+
+    // Logo (top-left, if enabled)
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 15, 3, 25, 12);
+    }
+
     // Header
     pdf.setFontSize(18);
     pdf.setFont(undefined, 'bold');
@@ -558,7 +568,12 @@ async function renderGSTFormatTemplate(pdf, invoiceData, profile, settings) {
 async function renderRetailTemplate(pdf, invoiceData, profile, settings) {
     const brandColor = settings.brand_color || '#2845D6';
     let y = 15;
-    
+
+    // Logo (top-left, if enabled)
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 15, 3, 25, 10);
+    }
+
     // Compact header
     pdf.setFontSize(16);
     pdf.setFont(undefined, 'bold');
@@ -647,13 +662,13 @@ function renderItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.setFont(undefined, 'normal');
     
     // Table rows
-    invoiceData.items.forEach(item => {
+    invoiceData.items.forEach((item, index) => {
         if (y > 250) {
             pdf.addPage();
             y = 20;
         }
         
-        pdf.text(String(item.slNo), 17, y + 5);
+        pdf.text(String(item.slNo ?? index + 1), 17, y + 5);
         const descText = pdf.splitTextToSize(item.description, 55);
         pdf.text(descText, 28, y + 5);
         if (item.serialNo) {

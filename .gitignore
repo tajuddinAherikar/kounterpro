@@ -111,3 +111,5 @@ jspm_packages/
 android/
 capacitor.config.ts
 setup-android.sh
+database/
+docs/

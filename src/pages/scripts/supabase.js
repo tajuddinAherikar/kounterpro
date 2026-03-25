@@ -407,6 +407,9 @@ async function supabaseUpdateUserProfile(userId, profileData) {
         if (profileData.current_invoice_counter !== undefined) {
             updateData.current_invoice_counter = profileData.current_invoice_counter;
         }
+        if (profileData.dashboard_pin !== undefined) {
+            updateData.dashboard_pin = profileData.dashboard_pin; // null = remove PIN
+        }
         
         const { data, error } = await supabaseClient
             .from('user_profiles')

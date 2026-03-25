@@ -461,6 +461,54 @@
 
         <!-- Password & Security Tab -->
         <div id="password-security" class="tab-content">
+            <!-- Dashboard Privacy PIN -->
+            <div class="form-section" id="privacyPinSection" style="margin-top: 24px;">
+                <h3 class="section-title"><span class="material-icons">shield</span> Dashboard Privacy PIN</h3>
+                <p style="margin-bottom: 16px; color: var(--text-secondary); font-size: 13px; line-height: 1.5;">
+                    Set a 4-digit PIN to protect your dashboard figures. When privacy mode is active, this PIN will be required to reveal the numbers.
+                </p>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">info</span>
+                        <span>Current Status</span>
+                    </label>
+                    <div id="pinCurrentStatus" class="pin-status-badge pin-status-none">No PIN set</div>
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">dialpad</span>
+                        <span>New PIN <span class="required">*</span></span>
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="dashboardPinNew" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="Enter 4-digit PIN">
+                        <span class="password-toggle-icon material-icons" onclick="togglePasswordVisibility('dashboardPinNew', this)">visibility_off</span>
+                    </div>
+                    <small class="form-hint">Must be exactly 4 digits (numbers only)</small>
+                </div>
+
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">check_circle</span>
+                        <span>Confirm PIN <span class="required">*</span></span>
+                    </label>
+                    <div class="password-input-wrapper">
+                        <input type="password" id="dashboardPinConfirm" maxlength="4" pattern="\d{4}" inputmode="numeric" placeholder="Re-enter 4-digit PIN">
+                        <span class="password-toggle-icon material-icons" onclick="togglePasswordVisibility('dashboardPinConfirm', this)">visibility_off</span>
+                    </div>
+                    <div id="pinError" style="color: #ef4444; font-size: 12px; margin-top: 4px; display: none;"></div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" id="removePinBtn" onclick="handleRemovePin()" style="display:none;">
+                        <span class="material-icons">remove_circle_outline</span> Remove PIN
+                    </button>
+                    <button type="button" class="btn-primary" id="setPinBtn" onclick="handleSetPin()">
+                        <span class="material-icons">save</span> Set PIN
+                    </button>
+                </div>
+            </div>
             <form id="passwordForm" class="profile-form">
                 <div class="form-section">
                     <h3 class="section-title"><span class="material-icons">lock</span> Change Password</h3>
@@ -505,6 +553,8 @@
                     <button type="submit" class="btn-primary"><span class="material-icons">lock_reset</span> Change Password</button>
                 </div>
             </form>
+
+            
         </div>
 
         <!-- My Shops Tab -->
@@ -658,6 +708,8 @@
                     
                     // Update invoice number preview
                     updateInvoiceNumberPreview();
+                    // Update PIN status display
+                    updatePinStatus();
                 }
             } catch (error) {
                 hideSkeletonLoaders();
@@ -822,6 +874,96 @@
                 submitBtn.disabled = false;
             }
         });
+
+        // ============================================
+        // DASHBOARD PRIVACY PIN FUNCTIONS
+        // ============================================
+
+        function updatePinStatus() {
+            const statusEl = document.getElementById('pinCurrentStatus');
+            const removeBtn = document.getElementById('removePinBtn');
+            if (!statusEl) return;
+            if (currentUser && currentUser.dashboard_pin) {
+                statusEl.textContent = '🔒 PIN is set';
+                statusEl.className = 'pin-status-badge pin-status-set';
+                if (removeBtn) removeBtn.style.display = 'flex';
+            } else {
+                statusEl.textContent = 'No PIN set';
+                statusEl.className = 'pin-status-badge pin-status-none';
+                if (removeBtn) removeBtn.style.display = 'none';
+            }
+        }
+
+        async function hashPin(pin) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(pin);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function handleSetPin() {
+            const pinNew = document.getElementById('dashboardPinNew').value.trim();
+            const pinConfirm = document.getElementById('dashboardPinConfirm').value.trim();
+            const errorEl = document.getElementById('pinError');
+
+            errorEl.style.display = 'none';
+
+            if (!/^\d{4}$/.test(pinNew)) {
+                errorEl.textContent = 'PIN must be exactly 4 digits (0–9 only)';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (pinNew !== pinConfirm) {
+                errorEl.textContent = 'PINs do not match. Please try again.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const saveBtn = document.getElementById('setPinBtn');
+            const originalText = saveBtn.innerHTML;
+            saveBtn.innerHTML = '<span class="material-icons">hourglass_empty</span> Saving...';
+            saveBtn.disabled = true;
+
+            try {
+                const hashed = await hashPin(pinNew);
+                const result = await supabaseUpdateUserProfile(currentUser.id, { dashboard_pin: hashed });
+                if (!result.success) throw new Error(result.error);
+
+                currentUser.dashboard_pin = hashed;
+                document.getElementById('dashboardPinNew').value = '';
+                document.getElementById('dashboardPinConfirm').value = '';
+                updatePinStatus();
+                showToast('Dashboard Privacy PIN set successfully! 🔒', 'success');
+            } catch (err) {
+                errorEl.textContent = err.message || 'Failed to save PIN.';
+                errorEl.style.display = 'block';
+            } finally {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+
+        async function handleRemovePin() {
+            if (!confirm('Remove your dashboard privacy PIN? Anyone will be able to reveal the dashboard figures without a PIN.')) return;
+
+            const removeBtn = document.getElementById('removePinBtn');
+            removeBtn.disabled = true;
+
+            try {
+                const result = await supabaseUpdateUserProfile(currentUser.id, { dashboard_pin: null });
+                if (!result.success) throw new Error(result.error);
+
+                currentUser.dashboard_pin = null;
+                localStorage.removeItem('kp_privacy_active');
+                updatePinStatus();
+                showToast('Dashboard Privacy PIN removed.', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to remove PIN.', 'error');
+            } finally {
+                removeBtn.disabled = false;
+            }
+        }
 
         // Reset password form
         function resetPasswordForm() {

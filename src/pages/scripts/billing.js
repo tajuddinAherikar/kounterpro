@@ -105,7 +105,7 @@ function loadInvoiceForEditing() {
                 </td>
                 <td data-label="Rate (₹) (incl. GST)">
                     <span class="mobile-field-label">Rate (₹)</span>
-                    <input type="number" class="item-rate" min="0" step="0.01" value="${item.rate || ''}" required>
+                    <input type="number" class="item-rate" min="0" step="0.01" value="${parseFloat(item.rateInclGST || item.rate || 0).toFixed(2)}" required>
                     <span class="error-message item-error"></span>
                 </td>
                 <td class="item-amount" data-label="Amount (₹)">

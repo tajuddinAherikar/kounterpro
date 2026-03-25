@@ -1,8 +1,17 @@
 // Modern Dashboard JavaScript
 
 let salesChart = null;
+let salesVsExpensesChart = null;
+let profitTrendChart = null;
 let currentInvoiceForPDF = null;
 let userProfile = null;
+
+// Financial dashboard state
+let allExpensesCache = [];
+let inventoryPriceMap = new Map(); // lowerCaseName -> purchase_price
+let currentPeriod = 'thisMonth'; // today | thisWeek | thisMonth | custom
+let customPeriodFrom = null;
+let customPeriodTo = null;
 
 // Format number in Indian numbering system (e.g., 8,21,000)
 function formatIndianCurrency(amount) {
@@ -128,31 +137,47 @@ async function initializeDashboard() {
             updateUserDisplay(userProfile);
         }
 
-        // Fetch invoices
-        const result = await supabaseGetInvoices();
-        const invoices = result.success ? result.data : [];
+        // Fetch invoices, expenses, and inventory in parallel
+        const [invoiceResult, expenseResult, inventoryResult] = await Promise.all([
+            supabaseGetInvoices(),
+            supabaseGetExpenses(),
+            supabaseGetInventory()
+        ]);
 
-        // Cache for search (avoids re-fetch on first search)
-        allInvoicesCache = invoices;
-        
-        // Fetch inventory for activity feed
-        const inventoryResult = await supabaseGetInventory();
+        const invoices = invoiceResult.success ? invoiceResult.data : [];
+        const expenses = expenseResult.success ? expenseResult.data : [];
         const inventory = inventoryResult.success ? inventoryResult.data : [];
-        
-        // Update statistics
+
+        // Cache data for filter/search
+        allInvoicesCache = invoices;
+        allExpensesCache = expenses;
+        inventoryPriceMap = buildInventoryPriceMap(inventory);
+
+        // Update legacy statistics (hidden, kept for compat)
         updateStatistics(invoices);
-        
-        // Initialize chart
+
+        // Initialize financial summary cards
+        updateFinancialSummary(currentPeriod);
+
+        // Initialize charts
         initializeSalesChart(invoices);
-        
+        initSalesVsExpensesChart(invoices, expenses);
+        initProfitTrendChart(invoices, expenses);
+
+        // Key insights
+        updateKeyInsights(invoices, expenses);
+
         // Populate activity feed with both invoices and inventory
         populateActivityFeed(invoices, inventory);
-        
+
         // Update invoice table
         updateInvoiceTable(invoices);
-        
+
         // Check low stock and show banner
         checkLowStockBanner();
+
+        // Restore privacy state last (after all data is rendered)
+        restorePrivacyState();
 
     } catch (error) {
         console.error('Error initializing dashboard:', error);
@@ -940,11 +965,20 @@ function generatePDFContent(pdf, invoiceData) {
     });
     
     // Calculate totals
-    const gstRate = parseFloat(invoiceData.gst_rate) || 18;
+    const taxMode = invoiceData.tax_mode || 'with-tax';
+    const gstRate = parseFloat(invoiceData.gst_rate) || 0;
     const totalAmount = parseFloat(invoiceData.total_amount) || 0;
-    const gstAmount = (totalAmount * gstRate) / (100 + gstRate);
-    const subtotal = totalAmount - gstAmount;
-    
+    // Prefer stored subtotal/gst_amount; fall back to back-calculation
+    const storedSubtotal = invoiceData.subtotal ? parseFloat(invoiceData.subtotal) : null;
+    const storedGstAmount = invoiceData.gst_amount ? parseFloat(invoiceData.gst_amount) : null;
+    const gstAmount = storedGstAmount !== null ? storedGstAmount
+        : (taxMode === 'with-tax' && gstRate > 0 ? (totalAmount * gstRate) / (100 + gstRate) : 0);
+    const subtotal = storedSubtotal !== null ? storedSubtotal : (totalAmount - gstAmount);
+    const sgstRate = gstRate / 2;
+    const cgstRate = gstRate / 2;
+    const sgstAmount = gstAmount / 2;
+    const cgstAmount = gstAmount / 2;
+
     // Totals
     y += 5;
     pdf.line(15, y, 200, y);
@@ -955,11 +989,19 @@ function generatePDFContent(pdf, invoiceData) {
     pdf.setFont(undefined, 'normal');
     pdf.text(`Rs.${formatIndianCurrency(subtotal)}`, 195, y, { align: 'right' });
     
-    y += 6;
-    pdf.setFont(undefined, 'bold');
-    pdf.text(`GST (${gstRate}%):`, 155, y, { align: 'right' });
-    pdf.setFont(undefined, 'normal');
-    pdf.text(`Rs.${formatIndianCurrency(gstAmount)}`, 195, y, { align: 'right' });
+    if (taxMode === 'with-tax' && gstRate > 0) {
+        y += 6;
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`SGST (${sgstRate}%):`, 155, y, { align: 'right' });
+        pdf.setFont(undefined, 'normal');
+        pdf.text(`Rs.${formatIndianCurrency(sgstAmount)}`, 195, y, { align: 'right' });
+        
+        y += 6;
+        pdf.setFont(undefined, 'bold');
+        pdf.text(`CGST (${cgstRate}%):`, 155, y, { align: 'right' });
+        pdf.setFont(undefined, 'normal');
+        pdf.text(`Rs.${formatIndianCurrency(cgstAmount)}`, 195, y, { align: 'right' });
+    }
     
     y += 6;
     pdf.line(155, y, 200, y);
@@ -995,6 +1037,150 @@ function setupNotificationListeners() {
             notificationDropdown.classList.remove('show');
         }
     });
+}
+
+// ============================================================
+// DASHBOARD PRIVACY MODE
+// ============================================================
+
+let privacyActive = false;
+
+function restorePrivacyState() {
+    if (localStorage.getItem('kp_privacy_active') === 'true') {
+        privacyActive = false; // let applyPrivacyMask set it
+        applyPrivacyMask();
+    }
+}
+
+function setPrivacyIcons(active) {
+    const icon = document.getElementById('privacyToggleIcon');
+    const mobileIcon = document.getElementById('mobilePrivacyIcon');
+    const btn = document.getElementById('privacyToggleBtn');
+    const mobileBtn = document.getElementById('mobilePrivacyBtn');
+    const iconName = active ? 'visibility_off' : 'visibility';
+    if (icon) icon.textContent = iconName;
+    if (mobileIcon) mobileIcon.textContent = iconName;
+    if (btn) btn.classList.toggle('privacy-btn-active', active);
+    if (mobileBtn) mobileBtn.classList.toggle('privacy-btn-active', active);
+}
+
+function applyPrivacyMask() {
+    privacyActive = true;
+    document.body.classList.add('privacy-mode');
+    localStorage.setItem('kp_privacy_active', 'true');
+    setPrivacyIcons(true);
+}
+
+function removePrivacyMask() {
+    privacyActive = false;
+    document.body.classList.remove('privacy-mode');
+    localStorage.removeItem('kp_privacy_active');
+    setPrivacyIcons(false);
+    // Refresh financial values so they are visually correct after unmasking
+    updateFinancialSummary(currentPeriod);
+}
+
+function togglePrivacyMode() {
+    if (!privacyActive) {
+        // Mask immediately — no PIN needed to hide
+        applyPrivacyMask();
+        return;
+    }
+    // Currently masked — need to unmask
+    const pin = userProfile && userProfile.dashboard_pin;
+    if (!pin) {
+        // No PIN set: unmask freely + nudge
+        removePrivacyMask();
+        if (typeof showToast === 'function') {
+            showToast('Tip: Set a Privacy PIN in Profile → Password & Security for full protection.', 'info');
+        }
+        return;
+    }
+    // PIN is set: show PIN entry modal
+    openPinModal();
+}
+
+// PIN modal control
+function openPinModal() {
+    const modal = document.getElementById('pinEntryModal');
+    if (!modal) return;
+    document.getElementById('pinEntryInput').value = '';
+    document.getElementById('pinEntryError').style.display = 'none';
+    updatePinDots('');
+    modal.style.display = 'flex';
+    setTimeout(() => document.getElementById('pinEntryInput').focus(), 100);
+}
+
+function closePinModal() {
+    const modal = document.getElementById('pinEntryModal');
+    if (modal) modal.style.display = 'none';
+    document.getElementById('pinEntryInput').value = '';
+    updatePinDots('');
+    document.getElementById('pinEntryError').style.display = 'none';
+}
+
+function updatePinDots(value) {
+    for (let i = 0; i < 4; i++) {
+        const dot = document.getElementById('dot' + i);
+        if (dot) dot.classList.toggle('filled', i < value.length);
+    }
+}
+
+function appendPinDigit(digit) {
+    const input = document.getElementById('pinEntryInput');
+    if (input.value.length < 4) {
+        input.value += digit;
+        updatePinDots(input.value);
+        if (input.value.length === 4) submitPrivacyPin();
+    }
+}
+
+function deletePinDigit() {
+    const input = document.getElementById('pinEntryInput');
+    input.value = input.value.slice(0, -1);
+    updatePinDots(input.value);
+}
+
+function onPinInput(input) {
+    // Keep only digits
+    input.value = input.value.replace(/\D/g, '').slice(0, 4);
+    updatePinDots(input.value);
+    if (input.value.length === 4) submitPrivacyPin();
+}
+
+function onPinKeydown(e) {
+    if (e.key === 'Enter') submitPrivacyPin();
+    if (e.key === 'Escape') closePinModal();
+}
+
+async function submitPrivacyPin() {
+    const input = document.getElementById('pinEntryInput');
+    const errorEl = document.getElementById('pinEntryError');
+    const pin = input.value;
+
+    if (pin.length !== 4) return;
+
+    const encoder = new TextEncoder();
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(pin));
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashed = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+    if (hashed === (userProfile && userProfile.dashboard_pin)) {
+        closePinModal();
+        removePrivacyMask();
+    } else {
+        errorEl.textContent = 'Incorrect PIN. Please try again.';
+        errorEl.style.display = 'block';
+        input.value = '';
+        updatePinDots('');
+        // Shake animation
+        const dialog = document.querySelector('.pin-entry-dialog');
+        if (dialog) {
+            dialog.classList.add('pin-shake');
+            setTimeout(() => dialog.classList.remove('pin-shake'), 500);
+        }
+        setTimeout(() => input.focus(), 50);
+    }
 }
 
 // Setup sidebar toggle
@@ -1420,6 +1606,483 @@ async function checkLowStockBanner() {
 // Reset low stock banner flag (call this from inventory page)
 function resetLowStockBannerFlag() {
     sessionStorage.removeItem('lowStockBannerShown');
+}
+
+// ===== FINANCIAL DASHBOARD — DATA LAYER =====
+
+/** Build map of inventory name (lowercase) → purchase_price */
+function buildInventoryPriceMap(inventory) {
+    const map = new Map();
+    inventory.forEach(item => {
+        if (item.name && item.purchase_price != null) {
+            map.set(item.name.toLowerCase().trim(), parseFloat(item.purchase_price) || 0);
+        }
+    });
+    return map;
+}
+
+/**
+ * Filter array of objects by period using a date field.
+ * dateField: key on each object containing an ISO date string.
+ */
+function filterByPeriod(items, period, dateField) {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+
+    return items.filter(item => {
+        const raw = item[dateField];
+        if (!raw) return false;
+        const dateStr = raw.split('T')[0];
+        const d = new Date(dateStr);
+
+        if (period === 'today') {
+            return dateStr === todayStr;
+        } else if (period === 'thisWeek') {
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 6);
+            return d >= weekAgo;
+        } else if (period === 'thisMonth') {
+            return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+        } else if (period === 'custom') {
+            if (!customPeriodFrom || !customPeriodTo) return true;
+            return dateStr >= customPeriodFrom && dateStr <= customPeriodTo;
+        }
+        return true;
+    });
+}
+
+/** Return the "previous" equivalent period as { from, to } date strings for trend comparison */
+function getPreviousPeriodItems(items, period, dateField) {
+    const now = new Date();
+    return items.filter(item => {
+        const raw = item[dateField];
+        if (!raw) return false;
+        const dateStr = raw.split('T')[0];
+        const d = new Date(dateStr);
+
+        if (period === 'today') {
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            return dateStr === yesterday.toISOString().split('T')[0];
+        } else if (period === 'thisWeek') {
+            const twoWeeksAgo = new Date(now);
+            twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 13);
+            const oneWeekAgo = new Date(now);
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            return d >= twoWeeksAgo && d < oneWeekAgo;
+        } else if (period === 'thisMonth') {
+            const prevMonth = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+            const prevYear = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+            return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+        }
+        return false;
+    });
+}
+
+/**
+ * Calculate COGS from invoices by matching item.description to the inventory price map.
+ * Returns the total cost of goods sold.
+ */
+function calculateCOGS(invoices, priceMap) {
+    let cogs = 0;
+    invoices.forEach(invoice => {
+        let items;
+        try {
+            items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []);
+        } catch (e) { return; }
+        items.forEach(item => {
+            const name = (item.description || item.name || '').toLowerCase().trim();
+            const qty = parseFloat(item.quantity) || 0;
+            const purchasePrice = priceMap.get(name);
+            if (purchasePrice !== undefined) {
+                cogs += qty * purchasePrice;
+            }
+        });
+    });
+    return cogs;
+}
+
+/** Render a trend badge onto a fin-card. */
+function renderFinTrend(trendEl, trendTextEl, current, previous) {
+    if (!trendEl || previous === 0) {
+        if (trendEl) trendEl.style.display = 'none';
+        return;
+    }
+    const pct = ((current - previous) / previous * 100).toFixed(1);
+    const isUp = pct >= 0;
+    trendEl.className = 'fin-card-trend ' + (isUp ? 'up' : 'down');
+    trendEl.style.display = 'inline-flex';
+    const icon = trendEl.querySelector('.material-icons');
+    if (icon) icon.textContent = isUp ? 'arrow_upward' : 'arrow_downward';
+    if (trendTextEl) trendTextEl.textContent = (isUp ? '+' : '') + pct + '%';
+}
+
+/** Master function to update all 4 financial cards for the given period. */
+function updateFinancialSummary(period) {
+    const invoices = filterByPeriod(allInvoicesCache, period, 'date');
+    const expenses = filterByPeriod(allExpensesCache, period, 'date');
+
+    const prevInvoices = getPreviousPeriodItems(allInvoicesCache, period, 'date');
+    const prevExpenses = getPreviousPeriodItems(allExpensesCache, period, 'date');
+
+    const sales = invoices.reduce((s, inv) => s + (parseFloat(inv.total_amount) || 0), 0);
+    const totalExpenses = expenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const cogs = calculateCOGS(invoices, inventoryPriceMap);
+    const profit = sales - totalExpenses - cogs;
+
+    const prevSales = prevInvoices.reduce((s, inv) => s + (parseFloat(inv.total_amount) || 0), 0);
+    const prevExpTotal = prevExpenses.reduce((s, e) => s + (parseFloat(e.amount) || 0), 0);
+    const prevCogs = calculateCOGS(prevInvoices, inventoryPriceMap);
+    const prevProfit = prevSales - prevExpTotal - prevCogs;
+
+    const fmt = v => '₹' + formatIndianCurrency(Math.abs(v));
+
+    // Update values
+    const salesEl = document.getElementById('finSalesValue');
+    const expEl = document.getElementById('finExpensesValue');
+    const cogEl = document.getElementById('finPurchasesValue');
+    const profEl = document.getElementById('finProfitValue');
+    const profCard = document.getElementById('finProfitCard');
+
+    if (salesEl) salesEl.textContent = fmt(sales);
+    if (expEl) expEl.textContent = fmt(totalExpenses);
+    if (cogEl) cogEl.textContent = fmt(cogs);
+    if (profEl) profEl.textContent = (profit < 0 ? '-' : '') + fmt(profit);
+
+    // Profit card color
+    if (profCard) {
+        profCard.classList.toggle('profit-negative', profit < 0);
+        const icon = profCard.querySelector('.fin-card-icon .material-icons');
+        if (icon) icon.textContent = profit >= 0 ? 'trending_up' : 'trending_down';
+    }
+
+    // Trend badges
+    renderFinTrend(
+        document.getElementById('finSalesTrend'),
+        document.getElementById('finSalesTrendText'),
+        sales, prevSales
+    );
+    renderFinTrend(
+        document.getElementById('finExpensesTrend'),
+        document.getElementById('finExpensesTrendText'),
+        totalExpenses, prevExpTotal
+    );
+    renderFinTrend(
+        document.getElementById('finPurchasesTrend'),
+        document.getElementById('finPurchasesTrendText'),
+        cogs, prevCogs
+    );
+    renderFinTrend(
+        document.getElementById('finProfitTrend'),
+        document.getElementById('finProfitTrendText'),
+        profit, prevProfit
+    );
+
+    // Meta text
+    const periodLabel = { today: 'vs yesterday', thisWeek: 'vs last week', thisMonth: 'vs last month', custom: 'custom range' };
+    const meta = periodLabel[period] || '';
+    ['finSalesMeta', 'finExpensesMeta'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = meta;
+    });
+}
+
+// ===== PERIOD FILTER CONTROLS =====
+
+function setPeriod(period) {
+    currentPeriod = period;
+
+    // Update button active states
+    ['periodToday','periodWeek','periodMonth','periodCustom'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove('active');
+    });
+    const map = { today:'periodToday', thisWeek:'periodWeek', thisMonth:'periodMonth', custom:'periodCustom' };
+    const activeBtn = document.getElementById(map[period]);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Hide custom range unless custom
+    const customRow = document.getElementById('customRangeRow');
+    if (customRow) customRow.classList.toggle('show', period === 'custom');
+
+    // Refresh UI
+    updateFinancialSummary(period);
+    updateComparisonCharts();
+    updateKeyInsights(
+        filterByPeriod(allInvoicesCache, period, 'date'),
+        filterByPeriod(allExpensesCache, period, 'date')
+    );
+}
+
+function toggleCustomRange() {
+    const customRow = document.getElementById('customRangeRow');
+    if (!customRow) return;
+    const isShowing = customRow.classList.contains('show');
+    if (!isShowing) {
+        customRow.classList.add('show');
+        // Set default range: first of current month to today
+        const today = new Date();
+        const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        document.getElementById('customFrom').value = firstOfMonth.toISOString().split('T')[0];
+        document.getElementById('customTo').value = today.toISOString().split('T')[0];
+    } else {
+        customRow.classList.remove('show');
+        if (currentPeriod === 'custom') setPeriod('thisMonth');
+    }
+}
+
+function applyCustomRange() {
+    const from = document.getElementById('customFrom')?.value;
+    const to = document.getElementById('customTo')?.value;
+    if (!from || !to) return;
+    customPeriodFrom = from;
+    customPeriodTo = to;
+    currentPeriod = 'custom';
+    ['periodToday','periodWeek','periodMonth'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.classList.remove('active');
+    });
+    document.getElementById('periodCustom')?.classList.add('active');
+    updateFinancialSummary('custom');
+    updateComparisonCharts();
+    updateKeyInsights(
+        filterByPeriod(allInvoicesCache, 'custom', 'date'),
+        filterByPeriod(allExpensesCache, 'custom', 'date')
+    );
+}
+
+// ===== COMPARISON CHARTS =====
+
+/** Get last N months as { key: 'YYYY-MM', label: 'Mon YY' }[] */
+function getLastNMonths(n) {
+    const months = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({
+            key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+            label: d.toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })
+        });
+    }
+    return months;
+}
+
+function aggregateByMonth(items, amountField, dateField) {
+    const totals = {};
+    items.forEach(item => {
+        const raw = item[dateField];
+        if (!raw) return;
+        const d = new Date(raw.split('T')[0]);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        totals[key] = (totals[key] || 0) + (parseFloat(item[amountField]) || 0);
+    });
+    return totals;
+}
+
+function initSalesVsExpensesChart(invoices, expenses) {
+    const ctx = document.getElementById('salesVsExpensesChart');
+    if (!ctx) return;
+
+    const months = getLastNMonths(6);
+    const salesByMonth = aggregateByMonth(invoices, 'total_amount', 'date');
+    const expByMonth = aggregateByMonth(expenses, 'amount', 'date');
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const gridColor = isDark ? '#1F2937' : '#f0f0f0';
+    const tickColor = isDark ? '#9CA3AF' : '#64748b';
+    const tooltipBg = isDark ? '#111827' : '#fff';
+    const tooltipText = isDark ? '#E5E7EB' : '#2c3e50';
+
+    if (salesVsExpensesChart) salesVsExpensesChart.destroy();
+
+    salesVsExpensesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: [
+                {
+                    label: 'Sales',
+                    data: months.map(m => salesByMonth[m.key] || 0),
+                    backgroundColor: 'rgba(40, 69, 214, 0.8)',
+                    borderRadius: 4,
+                    borderSkipped: false
+                },
+                {
+                    label: 'Expenses',
+                    data: months.map(m => expByMonth[m.key] || 0),
+                    backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                    borderRadius: 4,
+                    borderSkipped: false
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { color: tickColor, usePointStyle: true, pointStyle: 'circle' }
+                },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: tooltipText,
+                    bodyColor: tooltipText,
+                    borderColor: isDark ? '#1F2937' : '#e0e0e0',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => ctx.dataset.label + ': ₹' + formatIndianCurrency(ctx.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: tickColor,
+                        callback: v => '₹' + (v >= 1e5 ? (v / 1e5).toFixed(1) + 'L' : v)
+                    }
+                },
+                x: { grid: { display: false }, ticks: { color: tickColor } }
+            }
+        }
+    });
+    window.salesVsExpensesChart = salesVsExpensesChart;
+}
+
+function initProfitTrendChart(invoices, expenses) {
+    const ctx = document.getElementById('profitTrendChart');
+    if (!ctx) return;
+
+    const months = getLastNMonths(6);
+    const salesByMonth = aggregateByMonth(invoices, 'total_amount', 'date');
+    const expByMonth = aggregateByMonth(expenses, 'amount', 'date');
+
+    // COGS per month: group invoices by month then calculate
+    const cogsByMonth = {};
+    months.forEach(m => {
+        const monthInvoices = invoices.filter(inv => {
+            const raw = inv.date; if (!raw) return false;
+            const d = new Date(raw.split('T')[0]);
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}` === m.key;
+        });
+        cogsByMonth[m.key] = calculateCOGS(monthInvoices, inventoryPriceMap);
+    });
+
+    const profits = months.map(m => {
+        const s = salesByMonth[m.key] || 0;
+        const e = expByMonth[m.key] || 0;
+        const c = cogsByMonth[m.key] || 0;
+        return s - e - c;
+    });
+
+    const allPositive = profits.every(p => p >= 0);
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const lineColor = allPositive ? '#10b981' : '#f59e0b';
+    const fillColor = allPositive ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)';
+    const gridColor = isDark ? '#1F2937' : '#f0f0f0';
+    const tickColor = isDark ? '#9CA3AF' : '#64748b';
+
+    if (profitTrendChart) profitTrendChart.destroy();
+
+    profitTrendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: months.map(m => m.label),
+            datasets: [{
+                label: 'Net Profit',
+                data: profits,
+                borderColor: lineColor,
+                backgroundColor: fillColor,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: lineColor,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: isDark ? '#111827' : '#fff',
+                    titleColor: isDark ? '#E5E7EB' : '#2c3e50',
+                    bodyColor: isDark ? '#9CA3AF' : '#2c3e50',
+                    borderColor: isDark ? '#1F2937' : '#e0e0e0',
+                    borderWidth: 1,
+                    padding: 10,
+                    callbacks: {
+                        label: ctx => 'Profit: ₹' + formatIndianCurrency(ctx.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: tickColor,
+                        callback: v => '₹' + (Math.abs(v) >= 1e5 ? (v / 1e5).toFixed(1) + 'L' : v)
+                    }
+                },
+                x: { grid: { display: false }, ticks: { color: tickColor } }
+            }
+        }
+    });
+    window.profitTrendChart = profitTrendChart;
+}
+
+/** Re-render comparison charts with all data (called when period filter changes the cardsbut charts always show last 6 months aggregated) */
+function updateComparisonCharts() {
+    initSalesVsExpensesChart(allInvoicesCache, allExpensesCache);
+    initProfitTrendChart(allInvoicesCache, allExpensesCache);
+}
+
+// ===== KEY INSIGHTS =====
+
+function updateKeyInsights(periodInvoices, periodExpenses) {
+    // --- Top Selling Product ---
+    const productTotals = {};
+    periodInvoices.forEach(invoice => {
+        let items;
+        try { items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []); }
+        catch (e) { return; }
+        items.forEach(item => {
+            const name = item.description || item.name || 'Unknown';
+            productTotals[name] = (productTotals[name] || 0) + (parseFloat(item.quantity) || 0);
+        });
+    });
+    const topProduct = Object.entries(productTotals).sort((a, b) => b[1] - a[1])[0];
+    const topProductEl = document.getElementById('insightTopProduct');
+    const topProductSubEl = document.getElementById('insightTopProductSub');
+    if (topProductEl) topProductEl.textContent = topProduct ? topProduct[0] : '—';
+    if (topProductSubEl) topProductSubEl.textContent = topProduct ? `${topProduct[1]} units sold` : 'No sales in period';
+
+    // --- Top Expense Category ---
+    const catTotals = {};
+    periodExpenses.forEach(exp => {
+        const cat = exp.category || 'Other';
+        catTotals[cat] = (catTotals[cat] || 0) + (parseFloat(exp.amount) || 0);
+    });
+    const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
+    const topCatEl = document.getElementById('insightTopCategory');
+    const topCatSubEl = document.getElementById('insightTopCategorySub');
+    if (topCatEl) topCatEl.textContent = topCat ? topCat[0] : '—';
+    if (topCatSubEl) topCatSubEl.textContent = topCat ? '₹' + formatIndianCurrency(topCat[1]) : 'No expenses in period';
+
+    // --- Pending Payments ---
+    const pending = allInvoicesCache.filter(inv => inv.payment_status && inv.payment_status !== 'paid');
+    const pendingAmount = pending.reduce((s, inv) => s + (parseFloat(inv.amount_due) || 0), 0);
+    const pendingEl = document.getElementById('insightPendingValue');
+    const pendingSubEl = document.getElementById('insightPendingSub');
+    if (pendingEl) pendingEl.textContent = '₹' + formatIndianCurrency(pendingAmount);
+    if (pendingSubEl) pendingSubEl.textContent = `${pending.length} invoice${pending.length !== 1 ? 's' : ''} pending`;
 }
 // ===== BACKUP & RESTORE FUNCTIONALITY =====
 

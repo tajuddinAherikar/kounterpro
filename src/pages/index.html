@@ -100,6 +100,9 @@
         </div>
         <h1 class="mobile-header-title">Dashboard</h1>
         <div class="mobile-header-right">
+            <button class="mobile-privacy-btn" id="mobilePrivacyBtn" onclick="togglePrivacyMode()" title="Toggle Privacy Mode">
+                <span class="material-icons" id="mobilePrivacyIcon">visibility</span>
+            </button>
             <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                 <span class="material-icons">dark_mode</span>
             </button>
@@ -126,6 +129,9 @@
                 <p class="page-subtitle">Welcome back! Here's your business overview</p>
             </div>
             <div class="header-right">
+                <button class="privacy-toggle-btn" id="privacyToggleBtn" onclick="togglePrivacyMode()" title="Toggle Privacy Mode">
+                    <span class="material-icons" id="privacyToggleIcon">visibility</span>
+                </button>
                 <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
                     <span class="material-icons">dark_mode</span>
                 </button>
@@ -150,71 +156,119 @@
             </div>
         </div>
 
-        <!-- Stats Cards Grid -->
-        <div class="stats-grid">
-            <div class="stat-card-modern">
-                <div class="stat-card-icon blue">
-                    <span class="material-icons">payments</span>
+        <!-- Period Filter Bar -->
+        <div class="period-filter-bar">
+            <span class="period-label">View:</span>
+            <button class="period-btn" id="periodToday" onclick="setPeriod('today')">Today</button>
+            <button class="period-btn" id="periodWeek" onclick="setPeriod('thisWeek')">This Week</button>
+            <button class="period-btn active" id="periodMonth" onclick="setPeriod('thisMonth')">This Month</button>
+            <button class="period-btn" id="periodCustom" onclick="toggleCustomRange()">Custom ▾</button>
+            <div class="period-custom-range" id="customRangeRow">
+                <input type="date" id="customFrom" />
+                <span style="color:#94a3b8; font-size:13px;">to</span>
+                <input type="date" id="customTo" />
+                <button class="btn-apply-range" onclick="applyCustomRange()">Apply</button>
+            </div>
+        </div>
+
+        <!-- Financial Summary Cards -->
+        <div class="financial-summary-grid">
+            <!-- Sales Card -->
+            <div class="fin-card sales">
+                <div class="fin-card-header">
+                    <span class="fin-card-label">Sales</span>
+                    <div class="fin-card-icon"><span class="material-icons">payments</span></div>
                 </div>
-                <div class="stat-card-content">
-                    <span class="stat-card-label">Today's Sales</span>
-                    <h2 class="stat-card-value" id="todaySales">₹0.00</h2>
-                    <div class="stat-card-status">
-                        <span class="stat-card-trend positive" id="todayTrend" style="display: none;">
-                            <span class="material-icons">trending_up</span>
-                            <span>+0%</span>
-                        </span>
-                        <span class="stat-card-status-text" id="todaySalesStatus">No activity yet</span>
-                    </div>
-                    <span class="stat-card-meta" id="todayCount">No invoices yet today</span>
+                <h2 class="fin-card-value" id="finSalesValue">₹0</h2>
+                <div class="fin-card-footer">
+                    <span class="fin-card-trend up" id="finSalesTrend" style="display:none;">
+                        <span class="material-icons">arrow_upward</span><span id="finSalesTrendText">0%</span>
+                    </span>
+                    <span class="fin-card-meta" id="finSalesMeta">vs previous period</span>
                 </div>
             </div>
 
-            <div class="stat-card-modern">
-                <div class="stat-card-icon orange">
-                    <span class="material-icons">shopping_cart</span>
+            <!-- Expenses Card -->
+            <div class="fin-card expenses">
+                <div class="fin-card-header">
+                    <span class="fin-card-label">Expenses</span>
+                    <div class="fin-card-icon"><span class="material-icons">receipt</span></div>
                 </div>
-                <div class="stat-card-content">
-                    <span class="stat-card-label">Units Sold Today</span>
-                    <h2 class="stat-card-value" id="todayUnits">0</h2>
-                    <div class="stat-card-status">
-                        <span class="stat-card-status-text">No activity yet</span>
-                    </div>
-                    <span class="stat-card-meta">Total units</span>
-                </div>
-            </div>
-
-            <div class="stat-card-modern">
-                <div class="stat-card-icon green">
-                    <span class="material-icons">account_balance_wallet</span>
-                </div>
-                <div class="stat-card-content">
-                    <span class="stat-card-label">All Time Sales</span>
-                    <h2 class="stat-card-value" id="totalSales">₹0.00</h2>
-                    <div class="stat-card-status">
-                        <span class="stat-card-trend positive" id="totalTrend" style="display: none;">
-                            <span class="material-icons">trending_up</span>
-                            <span>+0%</span>
-                        </span>
-                    </div>
-                    <span class="stat-card-meta" id="totalCount">0 invoices</span>
+                <h2 class="fin-card-value" id="finExpensesValue">₹0</h2>
+                <div class="fin-card-footer">
+                    <span class="fin-card-trend down" id="finExpensesTrend" style="display:none;">
+                        <span class="material-icons">arrow_upward</span><span id="finExpensesTrendText">0%</span>
+                    </span>
+                    <span class="fin-card-meta" id="finExpensesMeta">vs previous period</span>
                 </div>
             </div>
 
-            <div class="stat-card-modern" id="lowStockCard" style="display: none;">
-                <div class="stat-card-icon red" id="lowStockIcon">
-                    <span class="material-icons">warning</span>
+            <!-- Purchases / COGS Card -->
+            <div class="fin-card purchases">
+                <div class="fin-card-header">
+                    <span class="fin-card-label">Purchases (COGS)</span>
+                    <div class="fin-card-icon"><span class="material-icons">inventory_2</span></div>
                 </div>
-                <div class="stat-card-content">
-                    <span class="stat-card-label">Low Stock Alerts</span>
-                    <h2 class="stat-card-value" id="lowStockCount">0</h2>
-                    <div class="stat-card-status">
-                        <span class="stat-card-status-text warning" id="lowStockStatus">Action required</span>
-                        <a href="inventory.html" class="stat-card-link">View items</a>
-                    </div>
-                    <span class="stat-card-meta">Items need attention</span>
+                <h2 class="fin-card-value" id="finPurchasesValue">₹0</h2>
+                <div class="fin-card-footer">
+                    <span class="fin-card-trend" id="finPurchasesTrend" style="display:none;">
+                        <span class="material-icons">arrow_upward</span><span id="finPurchasesTrendText">0%</span>
+                    </span>
+                    <span class="fin-card-meta fin-card-note">cost of goods sold (est.)</span>
                 </div>
             </div>
+
+            <!-- Profit Card -->
+            <div class="fin-card profit" id="finProfitCard">
+                <div class="fin-card-header">
+                    <span class="fin-card-label">Net Profit</span>
+                    <div class="fin-card-icon"><span class="material-icons">trending_up</span></div>
+                </div>
+                <h2 class="fin-card-value" id="finProfitValue">₹0</h2>
+                <div class="fin-card-footer">
+                    <span class="fin-card-trend up" id="finProfitTrend" style="display:none;">
+                        <span class="material-icons">arrow_upward</span><span id="finProfitTrendText">0%</span>
+                    </span>
+                    <span class="fin-card-meta">Sales − Expenses − COGS</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Insights Section -->
+        <div class="insights-section" id="insightsSection">
+            <div class="insight-tile">
+                <div class="insight-icon blue"><span class="material-icons">star</span></div>
+                <div class="insight-body">
+                    <div class="insight-label">Top Selling Product</div>
+                    <div class="insight-value" id="insightTopProduct">—</div>
+                    <div class="insight-sub" id="insightTopProductSub">No data</div>
+                </div>
+            </div>
+            <div class="insight-tile">
+                <div class="insight-icon orange"><span class="material-icons">category</span></div>
+                <div class="insight-body">
+                    <div class="insight-label">Top Expense Category</div>
+                    <div class="insight-value" id="insightTopCategory">—</div>
+                    <div class="insight-sub" id="insightTopCategorySub">No data</div>
+                </div>
+            </div>
+            <div class="insight-tile">
+                <div class="insight-icon red"><span class="material-icons">pending_actions</span></div>
+                <div class="insight-body">
+                    <div class="insight-label">Pending Payments</div>
+                    <div class="insight-value" id="insightPendingValue">₹0</div>
+                    <div class="insight-sub" id="insightPendingSub">0 invoices pending</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hidden legacy IDs kept for backward compat with existing JS -->
+        <div style="display:none">
+            <span id="todaySales"></span><span id="todayUnits"></span>
+            <span id="todayTrend"></span><span id="todaySalesStatus"></span>
+            <span id="todayCount"></span><span id="totalSales"></span>
+            <span id="totalTrend"></span><span id="totalCount"></span>
+            <div id="lowStockCard"><span id="lowStockCount">0</span></div>
         </div>
 
          <!-- Invoices Section -->
@@ -262,6 +316,29 @@
                         <span class="material-icons">expand_more</span>
                         <span id="loadMoreInvoicesLabel">Load more</span>
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1: Sales vs Expenses & Profit Trend -->
+        <div class="charts-grid">
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3><span class="material-icons">bar_chart</span> Sales vs Expenses</h3>
+                    <span style="font-size:12px;color:#94a3b8;">Last 6 months</span>
+                </div>
+                <div class="card-body" style="height: 260px;">
+                    <canvas id="salesVsExpensesChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <div class="card-header">
+                    <h3><span class="material-icons">show_chart</span> Profit Trend</h3>
+                    <span style="font-size:12px;color:#94a3b8;">Last 6 months</span>
+                </div>
+                <div class="card-body" style="height: 260px;">
+                    <canvas id="profitTrendChart"></canvas>
                 </div>
             </div>
         </div>
@@ -435,12 +512,49 @@
     <script src="./scripts/pwa.js"></script>
     <script src="./scripts/indexed-db.js"></script>
     <script src="./scripts/offline-sync.js"></script>
+    <!-- Privacy PIN Entry Modal -->
+    <div id="pinEntryModal" class="pin-entry-modal" style="display:none;">
+        <div class="pin-entry-dialog">
+            <div class="pin-entry-header">
+                <span class="material-icons" style="font-size:32px; color: var(--primary-color);">shield</span>
+                <h3>Dashboard Locked</h3>
+                <p>Enter your 4-digit privacy PIN to reveal figures</p>
+            </div>
+            <div class="pin-entry-body">
+                <div class="pin-dots" id="pinDots">
+                    <span class="pin-dot" id="dot0"></span>
+                    <span class="pin-dot" id="dot1"></span>
+                    <span class="pin-dot" id="dot2"></span>
+                    <span class="pin-dot" id="dot3"></span>
+                </div>
+                <input type="password" id="pinEntryInput" maxlength="4" inputmode="numeric"
+                    pattern="\d{4}" autocomplete="off" placeholder=""
+                    oninput="onPinInput(this)" onkeydown="onPinKeydown(event)">
+                <div id="pinEntryError" class="pin-entry-error" style="display:none;"></div>
+            </div>
+            <div class="pin-entry-keypad">
+                <button class="pin-key" onclick="appendPinDigit('1')">1</button>
+                <button class="pin-key" onclick="appendPinDigit('2')">2</button>
+                <button class="pin-key" onclick="appendPinDigit('3')">3</button>
+                <button class="pin-key" onclick="appendPinDigit('4')">4</button>
+                <button class="pin-key" onclick="appendPinDigit('5')">5</button>
+                <button class="pin-key" onclick="appendPinDigit('6')">6</button>
+                <button class="pin-key" onclick="appendPinDigit('7')">7</button>
+                <button class="pin-key" onclick="appendPinDigit('8')">8</button>
+                <button class="pin-key" onclick="appendPinDigit('9')">9</button>
+                <button class="pin-key pin-key-cancel" onclick="closePinModal()">✕</button>
+                <button class="pin-key" onclick="appendPinDigit('0')">0</button>
+                <button class="pin-key pin-key-del" onclick="deletePinDigit()">⌫</button>
+            </div>
+        </div>
+    </div>
+
     <script src="./scripts/inventory-sync.js"></script>
     <script src="./scripts/validation.js"></script>
     <script src="./scripts/supabase.js"></script>
     <script src="./scripts/auth.js"></script>
     <script src="./scripts/backup.js"></script>
     <script src="./scripts/fab.js"></script>
-    <script src="./scripts/dashboard-modern.js"></script>
+    <script src="./scripts/dashboard-modern.js?v=2"></script>
 </body>
 </html>

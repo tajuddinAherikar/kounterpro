@@ -308,7 +308,7 @@ function editExpense(id) {
 
     document.getElementById('modalTitle').textContent = 'Edit Expense';
     document.getElementById('expenseId').value = expense.id;
-    document.getElementById('expenseAmount').value = expense.amount;
+    document.getElementById('expenseAmount').value = parseFloat(expense.amount || 0).toFixed(2);
     document.getElementById('expenseDescription').value = expense.description;
     document.getElementById('expenseCategory').value = expense.category;
     document.getElementById('expenseDate').value = expense.date;

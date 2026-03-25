@@ -309,8 +309,8 @@ function editItem(itemId) {
     document.getElementById('itemBarcode').value = item.barcode || '';
     document.getElementById('itemOpeningStock').value = item.openingStock || 0;
     document.getElementById('itemStock').value = item.stock;
-    document.getElementById('itemPurchasePrice').value = item.purchasePrice;
-    document.getElementById('itemSalePrice').value = item.salePrice;
+    document.getElementById('itemPurchasePrice').value = parseFloat(item.purchasePrice || 0).toFixed(2);
+    document.getElementById('itemSalePrice').value = parseFloat(item.salePrice || 0).toFixed(2);
     document.getElementById('itemLowStockThreshold').value = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
     updateStockConsumed();
     updateProfitMargin();
