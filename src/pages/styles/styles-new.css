@@ -56,6 +56,8 @@ svg {
     transition: width 0.3s ease, transform 0.3s ease;
     z-index: 1000;
     box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar.collapsed {
@@ -131,8 +133,7 @@ svg {
     padding: 20px 0;
     display: flex;
     flex-direction: column;
-    min-height: calc(100vh - 100px);
-    /* Account for sidebar header */
+    flex: 1;
 }
 
 .nav-item {
@@ -5045,6 +5046,23 @@ body.dark-mode .format-hint {
     .fin-card-value {
         font-size: 22px;
     }
+}
+
+/* Sidebar version label */
+.sidebar-version {
+    padding: 12px 20px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.35);
+    text-align: center;
+    letter-spacing: 0.03em;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+.sidebar.collapsed .sidebar-version {
+    visibility: hidden;
 }
 
 /* ====================================================================
