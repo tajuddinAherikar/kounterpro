@@ -61,7 +61,7 @@ self.addEventListener('install', (event) => {
       })
       .then(() => {
         console.log('✅ Service Worker: Install complete');
-        return self.skipWaiting(); // Activate immediately
+        // Do NOT call skipWaiting() — let the new SW wait until all tabs are closed
       })
       .catch((error) => {
         console.error('❌ Service Worker: Install failed', error);
@@ -89,7 +89,7 @@ self.addEventListener('activate', (event) => {
       })
       .then(() => {
         console.log('✅ Service Worker: Activation complete');
-        return self.clients.claim(); // Take control immediately
+        // Do NOT call clients.claim() — avoids forcing a reload on active tabs
       })
   );
 });

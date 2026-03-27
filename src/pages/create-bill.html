@@ -31,10 +31,23 @@
                 <span class="material-icons">dashboard</span>
                 <span class="nav-text">Dashboard</span>
             </a>
-            <a href="create-bill.html" class="nav-item active" title="Create Invoice">
-                <span class="material-icons">receipt_long</span>
-                <span class="nav-text">Create Invoice</span>
-            </a>
+            <div class="nav-group open active-group" id="navGroupInvoices">
+                <button class="nav-group-toggle" title="Invoices" onclick="toggleNavGroup('navGroupInvoices')">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="nav-text">Invoices</span>
+                    <span class="material-icons nav-chevron">expand_more</span>
+                </button>
+                <div class="nav-submenu">
+                    <a href="invoices.html" class="nav-item nav-sub-item active" title="All Invoices">
+                        <span class="material-icons">receipt_long</span>
+                        <span class="nav-text">All Invoices</span>
+                    </a>
+                    <a href="quotations.html" class="nav-item nav-sub-item" title="Quotations">
+                        <span class="material-icons">request_quote</span>
+                        <span class="nav-text">Quotations</span>
+                    </a>
+                </div>
+            </div>
             <a href="inventory.html" class="nav-item" title="Inventory">
                 <span class="material-icons">inventory_2</span>
                 <span class="nav-text">Inventory</span>
@@ -134,268 +147,272 @@
         </div>
 
         <form id="invoiceForm" class="invoice-form">
-            <div class="form-section">
-                <h2>Invoice Information</h2>
-                <div class="form-row">
-                    <label>
-                        Invoice Number: <span class="required">*</span>
-                        <div class="invoice-number-field">
-                            <input type="text" id="invoiceNumber" placeholder="Generating..." readonly required>
-                            <button type="button" class="edit-invoice-number-btn" id="editInvoiceNumberBtn" title="Edit Invoice Number">
-                                <span class="material-icons">edit</span>
-                                Edit
-                            </button>
-                        </div>
-                    </label>
-                    <small class="format-hint">📋 Auto-generated invoice number. Click Edit to customize manually.</small>
+
+            <!-- ── Top Row: header-strip + customer (left) | summary (right, row-span) ── -->
+            <div class="inv-top-row">
+            <div class="inv-header-strip">
+                <div class="inv-header-field inv-header-field--invoiceno">
+                    <label class="inv-label">Invoice No</label>
+                    <div class="invoice-number-field">
+                        <input type="text" id="invoiceNumber" placeholder="Generating…" readonly required>
+                        <button type="button" class="edit-invoice-number-btn" id="editInvoiceNumberBtn" title="Edit Invoice Number">
+                            <span class="material-icons">edit</span>
+                        </button>
+                    </div>
                     <span class="error-message" id="invoiceNumberError"></span>
                 </div>
-                <div class="form-row">
-                    <label>
-                        Invoice Date: <span class="required">*</span>
-                        <input type="date" id="invoiceDate" required>
-                    </label>
-                    <small class="format-hint">📅 Select the invoice date. Default is today's date.</small>
+                <div class="inv-header-field inv-header-field--date">
+                    <label class="inv-label" for="invoiceDate">Date</label>
+                    <input type="date" id="invoiceDate" required>
                     <span class="error-message" id="invoiceDateError"></span>
                 </div>
-            </div>
-            
-            <div class="form-section">
-                <h2>Customer Details</h2>
-                <div class="form-row">
-                    <label>
-                        Customer Name or Mobile: <span class="required">*</span>
+                <div class="inv-header-field inv-header-field--gst">
+                    <label class="inv-label">GST</label>
+                    <div class="gst-onoff-wrap">
+                        <label class="gst-onoff-switch">
+                            <input type="checkbox" id="gstToggleCheck" checked onchange="handleGstToggle(this)">
+                            <span class="gst-onoff-slider"></span>
+                        </label>
+                        <span class="gst-onoff-label" id="gstToggleStatus">ON</span>
+                    </div>
+                </div>
+                <!-- Hidden inputs kept for backward compatibility with collectFormData -->
+                <input type="hidden" id="sgstRate" value="9">
+                <input type="hidden" id="cgstRate" value="9">
+                <span style="display:none;" id="totalGstRate">18</span>
+            </div><!-- /inv-header-strip -->
+
+                <!-- Customer Block (in top-left, below header strip) -->
+                <div class="inv-block" style="margin-bottom:0;">
+                    <div class="inv-block-title">
+                        <span class="material-icons">person</span> Customer
+                    </div>
+                    <!-- Search + fields (visible until customer is selected) -->
+                    <div id="customerSearchArea">
                         <div style="position: relative;">
-                            <input type="text" id="customerSearch" placeholder="Start typing name or mobile number..." autocomplete="off">
+                            <input type="text" id="customerSearch" class="inv-search-input" placeholder="Search or add customer…" autocomplete="off">
                             <div id="customerSuggestions" class="autocomplete-dropdown" style="display: none;"></div>
                         </div>
-                    </label>
-                    <small class="format-hint">🔍 Type to search existing customers or enter new customer name</small>
-                    <span class="error-message" id="customerSearchError"></span>
-                </div>
-                <input type="hidden" id="customerName">
-                <div class="form-row">
-                    <label>
-                        Customer Mobile Number: <span class="required">*</span>
-                        <input type="tel" id="customerMobile" placeholder="e.g., 9876543210" maxlength="12" required>
-                    </label>
-                    <small class="format-hint">📱 10-digit number starting with 6-9 (e.g., 9876543210). Don't include spaces, dashes, or +91</small>
-                    <span class="error-message" id="mobileError"></span>
-                </div>
-                <div class="form-row">
-                    <label>
-                        Customer Address: <span class="required">*</span>
-                        <textarea id="customerAddress" rows="3" required minlength="5" maxlength="255" placeholder="Enter complete address"></textarea>
-                    </label>
-                    <small class="format-hint">📍 Minimum 5 characters, maximum 255 <span id="addressCharCount" style="float: right;">0/255</span></small>
-                    <span class="error-message" id="addressError"></span>
-                </div>
-                <div class="form-row">
-                    <label>
-                        Customer GST No: <span class="optional">(optional)</span>
-                        <input type="text" id="customerGST" placeholder="e.g., 22AAAAA0000A1Z5" maxlength="15" style="text-transform: uppercase;">
-                    </label>
-                    <small class="format-hint">💰 Format: 2 digits + 5 letters + 4 digits + 1 letter + 1 alphanumeric + Z + 1 alphanumeric (15 chars total). Leave empty if not applicable.</small>
-                    <span class="error-message" id="gstError"></span>
-                </div>
-            </div>
+                        <input type="hidden" id="customerName">
+                        <span class="error-message" id="customerSearchError"></span>
+                        <div class="customer-secondary-fields">
+                            <div class="inv-field-compact">
+                                <input type="tel" id="customerMobile" placeholder="Mobile *" maxlength="12" required>
+                                <span class="error-message" id="mobileError"></span>
+                            </div>
+                            <div class="inv-field-compact">
+                                <input type="text" id="customerGST" placeholder="GST No (optional)" maxlength="15" style="text-transform: uppercase;">
+                                <span class="error-message" id="gstError"></span>
+                            </div>
+                        </div>
+                        <textarea id="customerAddress" rows="2" placeholder="Address *" required minlength="5" maxlength="255"></textarea>
+                        <span class="error-message" id="addressError"></span>
+                    </div>
+                    <!-- Customer card (shown after selection) -->
+                    <div id="customerCard" style="display:none;">
+                        <div class="cust-card-main">
+                            <div class="cust-avatar" id="custAvatar">–</div>
+                            <div class="cust-info">
+                                <div class="cust-name" id="custCardName"></div>
+                                <div class="cust-phone">
+                                    <span class="material-icons">phone</span>
+                                    <span id="custCardPhone"></span>
+                                </div>
+                            </div>
+                            <button type="button" class="cust-edit-btn" onclick="editCustomer()">
+                                <span class="material-icons">edit</span> Edit
+                            </button>
+                        </div>
+                        <div class="cust-card-details" id="custCardDetails"></div>
+                    </div>
+                </div><!-- /customer block -->
 
-            <div class="form-section">
-                <h2>Invoice Items</h2>
-                <div class="gst-control">
-                    <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="taxMode" value="with-tax" checked> With GST
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="radio" name="taxMode" value="without-tax"> Without GST
-                        </label>
+                <!-- RIGHT: Summary Panel -->
+                <div class="inv-summary-panel">
+                    <div class="summary-card">
+                        <div class="summary-title">Summary</div>
+                        <div class="totals-section" id="totalsSection">
+                            <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
+                                <span>Discount Saved:</span>
+                                <span id="discountSaving">-₹0.00</span>
+                            </div>
+                            <div class="total-row" id="subtotalRow">
+                                <span>Subtotal (excl. GST):</span>
+                                <span id="subtotal">₹0.00</span>
+                            </div>
+                            <div class="total-row" id="sgstRow">
+                                <span>GST:</span>
+                                <span id="sgstAmount">₹0.00</span>
+                            </div>
+                            <!-- hidden for backward compat -->
+                            <div id="cgstRow" style="display:none;"><span id="cgstAmount"></span><span id="displaySgstRate"></span><span id="displayCgstRate"></span></div>
+                            <div class="total-row grand-total">
+                                <span>Grand Total:</span>
+                                <span id="grandTotal">₹0.00</span>
+                            </div>
+                        </div>
+                        <div class="summary-actions">
+                            <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
+                            <button type="submit" class="btn-primary" id="submitBtn">
+                                <span class="material-icons">save</span> Save Invoice
+                            </button>
+                        </div>
                     </div>
-                    <div id="gstRatesSection" style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <span>SGST (%):</span>
-                            <input type="number" id="sgstRate" value="9" min="0" max="50" step="0.01" style="width: 80px;">
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <span>CGST (%):</span>
-                            <input type="number" id="cgstRate" value="9" min="0" max="50" step="0.01" style="width: 80px;">
-                        </label>
-                        <small style="color: #666;">Total GST: <strong><span id="totalGstRate">18</span>%</strong> (Rate inclusive pricing)</small>
-                    </div>
-                </div>
-                <div class="table-wrapper">
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th style="width: 60px;">Sl No</th>
-                                <th>Description of Goods <span style="font-weight: normal; font-size: 11px;">(start typing to search inventory)</span></th>
-                                <th style="width: 120px;">HSN Code <span style="font-weight: normal; font-size: 11px;">(Optional)</span></th>
-                                <th style="width: 180px;">Serial No(s) <span style="font-weight: normal; font-size: 11px;">(Optional, one per line)</span></th>
-                                <th style="width: 100px;">Quantity</th>
-                                <th style="width: 140px;">Rate (₹) <span style="font-weight: normal; font-size: 11px;">(incl. GST)</span></th>
-                                <th style="width: 140px;">Amount (₹)</th>
-                                <th style="width: 80px;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="itemsTableBody">
-                            <tr class="item-row" data-row="1">
-                                <td class="item-slno" data-label="Sl no">1</td>
-                                <td data-label="Description of Goods (start typing to search inventory)">
-                                    <span class="mobile-field-label">Description</span>
-                                    <input type="text" class="item-description" required>
-                                    <span class="error-message item-error"></span>
-                                </td>
-                                <td data-label="HSN Code">
-                                    <span class="mobile-field-label">HSN Code</span>
-                                    <input type="text" class="item-hsn" placeholder="Optional" maxlength="8">
-                                </td>
-                                <td data-label="Serial No(s) (Optional, one per line)">
-                                    <span class="mobile-field-label">Serial No(s)</span>
-                                    <textarea class="item-serial" rows="1" placeholder="Optional"></textarea>
-                                </td>
-                                <td data-label="Quantity">
-                                    <span class="mobile-field-label">Quantity</span>
-                                    <input type="number" class="item-quantity" min="1" value="1" required>
-                                    <span class="error-message item-error"></span>
-                                </td>
-                                <td data-label="Rate (₹) (incl. GST)">
-                                    <span class="mobile-field-label">Rate (₹)</span>
-                                    <input type="number" class="item-rate" min="0" step="0.01" required>
-                                    <span class="error-message item-error"></span>
-                                </td>
-                                <td class="item-amount" data-label="Amount (₹)">
-                                    <span class="mobile-field-label">Amount (₹)</span>
-                                    <span class="item-amount-value">0.00</span>
-                                </td>
-                                <td data-label="Action"><button type="button" class="btn-remove" onclick="removeItem(1)">✕</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <button type="button" class="btn-secondary" onclick="addItem()">+ Add Item</button>
-                <span class="error-message" id="itemsError"></span>
+                </div><!-- /inv-summary-panel -->
 
-                <div class="totals-section" id="totalsSection">
-                    <div class="total-row" id="subtotalRow">
-                        <span>Subtotal (excl. GST):</span>
-                        <span id="subtotal">₹0.00</span>
-                    </div>
-                    <div class="total-row" id="sgstRow">
-                        <span>SGST (<span id="displaySgstRate">9</span>%):</span>
-                        <span id="sgstAmount">₹0.00</span>
-                    </div>
-                    <div class="total-row" id="cgstRow">
-                        <span>CGST (<span id="displayCgstRate">9</span>%):</span>
-                        <span id="cgstAmount">₹0.00</span>
-                    </div>
-                    <div class="total-row grand-total">
-                        <span>Grand Total:</span>
-                        <span id="grandTotal">₹0.00</span>
-                    </div>
-                </div>
-            </div>
+            </div><!-- /inv-top-row -->
 
-            <!-- Payment Details Section -->
-            <div class="form-section">
-                <h2>Payment Details</h2>
-                
-                <!-- Customer Outstanding Balance Display -->
-                <div id="customerBalanceDisplay" class="customer-balance-card" style="display: none;">
-                    <div class="balance-header">
-                        <span class="material-icons">account_balance_wallet</span>
-                        <span>Customer Outstanding Balance</span>
-                    </div>
-                    <div class="balance-amount">
-                        <span id="customerBalanceAmount">₹0.00</span>
-                    </div>
-                    <small class="balance-note">Previous outstanding amount for this customer</small>
-                </div>
+            <!-- ── Full-width main content ─────────────────────────────── -->
+            <div class="inv-main">
 
-                <div class="form-row">
-                    <label>
-                        Payment Type: <span class="required">*</span>
-                        <div class="payment-type-selector">
-                            <label class="radio-option">
+                    <!-- Items Block -->
+                    <div class="inv-block inv-items-block">
+                        <div class="table-wrapper">
+                            <table class="items-table" id="itemsTable">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 40px;">#</th>
+                                        <th>Description</th>
+                                        <th style="width: 90px;">HSN</th>
+                                        <th style="width: 150px;">Serial No(s)</th>
+                                        <th style="width: 75px;">Qty</th>
+                                        <th style="width: 95px;">Rate (₹)</th>
+                                        <th style="width: 65px;">Disc %</th>
+                                        <th class="col-gst-pct" style="width: 80px;">GST %</th>
+                                        <th style="width: 110px;">Amount (₹)</th>
+                                        <th style="width: 44px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemsTableBody">
+                                    <tr class="item-row" data-row="1">
+                                        <td class="item-slno" data-label="Sl no">1</td>
+                                        <td data-label="Description">
+                                            <span class="mobile-field-label">Description</span>
+                                            <input type="text" class="item-description" required>
+                                            <span class="error-message item-error"></span>
+                                        </td>
+                                        <td data-label="HSN Code">
+                                            <span class="mobile-field-label">HSN</span>
+                                            <input type="text" class="item-hsn" placeholder="–" maxlength="8">
+                                        </td>
+                                        <td data-label="Serial No(s) (Optional, one per line)">
+                                            <span class="mobile-field-label">Serial No(s)</span>
+                                            <textarea class="item-serial" rows="1" placeholder="–"></textarea>
+                                        </td>
+                                        <td data-label="Quantity">
+                                            <span class="mobile-field-label">Qty</span>
+                                            <div class="qty-stepper">
+                                                <button type="button" class="qty-btn qty-dec" onclick="stepQty(this,-1)">−</button>
+                                                <input type="number" class="item-quantity" min="1" value="1" required>
+                                                <button type="button" class="qty-btn qty-inc" onclick="stepQty(this,1)">+</button>
+                                            </div>
+                                            <span class="error-message item-error"></span>
+                                        </td>
+                                        <td data-label="Rate (₹) (incl. GST)">
+                                            <span class="mobile-field-label">Rate (₹)</span>
+                                            <input type="number" class="item-rate" min="0" step="0.01" required>
+                                            <span class="error-message item-error"></span>
+                                        </td>
+                                        <td data-label="Disc (%)">
+                                            <span class="mobile-field-label">Disc %</span>
+                                            <input type="number" class="item-discount" min="0" max="100" step="0.1" placeholder="0">
+                                        </td>
+                                        <td class="col-gst-pct" data-label="GST %">
+                                            <span class="mobile-field-label">GST %</span>
+                                            <select class="item-gst">
+                                                <option value="0">0%</option>
+                                                <option value="5">5%</option>
+                                                <option value="12">12%</option>
+                                                <option value="18" selected>18%</option>
+                                                <option value="28">28%</option>
+                                            </select>
+                                        </td>
+                                        <td class="item-amount" data-label="Amount (₹)">
+                                            <span class="mobile-field-label">Amount</span>
+                                            <span class="item-amount-value">0.00</span>
+                                        </td>
+                                        <td data-label="Action">
+                                            <button type="button" class="btn-remove" onclick="removeItem(1)">✕</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="items-foot">
+                            <button type="button" class="btn-add-item" onclick="addItem()">
+                                <span class="material-icons">add</span> Add Item
+                            </button>
+                            <div class="items-running-total">₹<span id="itemsRunningTotal">0.00</span></div>
+                        </div>
+                        <span class="error-message" id="itemsError"></span>
+                    </div>
+
+                    <!-- Payment Block -->
+                    <div class="inv-block">
+                        <div class="inv-block-title">
+                            <span class="material-icons">payments</span> Payment
+                        </div>
+                        <div id="customerBalanceDisplay" class="customer-balance-card" style="display: none;">
+                            <div class="balance-header">
+                                <span class="material-icons">account_balance_wallet</span>
+                                <span>Outstanding Balance</span>
+                            </div>
+                            <div class="balance-amount"><span id="customerBalanceAmount">₹0.00</span></div>
+                        </div>
+                        <div class="payment-pills">
+                            <label class="payment-pill">
                                 <input type="radio" name="paymentType" value="cash" checked onchange="handlePaymentTypeChange()">
-                                <span class="radio-label">
-                                    <span class="material-icons">payments</span>
-                                    <span>Cash</span>
-                                </span>
-                                <small>Payment received immediately</small>
+                                <span><span class="material-icons">payments</span> Cash</span>
                             </label>
-                            <label class="radio-option">
+                            <label class="payment-pill">
                                 <input type="radio" name="paymentType" value="credit" onchange="handlePaymentTypeChange()">
-                                <span class="radio-label">
-                                    <span class="material-icons">credit_card</span>
-                                    <span>Credit</span>
-                                </span>
-                                <small>Payment to be received later</small>
+                                <span><span class="material-icons">credit_card</span> Credit</span>
                             </label>
                         </div>
-                    </label>
-                </div>
-
-                <!-- Credit Payment Options (shown only when Credit is selected) -->
-                <div id="creditPaymentOptions" style="display: none;">
-                    <div class="form-row">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="partialPaymentCheckbox" onchange="togglePartialPayment()">
-                            <span>Partial Payment Received</span>
-                        </label>
-                        <small class="format-hint">Check this if the customer has paid a part of the total amount</small>
-                    </div>
-
-                    <div id="partialPaymentSection" style="display: none;">
-                        <div class="form-row">
-                            <label>
-                                Amount Paid: <span class="required">*</span>
-                                <input type="number" id="amountPaid" placeholder="0.00" min="0" step="0.01" oninput="calculateCredit()">
+                        <div id="creditPaymentOptions" style="display: none;">
+                            <label class="checkbox-label" style="margin: 12px 0 8px;">
+                                <input type="checkbox" id="partialPaymentCheckbox" onchange="togglePartialPayment()">
+                                <span>Partial Payment Received</span>
                             </label>
-                            <small class="format-hint">Enter the amount received from customer</small>
-                            <span class="error-message" id="amountPaidError"></span>
-                        </div>
-
-                        <div class="credit-summary">
-                            <div class="credit-row">
-                                <span>Total Invoice Amount:</span>
-                                <span id="creditTotalAmount">₹0.00</span>
+                            <div id="partialPaymentSection" style="display: none;">
+                                <div class="inv-field-compact" style="margin-bottom: 10px;">
+                                    <input type="number" id="amountPaid" placeholder="Amount paid (₹)" min="0" step="0.01" oninput="calculateCredit()">
+                                    <span class="error-message" id="amountPaidError"></span>
+                                </div>
+                                <div class="credit-summary">
+                                    <div class="credit-row"><span>Invoice Total:</span><span id="creditTotalAmount">₹0.00</span></div>
+                                    <div class="credit-row"><span>Paid:</span><span id="creditAmountPaid">₹0.00</span></div>
+                                    <div class="credit-row highlight"><span><strong>Due:</strong></span><span id="creditAmountDue"><strong>₹0.00</strong></span></div>
+                                </div>
                             </div>
-                            <div class="credit-row">
-                                <span>Amount Paid:</span>
-                                <span id="creditAmountPaid">₹0.00</span>
+                            <div class="credit-info-card">
+                                <span class="material-icons">info</span>
+                                <div>
+                                    <strong>Credit Invoice</strong>
+                                    <p>This invoice will be marked as unpaid. Record payments later from the customer ledger.</p>
+                                </div>
                             </div>
-                            <div class="credit-row highlight">
-                                <span><strong>Amount Due:</strong></span>
-                                <span id="creditAmountDue"><strong>₹0.00</strong></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="credit-info-card">
-                        <span class="material-icons">info</span>
-                        <div>
-                            <strong>Credit Invoice</strong>
-                            <p>This invoice will be marked as unpaid. You can record payments later from the customer ledger.</p>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <div class="form-section">
-                <h2>Terms & Conditions</h2>
-                <textarea id="termsConditions" rows="6" minlength="10" maxlength="1000" required>1. Payment should be made on delivery.
+                    <!-- Terms Block (collapsible) -->
+                    <div class="inv-block inv-terms-block">
+                        <button type="button" class="terms-accordion-btn" id="termsToggleBtn" onclick="toggleTerms()">
+                            <span class="material-icons">description</span>
+                            <span>Terms &amp; Conditions</span>
+                            <span class="material-icons terms-chevron" id="termsChevron">expand_more</span>
+                        </button>
+                        <div class="terms-accordion-body" id="termsAccordionBody" style="display: none;">
+                            <textarea id="termsConditions" rows="5" minlength="10" maxlength="1000" required>1. Payment should be made on delivery.
 2. Goods once sold will not be taken back or exchanged.
 3. Warranty on all peripherals/parts is as per manufacturer's policy and shall be got done no claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.
 4. Our responsibility ceases the moment goods leave our premises.
 5. No claim will be entertained by the firm for any loss arising from damage, shortage & or non-delivery of the goods afterwards.</textarea>
-                <small class="format-hint">📋 Minimum 10 characters, maximum 1000 <span id="termsCharCount" style="float: right;">0/1000</span></small>
-                <span class="error-message" id="termsError"></span>
-            </div>
+                            <span class="error-message" id="termsError"></span>
+                        </div>
+                    </div>
 
-            <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
-                <button type="submit" class="btn-primary" id="submitBtn"><span class="material-icons">save</span> Save Invoice</button>
-            </div>
+                </div><!-- /inv-main -->
         </form>
 
         <!-- WhatsApp Modal -->

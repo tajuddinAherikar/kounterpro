@@ -791,7 +791,8 @@ async function supabaseGetInventory() {
             .select('*')
             .eq('user_id', user.id);
 
-        if (shopId) query = query.eq('shop_id', shopId);
+        // Include records with no shop_id (legacy data saved before shops were configured)
+        if (shopId) query = query.or(`shop_id.eq.${shopId},shop_id.is.null`);
 
         const { data, error } = await query.order('name', { ascending: true });
 
@@ -822,7 +823,8 @@ async function supabaseAddInventoryItem(item) {
                     rate: item.salePrice || item.purchasePrice || 0, // For backwards compatibility
                     purchase_price: item.purchasePrice || 0,
                     sale_price: item.salePrice || 0,
-                    low_stock_threshold: item.lowStockThreshold || 10
+                    low_stock_threshold: item.lowStockThreshold || 10,
+                    purchase_date: item.purchaseDate || null
                 }
             ])
             .select();
@@ -847,7 +849,8 @@ async function supabaseUpdateInventoryItem(id, updates) {
                 stock: updates.stock,
                 purchase_price: updates.purchasePrice,
                 sale_price: updates.salePrice,
-                low_stock_threshold: updates.lowStockThreshold
+                low_stock_threshold: updates.lowStockThreshold,
+                purchase_date: updates.purchaseDate || null
             })
             .eq('id', id)
             .select();
@@ -920,7 +923,8 @@ async function supabaseGetInvoices() {
             .select('*')
             .eq('user_id', user.id);
 
-        if (shopId) query = query.eq('shop_id', shopId);
+        // Include records with no shop_id (legacy data saved before shops were configured)
+        if (shopId) query = query.or(`shop_id.eq.${shopId},shop_id.is.null`);
 
         const { data, error } = await query.order('created_at', { ascending: false });
 
@@ -978,7 +982,8 @@ async function supabaseAddInvoice(invoice) {
                     payment_status: paymentStatus,
                     amount_paid: amountPaid,
                     amount_due: amountDue,
-                    tax_mode: invoice.taxMode || 'with-tax'
+                    tax_mode: invoice.taxMode || 'with-tax',
+                    discount_amount: invoice.discountAmount || 0
                 }
             ])
             .select();
@@ -1222,7 +1227,8 @@ async function supabaseGetCustomers() {
             .select('*')
             .eq('user_id', user.id);
 
-        if (shopId) query = query.eq('shop_id', shopId);
+        // Include records with no shop_id (legacy data saved before shops were configured)
+        if (shopId) query = query.or(`shop_id.eq.${shopId},shop_id.is.null`);
 
         const { data, error } = await query.order('name', { ascending: true });
 
@@ -1316,7 +1322,8 @@ async function supabaseGetExpenses() {
             .select('*')
             .eq('user_id', user.id);
 
-        if (shopId) query = query.eq('shop_id', shopId);
+        // Include records with no shop_id (legacy data saved before shops were configured)
+        if (shopId) query = query.or(`shop_id.eq.${shopId},shop_id.is.null`);
 
         const { data, error } = await query.order('date', { ascending: false });
 
@@ -1637,6 +1644,134 @@ async function supabaseGetCustomersWithOutstanding() {
 
 // No custom token management needed!
 // More secure and battle-tested approach.
+
+// ============================================
+// QUOTATION FUNCTIONS
+// ============================================
+
+async function supabaseGetQuotations() {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const shopId = getActiveShopId();
+        let query = supabaseClient
+            .from('quotations')
+            .select('*')
+            .eq('user_id', user.id);
+
+        if (shopId) query = query.or(`shop_id.eq.${shopId},shop_id.is.null`);
+
+        const { data, error } = await query.order('created_at', { ascending: false });
+
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (error) {
+        console.error('Get quotations error:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
+
+async function supabaseAddQuotation(quotation) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabaseClient
+            .from('quotations')
+            .insert([{
+                user_id: user.id,
+                shop_id: getActiveShopId() || null,
+                quote_number: quotation.quoteNumber,
+                date: quotation.date,
+                valid_until: quotation.validUntil || null,
+                customer_id: quotation.customerId || null,
+                customer_name: quotation.customerName,
+                customer_mobile: quotation.mobile || null,
+                customer_gst: quotation.gstNumber || null,
+                customer_address: quotation.address || null,
+                items: quotation.items,
+                subtotal: quotation.subtotal || 0,
+                gst_rate: quotation.gstRate || 18,
+                sgst_amount: quotation.sgstAmount || 0,
+                cgst_amount: quotation.cgstAmount || 0,
+                total_amount: quotation.totalAmount,
+                tax_mode: quotation.taxMode || 'with-tax',
+                discount_amount: quotation.discountAmount || 0,
+                notes: quotation.notes || null,
+                status: 'draft'
+            }])
+            .select();
+
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Add quotation error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseUpdateQuotation(id, updates) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { data, error } = await supabaseClient
+            .from('quotations')
+            .update({ ...updates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .eq('user_id', user.id)
+            .select();
+
+        if (error) throw error;
+        return { success: true, data: data[0] };
+    } catch (error) {
+        console.error('Update quotation error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseDeleteQuotation(id) {
+    try {
+        const user = await supabaseGetCurrentUser();
+        if (!user) throw new Error('User not authenticated');
+
+        const { error } = await supabaseClient
+            .from('quotations')
+            .delete()
+            .eq('id', id)
+            .eq('user_id', user.id);
+
+        if (error) throw error;
+        return { success: true };
+    } catch (error) {
+        console.error('Delete quotation error:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+async function supabaseGenerateQuoteNumber() {
+    try {
+        const result = await supabaseGetQuotations();
+        const quotes = result.data || [];
+
+        if (quotes.length === 0) return 'QT-0001';
+
+        let maxNum = 0;
+        quotes.forEach(q => {
+            const match = q.quote_number?.match(/QT-(\d+)/i);
+            if (match) {
+                const n = parseInt(match[1]);
+                if (n > maxNum) maxNum = n;
+            }
+        });
+
+        return `QT-${String(maxNum + 1).padStart(4, '0')}`;
+    } catch (error) {
+        console.error('Generate quote number error:', error);
+        return `QT-${Date.now()}`;
+    }
+}
 
 // Initialize on page load
 if (typeof window !== 'undefined') {

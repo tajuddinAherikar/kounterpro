@@ -9,6 +9,69 @@
 // ============================================
 
 /**
+ * Mobile-safe PDF save.
+ * On native Capacitor (Android/iOS) we write via the Filesystem plugin to the
+ * device's Documents folder.  The blob-URL / <a download> approach is silently
+ * blocked by Android WebView and never triggers a download.
+ * On the web we fall back to the standard blob-URL approach.
+ */
+function savePDF(pdf, filename) {
+    // Detect native Capacitor runtime (Android / iOS)
+    const isNative = !!(
+        window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === 'function' &&
+        window.Capacitor.isNativePlatform()
+    );
+
+    if (isNative) {
+        const Filesystem = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Filesystem;
+        if (Filesystem) {
+            // datauristring = "data:application/pdf;base64,..." — Capacitor strips the header
+            const dataUri = pdf.output('datauristring');
+            Filesystem.writeFile({
+                path: filename,
+                data: dataUri,
+                directory: 'DOCUMENTS',
+                recursive: true
+            }).then(() => {
+                showToast('PDF saved to Documents: ' + filename, 'success');
+            }).catch(function(err) {
+                console.error('Filesystem.writeFile error:', err);
+                showToast('Could not save PDF: ' + (err.message || JSON.stringify(err)), 'error');
+            });
+            return;
+        }
+        // Filesystem plugin unavailable — fall through to blob approach
+        console.warn('savePDF: Capacitor Filesystem plugin not found, falling back to blob URL');
+    }
+
+    // Web / PWA path
+    try {
+        const blob = pdf.output('blob');
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        // Delay revoke so the browser has time to start the download
+        setTimeout(function() {
+            URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        }, 2000);
+    } catch (e) {
+        // Last-resort fallback: open in new tab
+        try {
+            const blobUrl = URL.createObjectURL(pdf.output('blob'));
+            window.open(blobUrl, '_blank');
+        } catch (_) {
+            throw new Error('Could not save PDF. Please try again or use a different browser.');
+        }
+    }
+}
+
+/**
  * Format date for PDF display
  */
 function formatDateForPDF(dateString) {
@@ -653,10 +716,11 @@ function renderItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.setFontSize(9);
     pdf.text('Sl', 17, y + 5);
     pdf.text('Description', 28, y + 5);
-    pdf.text('Serial No', 85, y + 5);
-    pdf.text('Qty', 115, y + 5);
-    pdf.text('Rate', 135, y + 5);
-    pdf.text('Amount', 165, y + 5);
+    pdf.text('Serial No', 80, y + 5);
+    pdf.text('Qty', 107, y + 5);
+    pdf.text('Rate', 124, y + 5);
+    pdf.text('Disc%', 144, y + 5);
+    pdf.text('Amount', 162, y + 5);
     
     y += 8;
     pdf.setFont(undefined, 'normal');
@@ -669,15 +733,17 @@ function renderItemsTable(pdf, invoiceData, startY, brandColor) {
         }
         
         pdf.text(String(item.slNo ?? index + 1), 17, y + 5);
-        const descText = pdf.splitTextToSize(item.description, 55);
+        const descText = pdf.splitTextToSize(item.description, 50);
         pdf.text(descText, 28, y + 5);
         if (item.serialNo) {
-            const serialText = pdf.splitTextToSize(item.serialNo, 28);
-            pdf.text(serialText, 85, y + 5);
+            const serialText = pdf.splitTextToSize(item.serialNo, 24);
+            pdf.text(serialText, 80, y + 5);
         }
-        pdf.text(String(item.quantity), 115, y + 5);
-        pdf.text(formatIndianCurrency(item.rate), 135, y + 5);
-        pdf.text(formatIndianCurrency(item.amount), 165, y + 5);
+        pdf.text(String(item.quantity), 107, y + 5);
+        pdf.text(formatIndianCurrency(item.rate), 124, y + 5);
+        const discPct = item.discount_percent || 0;
+        pdf.text(discPct > 0 ? discPct + '%' : '-', 144, y + 5);
+        pdf.text(formatIndianCurrency(item.amount), 162, y + 5);
         
         pdf.setDrawColor(220, 220, 220);
         pdf.line(15, y + 8, 195, y + 8);
@@ -687,21 +753,36 @@ function renderItemsTable(pdf, invoiceData, startY, brandColor) {
     // Totals
     y += 5;
     pdf.setFont(undefined, 'normal');
-    pdf.text('Subtotal:', 130, y);
-    pdf.text(formatIndianCurrency(invoiceData.subtotal), 165, y);
-    
-    y += 6;
-    pdf.text(`GST (${invoiceData.gstRate}%)`, 130, y);
-    pdf.text(formatIndianCurrency(invoiceData.gstAmount), 165, y);
-    
-    y += 6;
+    // Discount saved row
+    const classicDiscSaved = invoiceData.items.reduce((sum, item) => {
+        const r = item.rateInclGST || item.rate;
+        return sum + item.quantity * r * ((item.discount_percent || 0) / 100);
+    }, 0);
+    if (classicDiscSaved > 0) {
+        pdf.setTextColor(230, 126, 34);
+        pdf.text('Discount Saved:', 130, y);
+        pdf.text('-' + formatIndianCurrency(classicDiscSaved), 162, y);
+        resetTextColor(pdf);
+        y += 6;
+    }
+    if (invoiceData.taxMode === 'with-tax') {
+        pdf.text('Subtotal:', 130, y);
+        pdf.text(formatIndianCurrency(invoiceData.subtotal), 162, y);
+        y += 6;
+        pdf.text(`CGST (${invoiceData.cgstRate}%):`, 130, y);
+        pdf.text(formatIndianCurrency(invoiceData.cgstAmount), 162, y);
+        y += 6;
+        pdf.text(`SGST (${invoiceData.sgstRate}%):`, 130, y);
+        pdf.text(formatIndianCurrency(invoiceData.sgstAmount), 162, y);
+        y += 6;
+    }
     applyBrandFillColor(pdf, brandColor);
     pdf.rect(128, y - 4, 67, 8, 'F');
     pdf.setTextColor(255, 255, 255);
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(11);
     pdf.text('Grand Total:', 130, y + 2);
-    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 165, y + 2);
+    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 162, y + 2);
     resetTextColor(pdf);
 }
 
@@ -718,9 +799,10 @@ function renderModernItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(9);
     pdf.text('Item', 17, y + 6);
-    pdf.text('Qty', 125, y + 6);
-    pdf.text('Rate', 145, y + 6);
-    pdf.text('Amount', 170, y + 6);
+    pdf.text('Qty', 110, y + 6);
+    pdf.text('Rate', 128, y + 6);
+    pdf.text('Disc%', 148, y + 6);
+    pdf.text('Amount', 168, y + 6);
     resetTextColor(pdf);
     
     y += 10;
@@ -740,9 +822,11 @@ function renderModernItemsTable(pdf, invoiceData, startY, brandColor) {
         }
         
         pdf.text(item.description, 17, y + 5);
-        pdf.text(String(item.quantity), 125, y + 5);
-        pdf.text(formatIndianCurrency(item.rate), 145, y + 5);
-        pdf.text(formatIndianCurrency(item.amount), 170, y + 5);
+        pdf.text(String(item.quantity), 110, y + 5);
+        pdf.text(formatIndianCurrency(item.rate), 128, y + 5);
+        const discPct = item.discount_percent || 0;
+        pdf.text(discPct > 0 ? discPct + '%' : '-', 148, y + 5);
+        pdf.text(formatIndianCurrency(item.amount), 168, y + 5);
         
         y += 8;
         isAlternate = !isAlternate;
@@ -754,21 +838,39 @@ function renderModernItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.line(125, y, 195, y);
     y += 5;
     
-    pdf.text('Subtotal', 125, y);
-    pdf.text(formatIndianCurrency(invoiceData.subtotal), 170, y);
-    
-    y += 6;
-    pdf.text(`Tax (${invoiceData.gstRate}%)`, 125, y);
-    pdf.text(formatIndianCurrency(invoiceData.gstAmount), 170, y);
-    
-    y += 8;
+    // Discount saved row
+    const modernDiscSaved = invoiceData.items.reduce((sum, item) => {
+        const r = item.rateInclGST || item.rate;
+        return sum + item.quantity * r * ((item.discount_percent || 0) / 100);
+    }, 0);
+    if (modernDiscSaved > 0) {
+        pdf.setFontSize(9);
+        pdf.setTextColor(230, 126, 34);
+        pdf.text('Discount Saved:', 125, y);
+        pdf.text('-' + formatIndianCurrency(modernDiscSaved), 168, y);
+        resetTextColor(pdf);
+        y += 6;
+    }
+    if (invoiceData.taxMode === 'with-tax') {
+        pdf.text('Subtotal', 125, y);
+        pdf.text(formatIndianCurrency(invoiceData.subtotal), 168, y);
+        y += 6;
+        pdf.text(`CGST (${invoiceData.cgstRate}%)`, 125, y);
+        pdf.text(formatIndianCurrency(invoiceData.cgstAmount), 168, y);
+        y += 6;
+        pdf.text(`SGST (${invoiceData.sgstRate}%)`, 125, y);
+        pdf.text(formatIndianCurrency(invoiceData.sgstAmount), 168, y);
+        y += 8;
+    } else {
+        y += 3;
+    }
     applyBrandFillColor(pdf, brandColor);
     pdf.rect(125, y - 5, 70, 10, 'F');
     pdf.setTextColor(255, 255, 255);
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(12);
     pdf.text('TOTAL', 127, y + 2);
-    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 170, y + 2);
+    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 168, y + 2);
     resetTextColor(pdf);
 }
 
@@ -810,10 +912,11 @@ function renderGSTItemsTable(pdf, invoiceData, startY, brandColor) {
             y = 20;
         }
         
-        const gstRate = invoiceData.gstRate || 18;
+        const itemCgstRate = invoiceData.cgstRate || (invoiceData.gstRate || 18) / 2;
+        const itemSgstRate = invoiceData.sgstRate || (invoiceData.gstRate || 18) / 2;
         const taxableAmount = item.amount;
-        const cgstAmount = (taxableAmount * gstRate / 2) / 100;
-        const sgstAmount = cgstAmount;
+        const cgstAmount = taxableAmount * itemCgstRate / 100;
+        const sgstAmount = taxableAmount * itemSgstRate / 100;
         const totalAmount = taxableAmount + cgstAmount + sgstAmount;
         
         pdf.text(String(index + 1), 17, y + 4);
@@ -836,22 +939,35 @@ function renderGSTItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.setFontSize(9);
     pdf.setFont(undefined, 'bold');
     
-    const gstRate = invoiceData.gstRate || 18;
-    const cgstAmount = invoiceData.gstAmount / 2;
-    const sgstAmount = invoiceData.gstAmount / 2;
+    const cgstTotalAmt = invoiceData.cgstAmount || invoiceData.gstAmount / 2;
+    const sgstTotalAmt = invoiceData.sgstAmount || invoiceData.gstAmount / 2;
+    const cgstDisplayRate = invoiceData.cgstRate || (invoiceData.gstRate || 18) / 2;
+    const sgstDisplayRate = invoiceData.sgstRate || (invoiceData.gstRate || 18) / 2;
     
+    // Discount saved row
+    const gstDiscSaved = invoiceData.items.reduce((sum, item) => {
+        const r = item.rateInclGST || item.rate;
+        return sum + item.quantity * r * ((item.discount_percent || 0) / 100);
+    }, 0);
+    if (gstDiscSaved > 0) {
+        pdf.setTextColor(230, 126, 34);
+        pdf.text('Discount Saved:', 120, y);
+        pdf.text('-' + formatIndianCurrency(gstDiscSaved), 165, y);
+        resetTextColor(pdf);
+        y += 5;
+    }
     pdf.text('Taxable Amount:', 120, y);
     pdf.text(formatIndianCurrency(invoiceData.subtotal), 165, y);
     y += 5;
     
-    pdf.text(`CGST (${gstRate/2}%):`, 120, y);
-    pdf.text(formatIndianCurrency(cgstAmount), 165, y);
+    pdf.text(`CGST (${cgstDisplayRate}%):`, 120, y);
+    pdf.text(formatIndianCurrency(cgstTotalAmt), 165, y);
     y += 5;
     
-    pdf.text(`SGST (${gstRate/2}%):`, 120, y);
-    pdf.text(formatIndianCurrency(sgstAmount), 165, y);
+    pdf.text(`SGST (${sgstDisplayRate}%):`, 120, y);
+    pdf.text(formatIndianCurrency(sgstTotalAmt), 165, y);
     y += 5;
-    
+
     // Round off (if any)
     const roundOff = Math.round(invoiceData.grandTotal) - invoiceData.grandTotal;
     if (Math.abs(roundOff) > 0.01) {
@@ -883,9 +999,10 @@ function renderRetailItemsTable(pdf, invoiceData, startY, brandColor) {
     pdf.rect(15, y, 180, 6, 'F');
     
     pdf.text('Item', 17, y + 4);
-    pdf.text('Qty', 125, y + 4);
-    pdf.text('Price', 145, y + 4);
-    pdf.text('Total', 170, y + 4);
+    pdf.text('Qty', 108, y + 4);
+    pdf.text('Price', 126, y + 4);
+    pdf.text('Disc%', 147, y + 4);
+    pdf.text('Total', 167, y + 4);
     
     y += 6;
     pdf.setFont(undefined, 'normal');
@@ -898,9 +1015,11 @@ function renderRetailItemsTable(pdf, invoiceData, startY, brandColor) {
         }
         
         pdf.text(item.description, 17, y + 4);
-        pdf.text(String(item.quantity), 125, y + 4);
-        pdf.text(formatIndianCurrency(item.rate), 145, y + 4);
-        pdf.text(formatIndianCurrency(item.amount), 170, y + 4);
+        pdf.text(String(item.quantity), 108, y + 4);
+        pdf.text(formatIndianCurrency(item.rate), 126, y + 4);
+        const discPct = item.discount_percent || 0;
+        pdf.text(discPct > 0 ? discPct + '%' : '-', 147, y + 4);
+        pdf.text(formatIndianCurrency(item.amount), 167, y + 4);
         
         pdf.setDrawColor(240, 240, 240);
         pdf.line(15, y + 6, 195, y + 6);
@@ -910,21 +1029,38 @@ function renderRetailItemsTable(pdf, invoiceData, startY, brandColor) {
     // Quick totals
     y += 3;
     pdf.setFontSize(9);
-    pdf.text('Subtotal:', 145, y);
-    pdf.text(formatIndianCurrency(invoiceData.subtotal), 170, y);
-    
-    y += 5;
-    pdf.text(`Tax (${invoiceData.gstRate}%):`, 145, y);
-    pdf.text(formatIndianCurrency(invoiceData.gstAmount), 170, y);
-    
-    y += 6;
+    // Discount saved row
+    const retailDiscSaved = invoiceData.items.reduce((sum, item) => {
+        const r = item.rateInclGST || item.rate;
+        return sum + item.quantity * r * ((item.discount_percent || 0) / 100);
+    }, 0);
+    if (retailDiscSaved > 0) {
+        pdf.setTextColor(230, 126, 34);
+        pdf.text('Discount Saved:', 140, y);
+        pdf.text('-' + formatIndianCurrency(retailDiscSaved), 167, y);
+        resetTextColor(pdf);
+        y += 5;
+    }
+    if (invoiceData.taxMode === 'with-tax') {
+        pdf.text('Subtotal:', 140, y);
+        pdf.text(formatIndianCurrency(invoiceData.subtotal), 167, y);
+        y += 5;
+        pdf.text(`CGST (${invoiceData.cgstRate}%):`, 140, y);
+        pdf.text(formatIndianCurrency(invoiceData.cgstAmount), 167, y);
+        y += 5;
+        pdf.text(`SGST (${invoiceData.sgstRate}%):`, 140, y);
+        pdf.text(formatIndianCurrency(invoiceData.sgstAmount), 167, y);
+        y += 6;
+    } else {
+        y += 3;
+    }
     applyBrandFillColor(pdf, brandColor);
-    pdf.rect(143, y - 3, 52, 7, 'F');
+    pdf.rect(138, y - 3, 57, 7, 'F');
     pdf.setTextColor(255, 255, 255);
     pdf.setFont(undefined, 'bold');
     pdf.setFontSize(10);
-    pdf.text('TOTAL:', 145, y + 2);
-    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 170, y + 2);
+    pdf.text('TOTAL:', 140, y + 2);
+    pdf.text(formatIndianCurrency(invoiceData.grandTotal), 167, y + 2);
     resetTextColor(pdf);
 }
 
@@ -1015,3 +1151,476 @@ function addTermsAndFooter(pdf, invoiceData, profile) {
         pdf.line(160, y - 2, 195, y - 2);
     }
 }
+
+// ============================================
+// QUOTATION TEMPLATE RENDERER
+// ============================================
+
+/**
+ * Render a styled QUOTATION PDF using the user's invoice template + brand color.
+ * quoteData shape: { quoteNumber, date, validUntil, customerName, customerAddress,
+ *   customerMobile, customerGST, items:[{description,hsn_code,quantity,rate,discount_percent,amount}],
+ *   taxMode, subtotal, sgstAmount, cgstAmount, sgstRate, cgstRate, grandTotal, notes }
+ */
+async function renderQuotationTemplate(templateType, quoteData, profile, settings) {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF();
+    const brandColor = settings.brand_color || '#2845D6';
+
+    switch (templateType) {
+        case 'modern':
+            await renderQuotationModern(pdf, quoteData, profile, brandColor, settings);
+            break;
+        case 'gst_format':
+            await renderQuotationGST(pdf, quoteData, profile, brandColor, settings);
+            break;
+        case 'retail':
+            await renderQuotationRetail(pdf, quoteData, profile, brandColor, settings);
+            break;
+        case 'classic':
+        default:
+            await renderQuotationClassic(pdf, quoteData, profile, brandColor, settings);
+            break;
+    }
+
+    // Terms & notes footer
+    _addQuotationFooter(pdf, quoteData, profile);
+
+    savePDF(pdf, `Quotation_${quoteData.quoteNumber}.pdf`);
+}
+
+// ─── Quotation: Classic ───────────────────────────────────────────────────────
+async function renderQuotationClassic(pdf, q, profile, brandColor, settings) {
+    let y = 20;
+
+    // Title
+    applyBrandColor(pdf, brandColor);
+    pdf.setFontSize(20);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('QUOTATION', 105, y, { align: 'center' });
+    resetTextColor(pdf);
+
+    // Meta row: Quote No / Date / Valid Until
+    y += 8;
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Quote No: ${q.quoteNumber}`, 150, y);
+    pdf.text(`Date: ${formatDateForPDF(q.date)}`, 150, y + 5);
+    if (q.validUntil) pdf.text(`Valid Until: ${formatDateForPDF(q.validUntil)}`, 150, y + 10);
+
+    // Logo
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 15, 12, 30, 15);
+    }
+
+    // Company details
+    y += 16;
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    pdf.text((profile?.business_name || 'Your Business').toUpperCase(), 15, y);
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    if (profile?.business_address) {
+        const al = pdf.splitTextToSize(profile.business_address, 100);
+        al.forEach(l => { pdf.text(l, 15, y); y += 4; });
+    }
+    if (profile?.contact_number_1) { pdf.text(`Contact: ${profile.contact_number_1}`, 15, y); y += 4; }
+    if (profile?.business_email)   { pdf.text(`Email: ${profile.business_email}`, 15, y); y += 4; }
+    if (profile?.gst_number)       { pdf.text(`GST: ${profile.gst_number}`, 15, y); y += 4; }
+
+    // Bill To
+    y += 4;
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Quotation For:', 15, y);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text(q.customerName || '', 15, y); y += 5;
+    if (q.customerAddress) {
+        const al = pdf.splitTextToSize(q.customerAddress, 80);
+        al.forEach(l => { pdf.text(l, 15, y); y += 4; });
+    }
+    if (q.customerMobile) { pdf.text(`Mobile: ${q.customerMobile}`, 15, y); y += 4; }
+    if (q.customerGST)    { pdf.text(`GST: ${q.customerGST}`, 15, y); y += 4; }
+
+    y += 4;
+    _renderQuoteItemsClassic(pdf, q, y + 2, brandColor);
+}
+
+// ─── Quotation: Modern ────────────────────────────────────────────────────────
+async function renderQuotationModern(pdf, q, profile, brandColor, settings) {
+    // Coloured header banner
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(0, 0, 210, 38, 'F');
+
+    // Logo in header
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 130, 4, 20, 30);
+    }
+
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(26);
+    pdf.setFont(undefined, 'bold');
+    pdf.text('QUOTATION', 15, 22);
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`#${q.quoteNumber}`, 195, 12, { align: 'right' });
+    pdf.text(`Date: ${formatDateForPDF(q.date)}`, 195, 18, { align: 'right' });
+    if (q.validUntil) pdf.text(`Valid Until: ${formatDateForPDF(q.validUntil)}`, 195, 24, { align: 'right' });
+    resetTextColor(pdf);
+
+    let y = 45;
+
+    // FROM / TO columns
+    pdf.setFontSize(8);
+    pdf.setFont(undefined, 'bold');
+    applyBrandColor(pdf, brandColor);
+    pdf.text('FROM', 15, y);
+    pdf.text('TO', 110, y);
+    resetTextColor(pdf);
+    y += 5;
+
+    pdf.setFontSize(11);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(profile?.business_name || 'Your Business', 15, y);
+    pdf.text(q.customerName || '', 110, y);
+    y += 5;
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+
+    let leftY = y, rightY = y;
+    if (profile?.business_address) {
+        const al = pdf.splitTextToSize(profile.business_address, 85);
+        al.forEach(l => { pdf.text(l, 15, leftY); leftY += 4; });
+    }
+    if (profile?.contact_number_1) { pdf.text(profile.contact_number_1, 15, leftY); leftY += 4; }
+    if (profile?.business_email)   { pdf.text(profile.business_email, 15, leftY); leftY += 4; }
+    if (profile?.gst_number)       { pdf.text(`GST: ${profile.gst_number}`, 15, leftY); leftY += 4; }
+
+    if (q.customerAddress) {
+        const al = pdf.splitTextToSize(q.customerAddress, 85);
+        al.forEach(l => { pdf.text(l, 110, rightY); rightY += 4; });
+    }
+    if (q.customerMobile) { pdf.text(`Mobile: ${q.customerMobile}`, 110, rightY); rightY += 4; }
+    if (q.customerGST)    { pdf.text(`GST: ${q.customerGST}`, 110, rightY); rightY += 4; }
+
+    y = Math.max(leftY, rightY) + 8;
+    _renderQuoteItemsModern(pdf, q, y, brandColor);
+}
+
+// ─── Quotation: GST Format ────────────────────────────────────────────────────
+async function renderQuotationGST(pdf, q, profile, brandColor, settings) {
+    let y = 15;
+
+    // Logo
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 15, 3, 25, 12);
+        y = 20;
+    }
+
+    // Company header box
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(0, y, 210, 20, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    pdf.text((profile?.business_name || 'Your Business').toUpperCase(), 105, y + 8, { align: 'center' });
+    pdf.setFontSize(8);
+    pdf.setFont(undefined, 'normal');
+    const headerParts = [
+        profile?.business_address,
+        profile?.contact_number_1 ? `Ph: ${profile.contact_number_1}` : null,
+        profile?.gst_number ? `GSTIN: ${profile.gst_number}` : null
+    ].filter(Boolean).join('  |  ');
+    pdf.text(headerParts, 105, y + 15, { align: 'center' });
+    resetTextColor(pdf);
+    y += 26;
+
+    // Title strip
+    applyBrandFillColor(pdf, brandColor);
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(0, y, 210, 8, 'F');
+    pdf.setFontSize(11);
+    pdf.setFont(undefined, 'bold');
+    applyBrandColor(pdf, brandColor);
+    pdf.text('QUOTATION', 105, y + 5.5, { align: 'center' });
+    resetTextColor(pdf);
+    y += 12;
+
+    // Meta row
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'bold');
+    pdf.text(`Quote No: `, 15, y); pdf.setFont(undefined, 'normal'); pdf.text(q.quoteNumber, 38, y);
+    pdf.setFont(undefined, 'bold'); pdf.text('Date: ', 80, y); pdf.setFont(undefined, 'normal'); pdf.text(formatDateForPDF(q.date), 93, y);
+    if (q.validUntil) {
+        pdf.setFont(undefined, 'bold'); pdf.text('Valid Until: ', 130, y); pdf.setFont(undefined, 'normal'); pdf.text(formatDateForPDF(q.validUntil), 155, y);
+    }
+    y += 10;
+
+    // Bill To box
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'bold');
+    applyBrandColor(pdf, brandColor);
+    pdf.text('BILL TO:', 15, y);
+    resetTextColor(pdf);
+    pdf.setFont(undefined, 'normal');
+    y += 4;
+    pdf.text(q.customerName || '', 15, y); y += 4;
+    if (q.customerAddress) {
+        const al = pdf.splitTextToSize(q.customerAddress, 85);
+        al.forEach(l => { pdf.text(l, 15, y); y += 4; });
+    }
+    if (q.customerMobile) { pdf.text(`Mobile: ${q.customerMobile}`, 15, y); y += 4; }
+    if (q.customerGST) { pdf.text(`GSTIN: ${q.customerGST}`, 15, y); y += 4; }
+
+    y += 4;
+    _renderQuoteItemsGST(pdf, q, y, brandColor);
+}
+
+// ─── Quotation: Retail ────────────────────────────────────────────────────────
+async function renderQuotationRetail(pdf, q, profile, brandColor, settings) {
+    let y = 15;
+
+    // Logo
+    if (settings.show_logo && settings.logo_url) {
+        await addLogoToPDF(pdf, settings.logo_url, 88, 2, 34, 14);
+        y = 20;
+    }
+
+    // Business name centered
+    applyBrandColor(pdf, brandColor);
+    pdf.setFontSize(16);
+    pdf.setFont(undefined, 'bold');
+    pdf.text((profile?.business_name || 'Your Business').toUpperCase(), 105, y, { align: 'center' });
+    resetTextColor(pdf);
+    y += 6;
+    pdf.setFontSize(8);
+    pdf.setFont(undefined, 'normal');
+    const parts = [profile?.business_address, profile?.contact_number_1, profile?.gst_number ? `GST: ${profile.gst_number}` : null].filter(Boolean);
+    parts.forEach(p => { pdf.text(p, 105, y, { align: 'center' }); y += 4; });
+
+    // Thick brand colour divider
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(15, y, 180, 2, 'F');
+    y += 6;
+
+    // QUOTATION title + meta
+    pdf.setFontSize(13);
+    pdf.setFont(undefined, 'bold');
+    applyBrandColor(pdf, brandColor);
+    pdf.text('QUOTATION', 105, y, { align: 'center' });
+    resetTextColor(pdf);
+    y += 6;
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    pdf.text(`Quote No: ${q.quoteNumber}`, 15, y);
+    pdf.text(`Date: ${formatDateForPDF(q.date)}`, 105, y, { align: 'center' });
+    if (q.validUntil) pdf.text(`Valid Until: ${formatDateForPDF(q.validUntil)}`, 195, y, { align: 'right' });
+    y += 8;
+
+    // Bill To
+    pdf.setFont(undefined, 'bold');
+    pdf.text('Quoted For:', 15, y);
+    pdf.setFont(undefined, 'normal');
+    y += 5;
+    pdf.text(q.customerName || '', 15, y); y += 4;
+    if (q.customerAddress) {
+        const al = pdf.splitTextToSize(q.customerAddress, 85);
+        al.forEach(l => { pdf.text(l, 15, y); y += 4; });
+    }
+    if (q.customerMobile) { pdf.text(`Mobile: ${q.customerMobile}`, 15, y); y += 4; }
+    if (q.customerGST)    { pdf.text(`GST: ${q.customerGST}`, 15, y); y += 4; }
+
+    y += 4;
+    _renderQuoteItemsRetail(pdf, q, y, brandColor);
+}
+
+// ─── Shared quotation items table renderers ───────────────────────────────────
+
+function _renderQuoteItemsClassic(pdf, q, startY, brandColor) {
+    let y = startY;
+    // Header
+    pdf.setFillColor(240, 240, 240);
+    pdf.rect(15, y, 180, 8, 'F');
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(9);
+    pdf.text('#', 17, y + 5);
+    pdf.text('Description', 25, y + 5);
+    pdf.text('HSN', 95, y + 5);
+    pdf.text('Qty', 115, y + 5);
+    pdf.text('Rate', 130, y + 5);
+    pdf.text('Disc%', 150, y + 5);
+    pdf.text('Amount', 168, y + 5);
+    y += 10;
+    pdf.setFont(undefined, 'normal');
+    q.items.forEach((item, idx) => {
+        if (y > 250) { pdf.addPage(); y = 20; }
+        const desc = pdf.splitTextToSize(item.description || '', 65);
+        pdf.text(String(idx + 1), 17, y + 4);
+        pdf.text(desc, 25, y + 4);
+        pdf.text(item.hsn_code || '', 95, y + 4);
+        pdf.text(String(item.quantity), 115, y + 4);
+        pdf.text(formatIndianCurrency(item.rate), 130, y + 4);
+        pdf.text(item.discount_percent > 0 ? item.discount_percent + '%' : '-', 150, y + 4);
+        pdf.text(formatIndianCurrency(item.amount), 168, y + 4);
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(15, y + 8, 195, y + 8);
+        y += Math.max(8, desc.length * 5);
+    });
+    y += 3;
+    _renderQuoteTotals(pdf, q, y, brandColor, 130, 168);
+}
+
+function _renderQuoteItemsModern(pdf, q, startY, brandColor) {
+    let y = startY;
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(15, y, 180, 10, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(9);
+    pdf.text('Description', 17, y + 6);
+    pdf.text('HSN', 95, y + 6);
+    pdf.text('Qty', 115, y + 6);
+    pdf.text('Rate', 130, y + 6);
+    pdf.text('Disc%', 150, y + 6);
+    pdf.text('Amount', 170, y + 6);
+    resetTextColor(pdf);
+    y += 12;
+    pdf.setFont(undefined, 'normal');
+    let alt = false;
+    q.items.forEach(item => {
+        if (y > 250) { pdf.addPage(); y = 20; }
+        if (alt) { pdf.setFillColor(248, 248, 248); pdf.rect(15, y, 180, 8, 'F'); }
+        const desc = pdf.splitTextToSize(item.description || '', 70);
+        pdf.text(desc, 17, y + 5);
+        pdf.text(item.hsn_code || '', 95, y + 5);
+        pdf.text(String(item.quantity), 115, y + 5);
+        pdf.text(formatIndianCurrency(item.rate), 130, y + 5);
+        pdf.text(item.discount_percent > 0 ? item.discount_percent + '%' : '-', 150, y + 5);
+        pdf.text(formatIndianCurrency(item.amount), 170, y + 5);
+        y += Math.max(8, desc.length * 5);
+        alt = !alt;
+    });
+    y += 4;
+    pdf.setDrawColor(220, 220, 220);
+    pdf.line(125, y, 195, y);
+    y += 4;
+    _renderQuoteTotals(pdf, q, y, brandColor, 127, 170);
+}
+
+function _renderQuoteItemsGST(pdf, q, startY, brandColor) {
+    let y = startY;
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(15, y, 180, 10, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(8);
+    pdf.text('#', 17, y + 6);
+    pdf.text('Description', 25, y + 6);
+    pdf.text('HSN', 75, y + 6);
+    pdf.text('Qty', 93, y + 6);
+    pdf.text('Rate', 108, y + 6);
+    pdf.text('Disc%', 126, y + 6);
+    pdf.text('Taxable', 144, y + 6);
+    pdf.text('CGST/SGST', 168, y + 6);
+    resetTextColor(pdf);
+    y += 12;
+    pdf.setFont(undefined, 'normal'); pdf.setFontSize(8);
+    q.items.forEach((item, idx) => {
+        if (y > 250) { pdf.addPage(); y = 20; }
+        const taxable = item.taxMode === 'with-tax'
+            ? item.amount / (1 + (q.cgstRate + q.sgstRate) / 100)
+            : item.amount;
+        const perTax = q.taxMode === 'with-tax' ? taxable * (q.cgstRate / 100) : 0;
+        const desc = pdf.splitTextToSize(item.description || '', 45);
+        pdf.text(String(idx + 1), 17, y + 4);
+        pdf.text(desc, 25, y + 4);
+        pdf.text(item.hsn_code || '', 75, y + 4);
+        pdf.text(String(item.quantity), 93, y + 4);
+        pdf.text(formatIndianCurrency(item.rate), 108, y + 4);
+        pdf.text(item.discount_percent > 0 ? item.discount_percent + '%' : '-', 126, y + 4);
+        pdf.text(formatIndianCurrency(taxable), 144, y + 4);
+        pdf.text(formatIndianCurrency(perTax), 168, y + 4);
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(15, y + 8, 195, y + 8);
+        y += Math.max(8, desc.length * 5);
+    });
+    y += 3;
+    _renderQuoteTotals(pdf, q, y, brandColor, 140, 168);
+}
+
+function _renderQuoteItemsRetail(pdf, q, startY, brandColor) {
+    let y = startY;
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(15, y, 180, 8, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(undefined, 'bold'); pdf.setFontSize(9);
+    pdf.text('Item', 17, y + 5);
+    pdf.text('HSN', 95, y + 5);
+    pdf.text('Qty', 115, y + 5);
+    pdf.text('Rate', 130, y + 5);
+    pdf.text('Disc%', 150, y + 5);
+    pdf.text('Amount', 170, y + 5);
+    resetTextColor(pdf);
+    y += 10;
+    pdf.setFont(undefined, 'normal');
+    q.items.forEach(item => {
+        if (y > 250) { pdf.addPage(); y = 20; }
+        const desc = pdf.splitTextToSize(item.description || '', 70);
+        pdf.text(desc, 17, y + 4);
+        pdf.text(item.hsn_code || '', 95, y + 4);
+        pdf.text(String(item.quantity), 115, y + 4);
+        pdf.text(formatIndianCurrency(item.rate), 130, y + 4);
+        pdf.text(item.discount_percent > 0 ? item.discount_percent + '%' : '-', 150, y + 4);
+        pdf.text(formatIndianCurrency(item.amount), 170, y + 4);
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(15, y + 7, 195, y + 7);
+        y += Math.max(7, desc.length * 5);
+    });
+    y += 3;
+    _renderQuoteTotals(pdf, q, y, brandColor, 130, 168);
+}
+
+// Shared totals block
+function _renderQuoteTotals(pdf, q, y, brandColor, labelX, valueX) {
+    pdf.setFontSize(9);
+    pdf.setFont(undefined, 'normal');
+    if (q.taxMode === 'with-tax') {
+        pdf.text('Subtotal (excl. GST):', labelX, y);
+        pdf.text(`Rs.${formatIndianCurrency(q.subtotal)}`, valueX + 27, y, { align: 'right' });
+        y += 6;
+        if (q.cgstAmount > 0) {
+            pdf.text(`CGST (${q.cgstRate}%):`, labelX, y);
+            pdf.text(`Rs.${formatIndianCurrency(q.cgstAmount)}`, valueX + 27, y, { align: 'right' });
+            y += 6;
+            pdf.text(`SGST (${q.sgstRate}%):`, labelX, y);
+            pdf.text(`Rs.${formatIndianCurrency(q.sgstAmount)}`, valueX + 27, y, { align: 'right' });
+            y += 6;
+        }
+    }
+    applyBrandFillColor(pdf, brandColor);
+    pdf.rect(labelX - 2, y - 4, valueX + 27 - labelX + 4, 10, 'F');
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFont(undefined, 'bold');
+    pdf.setFontSize(11);
+    pdf.text('TOTAL:', labelX, y + 3);
+    pdf.text(`Rs.${formatIndianCurrency(q.grandTotal)}`, valueX + 27, y + 3, { align: 'right' });
+    resetTextColor(pdf);
+}
+
+// Quotation footer (notes / terms / signature)
+function _addQuotationFooter(pdf, q, profile) {
+    let y = 252;
+    if (q.notes) {
+        pdf.setFontSize(8);
+        pdf.setFont(undefined, 'bold');
+        pdf.text('Notes / Terms:', 15, y);
+        y += 4;
+        pdf.setFont(undefined, 'normal');
+        pdf.setFontSize(7);
+        const nl = pdf.splitTextToSize(q.notes, 180);
+        nl.slice(0, 6).forEach(l => { pdf.text(l, 15, y); y += 3; });
+    }
+    y = 275;
+    pdf.setFontSize(9);
+    pdf.text('Authorised Signatory', 160, y);
+    pdf.line(160, y - 2, 195, y - 2);
+}
+

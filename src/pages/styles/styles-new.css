@@ -173,6 +173,91 @@ svg {
     margin: 16px 20px;
 }
 
+/* ===== Nav Group / Collapsible Submenu ====================================== */
+.nav-group {
+    position: relative;
+}
+
+.nav-group-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    width: 100%;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: inherit;
+    font-size: inherit;
+    text-align: left;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.nav-group-toggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.nav-group.active-group > .nav-group-toggle {
+    background: rgba(246, 128, 72, 0.1);
+    color: white;
+}
+
+.nav-group-toggle .material-icons:first-child {
+    font-size: 24px;
+    min-width: 24px;
+}
+
+.nav-chevron {
+    margin-left: auto;
+    font-size: 18px !important;
+    min-width: 18px !important;
+    transition: transform 0.2s;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.nav-group.open > .nav-group-toggle .nav-chevron {
+    transform: rotate(-180deg);
+}
+
+.nav-submenu {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.25s ease;
+}
+
+.nav-group.open > .nav-submenu {
+    max-height: 200px;
+}
+
+.nav-sub-item {
+    padding-left: 46px !important;
+    font-size: 13.5px;
+}
+
+.nav-sub-item .material-icons {
+    font-size: 18px !important;
+    min-width: 18px !important;
+}
+
+/* Collapsed sidebar — hide text/chevron, hide submenu */
+.sidebar.collapsed .nav-group-toggle .nav-text,
+.sidebar.collapsed .nav-group-toggle .nav-chevron {
+    display: none;
+}
+
+.sidebar.collapsed .nav-submenu {
+    display: none;
+}
+
+.sidebar.collapsed .nav-group.active-group > .nav-group-toggle {
+    background: rgba(246, 128, 72, 0.2);
+    border-left: 3px solid #F68048;
+    color: white;
+}
+
 /* Logout button styling */
 .nav-logout {
     margin-top: auto;
@@ -194,6 +279,9 @@ svg {
     padding: 24px;
     transition: margin-left 0.3s ease;
     min-height: 100vh;
+    overflow-x: hidden;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .sidebar.collapsed~.main-content {
@@ -5365,4 +5453,798 @@ body.dark-mode .pin-key:hover {
 body.dark-mode .pin-status-none { color: #94a3b8; }
 body.dark-mode .pin-status-set  { color: #34d399; }
 [data-theme="dark"] .pin-status-none { color: #94a3b8; }
+
+/* ═══════════════════════════════════════════════════════════════
+   NEW INVOICE UX – Single-Flow Layout
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Override old full-width card look to be borderless ── */
+.invoice-form {
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+}
+
+/* ── Header Strip ─────────────────────────────────────── */
+.inv-header-strip {
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.inv-header-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 140px;
+}
+
+.inv-header-field:last-child { flex: 1 1 auto; }
+
+.inv-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #7f8c8d;
+}
+
+.inv-header-field input[type="text"],
+.inv-header-field input[type="date"] {
+    padding: 8px 10px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color .2s;
+    background: #fff;
+}
+.inv-header-field input:focus {
+    outline: none;
+    border-color: #2845D6;
+    box-shadow: 0 0 0 3px rgba(40,69,214,.1);
+}
+
+/* Invoice number field inside header */
+.inv-header-field .invoice-number-field {
+    display: flex;
+    gap: 6px;
+}
+.inv-header-field .invoice-number-field input {
+    flex: 1;
+    min-width: 120px;
+}
+.inv-header-field .edit-invoice-number-btn {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 7px 10px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    background: #f5f7fa;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+}
+.inv-header-field .edit-invoice-number-btn:hover {
+    background: #e8ecee;
+    border-color: #2845D6;
+}
+.inv-header-field .edit-invoice-number-btn .material-icons { 
+    font-size: 15px; 
+    margin: 0;
+}
+
+
+/* GST mode pills in header */
+.gst-mode-pills {
+    display: flex;
+    gap: 6px;
+}
+.gst-pill {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: #fff;
+    white-space: nowrap;
+}
+.gst-pill:has(input:checked) {
+    background: #e8edff;
+    border-color: #2845D6;
+    color: #2845D6;
+    font-weight: 600;
+}
+.gst-pill input { display: none; }
+
+/* GST rate inputs inside header */
+.gst-rates-inline {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.gst-rate-label { font-size: 12px; font-weight: 600; color: #555; white-space: nowrap; }
+.gst-rate-sep   { font-size: 12px; color: #555; white-space: nowrap; }
+.gst-rates-inline input[type="number"] {
+    width: 62px;
+    padding: 6px 8px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+}
+.gst-rates-inline input:focus {
+    outline: none;
+    border-color: #2845D6;
+}
+
+/* ── Top row: (header strip + customer) | summary panel ── */
+.inv-top-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-rows: auto 1fr;
+    gap: 16px;
+    align-items: start;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+}
+
+/* header strip: col 1, row 1 */
+.inv-top-row > .inv-header-strip {
+    grid-column: 1;
+    grid-row: 1;
+    margin-bottom: 0;
+}
+
+/* customer block: col 1, row 2 */
+.inv-top-row > .inv-block {
+    grid-column: 1;
+    grid-row: 2;
+    margin-bottom: 0;
+}
+
+/* summary panel: col 2, spans both rows */
+.inv-top-row > .inv-summary-panel {
+    grid-column: 2;
+    grid-row: 1 / 3;
+    align-self: stretch;
+}
+
+/* ── Full-width main area below the top row ───────────── */
+.inv-main {
+    min-width: 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+/* ── Shared Block style ───────────────────────────────── */
+.inv-block {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    min-width: 0;
+    box-sizing: border-box;
+}
+.inv-block:last-child { margin-bottom: 0; }
+
+.inv-block-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #7f8c8d;
+    margin-bottom: 12px;
+}
+.inv-block-title .material-icons { font-size: 16px; color: #2845D6; }
+
+/* Customer search input */
+.inv-search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color .2s;
+    box-sizing: border-box;
+}
+.inv-search-input:focus {
+    outline: none;
+    border-color: #2845D6;
+    box-shadow: 0 0 0 3px rgba(40,69,214,.1);
+}
+
+/* Secondary customer fields (mobile + GST) */
+.customer-secondary-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.inv-field-compact input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    transition: border-color .2s;
+    box-sizing: border-box;
+}
+.inv-field-compact input:focus {
+    outline: none;
+    border-color: #2845D6;
+    box-shadow: 0 0 0 3px rgba(40,69,214,.1);
+}
+
+/* Address textarea inside customer block */
+.inv-block textarea#customerAddress {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    resize: vertical;
+    min-height: 60px;
+    transition: border-color .2s;
+    box-sizing: border-box;
+}
+.inv-block textarea#customerAddress:focus {
+    outline: none;
+    border-color: #2845D6;
+    box-shadow: 0 0 0 3px rgba(40,69,214,.1);
+}
+
+/* Items block */
+.inv-items-block { padding: 14px 16px; min-width: 0; }
+.inv-items-block .table-wrapper { overflow-x: auto; }
+
+/* Add item button */
+.btn-add-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 10px;
+    padding: 7px 14px;
+    background: #f0f3ff;
+    border: 1.5px dashed #2845D6;
+    border-radius: 7px;
+    color: #2845D6;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .15s;
+}
+.btn-add-item:hover { background: #dde5ff; }
+.btn-add-item .material-icons { font-size: 16px; }
+
+/* ── Payment pills ────────────────────────────────────── */
+.payment-pills {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.payment-pill {
+    position: relative;
+    cursor: pointer;
+}
+.payment-pill input[type="radio"] { display: none; }
+.payment-pill > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 20px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 22px;
+    font-size: 14px;
+    font-weight: 500;
+    background: #f5f7fa;
+    transition: border-color .15s, background .15s, color .15s;
+    user-select: none;
+}
+.payment-pill > span .material-icons { font-size: 17px; }
+
+.payment-pill input:checked + span {
+    background: #e8edff;
+    border-color: #2845D6;
+    color: #2845D6;
+    font-weight: 700;
+}
+.payment-pill:hover > span {
+    border-color: #2845D6;
+    background: #eef1ff;
+}
+
+/* ── Terms accordion ──────────────────────────────────── */
+.terms-accordion-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #7f8c8d;
+    cursor: pointer;
+    text-align: left;
+}
+.terms-accordion-btn .material-icons:first-child { font-size: 16px; color: #2845D6; }
+.terms-chevron { margin-left: auto; font-size: 20px !important; transition: transform .2s; }
+.terms-chevron.open { transform: rotate(180deg); }
+
+.terms-accordion-body {
+    margin-top: 12px;
+}
+.terms-accordion-body textarea#termsConditions {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    resize: vertical;
+    min-height: 120px;
+    transition: border-color .2s;
+    box-sizing: border-box;
+}
+.terms-accordion-body textarea:focus {
+    outline: none;
+    border-color: #2845D6;
+    box-shadow: 0 0 0 3px rgba(40,69,214,.1);
+}
+
+/* ── Summary Panel (col 2, spans both rows of inv-top-row) */
+.inv-summary-panel {
+    min-width: 0;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.summary-card {
+    background: #fff;
+    border: 1px solid #e8ecf0;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+    box-sizing: border-box;
+    overflow: hidden;
+    word-break: break-word;
+    flex: 1;
+}
+
+.summary-title {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .6px;
+    color: #7f8c8d;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+/* override old totals-section inside summary panel */
+.summary-card .totals-section {
+    background: transparent;
+    padding: 0;
+    margin: 0;
+}
+.summary-card .total-row {
+    font-size: 13px;
+    padding: 6px 0;
+}
+.summary-card .grand-total {
+    font-size: 16px;
+    padding-top: 12px;
+    margin-top: 6px;
+}
+
+.summary-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+.summary-actions .btn-primary,
+.summary-actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+}
+
+/* ── Dark mode ────────────────────────────────────────── */
+body.dark-mode .inv-header-strip,
+body.dark-mode .inv-block,
+body.dark-mode .summary-card {
+    background: #1e2836;
+    border-color: #2d3748;
+}
+
+body.dark-mode .inv-header-field input,
+body.dark-mode .inv-search-input,
+body.dark-mode .inv-field-compact input,
+body.dark-mode .inv-block textarea#customerAddress,
+body.dark-mode .gst-rates-inline input,
+body.dark-mode .terms-accordion-body textarea {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #e2e8f0;
+}
+
+body.dark-mode .gst-pill {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #e2e8f0;
+}
+body.dark-mode .gst-pill:has(input:checked) {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+
+body.dark-mode .payment-pill > span {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #c8d6e5;
+}
+body.dark-mode .payment-pill input:checked + span {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+
+body.dark-mode .inv-label,
+body.dark-mode .inv-block-title,
+body.dark-mode .terms-accordion-btn,
+body.dark-mode .summary-title { color: #94a3b8; }
+
+body.dark-mode .btn-add-item {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+
+body.dark-mode .summary-card .totals-section { background: transparent; }
+
+body.dark-mode .inv-header-field .edit-invoice-number-btn {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #c8d6e5;
+}
+
+/* ── Responsive: collapse top row on mobile ─────────── */
+@media (max-width: 900px) {
+    .inv-top-row {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+    .inv-top-row > .inv-header-strip,
+    .inv-top-row > .inv-block,
+    .inv-top-row > .inv-summary-panel {
+        grid-column: 1;
+        grid-row: auto;
+    }
+    .inv-header-strip {
+        gap: 12px;
+    }
+    .summary-actions {
+        flex-direction: row;
+    }
+    .summary-actions .btn-primary,
+    .summary-actions .btn-secondary {
+        flex: 1;
+    }
+    .customer-secondary-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 540px) {
+    .inv-header-strip {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .gst-mode-pills { flex-wrap: nowrap; }
+}
+
+/* [data-theme="dark"] aliases */
+[data-theme="dark"] .inv-header-strip,
+[data-theme="dark"] .inv-block,
+[data-theme="dark"] .summary-card {
+    background: #1e2836;
+    border-color: #2d3748;
+}
+[data-theme="dark"] .inv-header-field input,
+[data-theme="dark"] .inv-search-input,
+[data-theme="dark"] .inv-field-compact input,
+[data-theme="dark"] .inv-block textarea#customerAddress,
+[data-theme="dark"] .gst-rates-inline input,
+[data-theme="dark"] .terms-accordion-body textarea {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .gst-pill {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #e2e8f0;
+}
+[data-theme="dark"] .gst-pill:has(input:checked) {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+[data-theme="dark"] .payment-pill > span {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #c8d6e5;
+}
+[data-theme="dark"] .payment-pill input:checked + span {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+[data-theme="dark"] .btn-add-item {
+    background: #1a2554;
+    border-color: #4a6cf7;
+    color: #7b9cff;
+}
+[data-theme="dark"] .inv-header-field .edit-invoice-number-btn {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #c8d6e5;
+}
+
+/* ── GST ON/OFF toggle switch ─────────────────────────── */
+.gst-onoff-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.gst-onoff-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    cursor: pointer;
+}
+.gst-onoff-switch input { display: none; }
+.gst-onoff-slider {
+    position: absolute;
+    inset: 0;
+    background: #cbd5e1;
+    border-radius: 12px;
+    transition: background .2s;
+}
+.gst-onoff-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    top: 3px;
+    left: 3px;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,.25);
+}
+.gst-onoff-switch input:checked + .gst-onoff-slider { background: #2845D6; }
+.gst-onoff-switch input:checked + .gst-onoff-slider::before { transform: translateX(20px); }
+.gst-onoff-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2845D6;
+    min-width: 22px;
+}
+body.dark-mode .gst-onoff-slider,
+[data-theme="dark"] .gst-onoff-slider { background: #4a5568; }
+body.dark-mode .gst-onoff-switch input:checked + .gst-onoff-slider,
+[data-theme="dark"] .gst-onoff-switch input:checked + .gst-onoff-slider { background: #4a6cf7; }
+body.dark-mode .gst-onoff-label,
+[data-theme="dark"] .gst-onoff-label { color: #7b9cff; }
+
+/* ── Customer card ────────────────────────────────────── */
+.cust-card-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: #f7f9ff;
+    border: 1px solid #dde5ff;
+    border-radius: 10px;
+}
+.cust-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #2845D6;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    flex-shrink: 0;
+    letter-spacing: .5px;
+}
+.cust-info { flex: 1; min-width: 0; }
+.cust-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1a202c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cust-phone {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    color: #555;
+    margin-top: 2px;
+}
+.cust-phone .material-icons { font-size: 13px; color: #888; }
+.cust-edit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border: 1.5px solid #2845D6;
+    border-radius: 7px;
+    background: #fff;
+    color: #2845D6;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background .15s;
+}
+.cust-edit-btn:hover { background: #e8edff; }
+.cust-edit-btn .material-icons { font-size: 14px; }
+.cust-card-details { padding: 8px 14px 4px; }
+.cust-detail-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    font-size: 13px;
+    color: #555;
+    padding: 3px 0;
+}
+.cust-detail-row .material-icons { font-size: 14px; color: #888; margin-top: 1px; flex-shrink: 0; }
+
+body.dark-mode .cust-card-main,
+[data-theme="dark"] .cust-card-main { background: #1a2554; border-color: #2d3f7c; }
+body.dark-mode .cust-name,
+[data-theme="dark"] .cust-name { color: #e2e8f0; }
+body.dark-mode .cust-phone,
+body.dark-mode .cust-detail-row,
+[data-theme="dark"] .cust-phone,
+[data-theme="dark"] .cust-detail-row { color: #94a3b8; }
+body.dark-mode .cust-edit-btn,
+[data-theme="dark"] .cust-edit-btn { background: #1e2836; border-color: #4a6cf7; color: #7b9cff; }
+
+/* ── Qty stepper ──────────────────────────────────────── */
+.qty-stepper {
+    display: flex;
+    align-items: center;
+    border: 1.5px solid #dde1e7;
+    border-radius: 7px;
+    overflow: hidden;
+    width: fit-content;
+}
+.qty-btn {
+    background: #f5f7fa;
+    border: none;
+    width: 26px;
+    height: 30px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    color: #444;
+    transition: background .12s;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.qty-btn:hover { background: #e2e8f0; }
+.qty-stepper input[type="number"] {
+    border: none !important;
+    border-left: 1px solid #dde1e7 !important;
+    border-right: 1px solid #dde1e7 !important;
+    border-radius: 0 !important;
+    width: 42px;
+    text-align: center;
+    padding: 0 4px !important;
+    height: 30px;
+    font-size: 13px;
+    -moz-appearance: textfield;
+}
+.qty-stepper input[type="number"]::-webkit-outer-spin-button,
+.qty-stepper input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+body.dark-mode .qty-stepper,
+[data-theme="dark"] .qty-stepper { border-color: #3a4a5c; }
+body.dark-mode .qty-btn,
+[data-theme="dark"] .qty-btn { background: #253040; color: #c8d6e5; }
+body.dark-mode .qty-stepper input[type="number"],
+[data-theme="dark"] .qty-stepper input[type="number"] {
+    background: #1e2836;
+    color: #e2e8f0;
+    border-color: #3a4a5c !important;
+}
+
+/* ── Items foot: add button + running total ───────────── */
+.items-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+}
+.items-running-total {
+    font-size: 16px;
+    font-weight: 700;
+    color: #2845D6;
+}
+body.dark-mode .items-running-total,
+[data-theme="dark"] .items-running-total { color: #7b9cff; }
 [data-theme="dark"] .pin-status-set  { color: #34d399; }
+
+/* ── Per-item GST% select ─────────────────────────────── */
+.item-gst {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1.5px solid #dde1e7;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-size: 12px;
+    color: #333;
+    background: #f5f7fa;
+    cursor: pointer;
+    width: 100%;
+    min-width: 58px;
+}
+.item-gst:focus { outline: none; border-color: #4a6cf7; }
+body.dark-mode .item-gst,
+[data-theme="dark"] .item-gst {
+    background: #253040;
+    border-color: #3a4a5c;
+    color: #e2e8f0;
+}
+
+/* ── Hide GST% column when tax is OFF ────────────────── */
+#itemsTable.hide-gst-col .col-gst-pct { display: none; }

@@ -95,3 +95,28 @@ if (document.readyState === 'loading') {
 } else {
     initializeDarkMode();
 }
+
+// ─── Nav Group (collapsible sidebar submenu) ──────────────────────────────────
+
+function toggleNavGroup(id) {
+    const group = document.getElementById(id);
+    if (!group) return;
+    const isOpen = group.classList.toggle('open');
+    // Only save when explicitly closed; open is the default
+    if (!isOpen) {
+        localStorage.setItem('navGroup_' + id, 'closed');
+    } else {
+        localStorage.removeItem('navGroup_' + id);
+    }
+}
+
+// Apply saved closed state (groups default to open; only close if user closed them)
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.nav-group').forEach(group => {
+        // Never collapse a group that has an active child
+        if (group.querySelector('.nav-sub-item.active')) return;
+        if (localStorage.getItem('navGroup_' + group.id) === 'closed') {
+            group.classList.remove('open');
+        }
+    });
+});

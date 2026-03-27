@@ -31,10 +31,23 @@
                 <span class="material-icons">dashboard</span>
                 <span class="nav-text">Dashboard</span>
             </a>
-            <a href="create-bill.html" class="nav-item" title="Create Invoice">
-                <span class="material-icons">receipt_long</span>
-                <span class="nav-text">Create Invoice</span>
-            </a>
+            <div class="nav-group open" id="navGroupInvoices">
+                <button class="nav-group-toggle" title="Invoices" onclick="toggleNavGroup('navGroupInvoices')">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="nav-text">Invoices</span>
+                    <span class="material-icons nav-chevron">expand_more</span>
+                </button>
+                <div class="nav-submenu">
+                    <a href="invoices.html" class="nav-item nav-sub-item" title="All Invoices">
+                        <span class="material-icons">receipt_long</span>
+                        <span class="nav-text">All Invoices</span>
+                    </a>
+                    <a href="quotations.html" class="nav-item nav-sub-item" title="Quotations">
+                        <span class="material-icons">request_quote</span>
+                        <span class="nav-text">Quotations</span>
+                    </a>
+                </div>
+            </div>
             <a href="inventory.html" class="nav-item active" title="Inventory">
                 <span class="material-icons">inventory_2</span>
                 <span class="nav-text">Inventory</span>
@@ -246,7 +259,7 @@
                     </label>
                     <textarea id="itemDescription" rows="3" maxlength="255" placeholder="Additional details about the item"></textarea>
                 </div>
-                <div class="form-row">
+                <!-- <div class="form-row">
                     <label class="form-label-with-icon">
                         <span class="material-icons label-icon">qr_code_2</span>
                         <span>Barcode/SKU <span class="optional">(optional)</span></span>
@@ -258,6 +271,14 @@
                         </button>
                     </div>
                     <small class="form-hint">Scan or manually enter product barcode/SKU (UPC, EAN, QR code, etc.)</small>
+                </div> -->
+                <div class="form-row">
+                    <label class="form-label-with-icon">
+                        <span class="material-icons label-icon">event</span>
+                        <span>Purchase Date <span class="optional">(optional)</span></span>
+                    </label>
+                    <input type="date" id="itemPurchaseDate">
+                    <small class="form-hint">Date when this item was purchased/received</small>
                 </div>
                 <div class="form-row-group">
                     <div class="form-row form-row-half">

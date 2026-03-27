@@ -42,10 +42,23 @@
                 <span class="material-icons">dashboard</span>
                 <span class="nav-text">Dashboard</span>
             </a>
-            <a href="create-bill.html" class="nav-item" title="Create Invoice">
-                <span class="material-icons">receipt_long</span>
-                <span class="nav-text">Create Invoice</span>
-            </a>
+            <div class="nav-group open" id="navGroupInvoices">
+                <button class="nav-group-toggle" title="Invoices" onclick="toggleNavGroup('navGroupInvoices')">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="nav-text">Invoices</span>
+                    <span class="material-icons nav-chevron">expand_more</span>
+                </button>
+                <div class="nav-submenu">
+                    <a href="invoices.html" class="nav-item nav-sub-item" title="All Invoices">
+                        <span class="material-icons">receipt_long</span>
+                        <span class="nav-text">All Invoices</span>
+                    </a>
+                    <a href="quotations.html" class="nav-item nav-sub-item" title="Quotations">
+                        <span class="material-icons">request_quote</span>
+                        <span class="nav-text">Quotations</span>
+                    </a>
+                </div>
+            </div>
             <a href="inventory.html" class="nav-item" title="Inventory">
                 <span class="material-icons">inventory_2</span>
                 <span class="nav-text">Inventory</span>
@@ -276,18 +289,9 @@
         <div class="card invoices-card">
             <div class="card-header">
                 <h3><span class="material-icons">receipt</span> Recent Invoices</h3>
-                <div class="header-actions">
-                    <div class="search-input-wrapper">
-                        <span class="material-icons search-icon">search</span>
-                        <input type="text" id="invoiceSearch" placeholder="Search invoices..." style="padding: 8px 12px 8px 40px; border: 1px solid #ddd; border-radius: 6px; width: 200px;">
-                    </div>
-                    <button class="btn-secondary" onclick="showFilterModal()" style="display: flex; align-items: center; gap: 8px;">
-                        <span class="material-icons">filter_alt</span> Filter
-                    </button>
-                    <button class="btn-secondary" onclick="showReportModal()" style="display: flex; align-items: center; gap: 8px;">
-                        <span class="material-icons">description</span> Reports
-                    </button>
-                </div>
+                <a href="invoices.html" class="view-all-link" style="display:flex;align-items:center;gap:4px;font-size:13px;font-weight:600;">
+                    View All Invoices <span class="material-icons" style="font-size:16px;">arrow_forward</span>
+                </a>
             </div>
             <div class="card-body">
                 <div class="table-wrapper">
@@ -295,28 +299,26 @@
                         <thead>
                             <tr>
                                 <th>Invoice No</th>
-                                <th>Date</th>
                                 <th>Customer</th>
-                                <th>Units</th>
                                 <th>Amount</th>
-                                <th>Actions</th>
+                                <th>Date</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="invoicesTableBody">
                             <tr>
-                                <td colspan="6" style="text-align: center; padding: 40px; color: #999;">
+                                <td colspan="5" style="text-align: center; padding: 40px; color: #999;">
                                     <span class="material-icons" style="font-size: 48px; color: #ddd;">receipt_long</span>
-                                    <p style="margin-top: 16px;">No invoices yet. Create your first invoice!</p>
+                                    <p style="margin-top: 16px;">No invoices yet. <a href="create-bill.html">Create your first invoice!</a></p>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-                <div id="loadMoreInvoicesContainer" style="display:none; text-align:center; padding: 12px 0 4px;">
-                    <button class="btn-secondary" id="loadMoreInvoicesBtn" onclick="loadMoreInvoices()" style="display:inline-flex; align-items:center; gap:8px;">
-                        <span class="material-icons">expand_more</span>
-                        <span id="loadMoreInvoicesLabel">Load more</span>
-                    </button>
+                <div style="text-align:center; padding: 12px 0 4px;">
+                    <a href="invoices.html" class="btn-secondary" style="display:inline-flex;align-items:center;gap:8px;text-decoration:none;">
+                        <span class="material-icons">receipt_long</span> View All Invoices
+                    </a>
                 </div>
             </div>
         </div>
@@ -367,7 +369,7 @@
             <div class="card activity-card">
                 <div class="card-header">
                     <h3><span class="material-icons">history</span> Recent Activity</h3>
-                    <a href="#" class="view-all-link" onclick="document.querySelector('.invoices-section').scrollIntoView({behavior: 'smooth'}); return false;">View All</a>
+                    <a href="invoices.html" class="view-all-link">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="activity-feed" id="activityFeed">
@@ -411,61 +413,6 @@
         </div>
     </div>
 
-    <!-- Filter Modal -->
-    <div id="filterModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <div class="modal-header">
-                <h2><span class="material-icons">filter_alt</span> Filter Invoices</h2>
-                <button class="btn-close-modal" onclick="closeFilterModal()">
-                    <span class="material-icons">close</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="form-row">
-                    <label>
-                        From Date:
-                        <input type="date" id="filterFromDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                    </label>
-                </div>
-                <div class="form-row">
-                    <label>
-                        To Date:
-                        <input type="date" id="filterToDate" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                    </label>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn-secondary" onclick="clearDateFilter()">
-                    <span class="material-icons">clear</span> Clear Filter
-                </button>
-                <button class="btn-primary" onclick="applyDateFilter()">
-                    <span class="material-icons">check</span> Apply Filter
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Report Modal -->
-    <div id="reportModal" class="modal">
-        <div class="modal-content" style="max-width: 400px;">
-            <div class="modal-header">
-                <h2><span class="material-icons">description</span> Download Reports</h2>
-                <button class="btn-close-modal" onclick="closeReportModal()">
-                    <span class="material-icons">close</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 20px; color: #666;">Choose the type of report you want to download:</p>
-                <button class="btn-primary" onclick="downloadSummaryReport()" style="width: 100%; margin-bottom: 12px; justify-content: center;">
-                    <span class="material-icons">description</span> Summary Report
-                </button>
-                <button class="btn-primary" onclick="downloadDetailedReport()" style="width: 100%; justify-content: center;">
-                    <span class="material-icons">assignment</span> Detailed Report
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Low Stock Alert Banner -->
     <div id="lowStockBanner" class="low-stock-banner" style="display: none;">
         <div class="banner-content">
@@ -500,6 +447,10 @@
             <a href="create-bill.html" class="fab-action fab-action-invoice" data-action="invoice">
                 <span class="fab-action-icon material-icons">receipt_long</span>
                 <span class="fab-action-label">Create Invoice</span>
+            </a>
+            <a href="invoices.html" class="fab-action" data-action="invoices">
+                <span class="fab-action-icon material-icons">list_alt</span>
+                <span class="fab-action-label">All Invoices</span>
             </a>
         </div>
     </div>

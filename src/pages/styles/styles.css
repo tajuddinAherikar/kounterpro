@@ -890,7 +890,17 @@ textarea#termsConditions {
 .total-row {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding: 8px 0;
+    font-size: 14px;
+}
+
+.discount-input {
+    width: 120px;
+    text-align: right;
+    padding: 4px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
     font-size: 14px;
 }
 
@@ -2608,3 +2618,12 @@ body.dark-mode .sync-indicator.error {
         text-align: center;
     }
 }
+
+/* ─── Invoice / Payment Status Badges ───────────────────────────────────────── */
+.status-paid    { background: #d1fae5; color: #065f46; }
+.status-unpaid  { background: #fee2e2; color: #991b1b; }
+.status-partial { background: #fef3c7; color: #92400e; }
+
+[data-theme="dark"] .status-paid    { background: #064e3b; color: #6ee7b7; }
+[data-theme="dark"] .status-unpaid  { background: #7f1d1d; color: #fca5a5; }
+[data-theme="dark"] .status-partial { background: #78350f; color: #fcd34d; }

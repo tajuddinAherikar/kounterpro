@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Quotation - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles-new.css">
+    <link rel="stylesheet" href="./styles/dark-mode.css">
+    <script src="./scripts/dark-mode.js"></script>
+</head>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item" title="Dashboard">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <div class="nav-group open active-group" id="navGroupInvoices">
+                <button class="nav-group-toggle" title="Invoices" onclick="toggleNavGroup('navGroupInvoices')">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="nav-text">Invoices</span>
+                    <span class="material-icons nav-chevron">expand_more</span>
+                </button>
+                <div class="nav-submenu">
+                    <a href="invoices.html" class="nav-item nav-sub-item" title="All Invoices">
+                        <span class="material-icons">receipt_long</span>
+                        <span class="nav-text">All Invoices</span>
+                    </a>
+                    <a href="quotations.html" class="nav-item nav-sub-item active" title="Quotations">
+                        <span class="material-icons">request_quote</span>
+                        <span class="nav-text">Quotations</span>
+                    </a>
+                </div>
+            </div>
+            <a href="inventory.html" class="nav-item" title="Inventory">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item" title="Customers">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <a href="expenses.html" class="nav-item" title="Expenses">
+                <span class="material-icons">receipt</span>
+                <span class="nav-text">Expenses</span>
+            </a>
+            <a href="reports.html" class="nav-item" title="Reports">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Reports</span>
+            </a>
+            <a href="profile.html" class="nav-item" title="Business Profile">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" onclick="logout(); return false;" title="Logout">
+                <span class="material-icons">logout</span>
+                <span class="nav-text">Logout</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Sidebar Overlay (for mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mobile Header Bar -->
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <h1 class="mobile-header-title">New Quotation</h1>
+        <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
+            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
+                <span class="material-icons">account_circle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span>
+                    Menu
+                </button>
+                <h1 class="page-title" id="pageTitle">Create New Quotation</h1>
+                <p class="page-subtitle">Fill in the details to generate a quotation for your client</p>
+            </div>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+            </div>
+        </header>
+
+        <form id="quotationForm" class="invoice-form">
+
+            <!-- ── Top Row: header strip + customer | summary panel ─────── -->
+            <div class="inv-top-row">
+
+                <!-- header strip: col 1, row 1 -->
+                <div class="inv-header-strip">
+                    <div class="inv-header-field inv-header-field--invoiceno">
+                        <label class="inv-label">Quote No</label>
+                        <div class="invoice-number-field">
+                            <input type="text" id="quoteNumber" placeholder="Generating…" readonly required>
+                            <button type="button" class="edit-invoice-number-btn" id="editQuoteNumberBtn" title="Edit Quote Number">
+                                <span class="material-icons">edit</span>
+                            </button>
+                        </div>
+                        <span class="error-message" id="quoteNumberError"></span>
+                    </div>
+                    <div class="inv-header-field inv-header-field--date">
+                        <label class="inv-label" for="quoteDate">Date</label>
+                        <input type="date" id="quoteDate" required>
+                    </div>
+                    <div class="inv-header-field">
+                        <label class="inv-label" for="validUntil">Valid Until</label>
+                        <input type="date" id="validUntil">
+                    </div>
+                    <div class="inv-header-field inv-header-field--gst">
+                        <label class="inv-label">GST</label>
+                        <div class="gst-onoff-wrap">
+                            <label class="gst-onoff-switch">
+                                <input type="checkbox" id="gstToggleCheck" checked onchange="handleGstToggle(this)">
+                                <span class="gst-onoff-slider"></span>
+                            </label>
+                            <span class="gst-onoff-label" id="gstToggleStatus">ON</span>
+                        </div>
+                    </div>
+                    <!-- hidden for JS compat -->
+                    <input type="hidden" id="sgstRate" value="9">
+                    <input type="hidden" id="cgstRate" value="9">
+                    <span style="display:none;" id="totalGstRate">18</span>
+                </div><!-- /inv-header-strip -->
+
+                <!-- customer block: col 1, row 2 -->
+                <div class="inv-block" style="margin-bottom:0;">
+                    <div class="inv-block-title">
+                        <span class="material-icons">person</span> Customer
+                    </div>
+                    <div style="position: relative;">
+                        <input type="text" id="customerSearch" class="inv-search-input" placeholder="Search or add customer…" autocomplete="off">
+                        <div id="customerSuggestions" class="autocomplete-dropdown" style="display: none;"></div>
+                    </div>
+                    <input type="hidden" id="customerName">
+                    <span class="error-message" id="customerSearchError"></span>
+                    <div class="customer-secondary-fields">
+                        <div class="inv-field-compact">
+                            <input type="tel" id="customerMobile" placeholder="Mobile (optional)" maxlength="12">
+                            <span class="error-message" id="mobileError"></span>
+                        </div>
+                        <div class="inv-field-compact">
+                            <input type="text" id="customerGST" placeholder="GST No (optional)" maxlength="15" style="text-transform: uppercase;">
+                        </div>
+                    </div>
+                    <textarea id="customerAddress" rows="2" placeholder="Address (optional)" maxlength="255"></textarea>
+                </div><!-- /customer block -->
+
+                <!-- summary panel: col 2, spans both rows -->
+                <div class="inv-summary-panel">
+                    <div class="summary-card">
+                        <div class="summary-title">Summary</div>
+                        <div class="totals-section" id="totalsSection">
+                            <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
+                                <span>Discount Saved:</span>
+                                <span id="discountSaving">-₹0.00</span>
+                            </div>
+                            <div class="total-row" id="subtotalRow">
+                                <span>Subtotal (excl. GST):</span>
+                                <span id="subtotal">₹0.00</span>
+                            </div>
+                            <div class="total-row" id="sgstRow">
+                                <span>SGST (<span id="displaySgstRate">9</span>%):</span>
+                                <span id="sgstAmount">₹0.00</span>
+                            </div>
+                            <div class="total-row" id="cgstRow">
+                                <span>CGST (<span id="displayCgstRate">9</span>%):</span>
+                                <span id="cgstAmount">₹0.00</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span>Total Amount:</span>
+                                <span id="grandTotal">₹0.00</span>
+                            </div>
+                        </div>
+                        <div class="summary-actions">
+                            <button type="button" class="btn-secondary" onclick="window.location.href='quotations.html'">Cancel</button>
+                            <button type="submit" class="btn-primary" id="submitBtn">
+                                <span class="material-icons">save</span> Save Quotation
+                            </button>
+                        </div>
+                    </div>
+                </div><!-- /inv-summary-panel -->
+
+            </div><!-- /inv-top-row -->
+
+            <!-- ── Full-width: Items + Notes ────────────────────────────── -->
+            <div class="inv-main">
+
+                <!-- Items Block -->
+                <div class="inv-block inv-items-block">
+                    <div class="inv-block-title">
+                        <span class="material-icons">inventory_2</span> Invoice Items
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="items-table" id="itemsTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">#</th>
+                                    <th>Description</th>
+                                    <th style="width: 90px;">HSN</th>
+                                    <th style="width: 75px;">Qty</th>
+                                    <th style="width: 95px;">Rate (₹)</th>
+                                    <th style="width: 65px;">Disc %</th>
+                                    <th class="col-gst-pct" style="width: 80px;">GST %</th>
+                                    <th style="width: 110px;">Amount (₹)</th>
+                                    <th style="width: 44px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="itemsTableBody">
+                                <tr class="item-row" data-row="1">
+                                    <td class="item-slno" data-label="Sl no">1</td>
+                                    <td data-label="Description">
+                                        <span class="mobile-field-label">Description</span>
+                                        <input type="text" class="item-description" required>
+                                        <span class="error-message item-error"></span>
+                                    </td>
+                                    <td data-label="HSN Code">
+                                        <span class="mobile-field-label">HSN</span>
+                                        <input type="text" class="item-hsn" placeholder="–" maxlength="8">
+                                    </td>
+                                    <td data-label="Quantity">
+                                        <span class="mobile-field-label">Qty</span>
+                                        <div class="qty-stepper">
+                                            <button type="button" class="qty-btn qty-dec" onclick="stepQty(this,-1)">−</button>
+                                            <input type="number" class="item-quantity" min="1" value="1" required>
+                                            <button type="button" class="qty-btn qty-inc" onclick="stepQty(this,1)">+</button>
+                                        </div>
+                                        <span class="error-message item-error"></span>
+                                    </td>
+                                    <td data-label="Rate (₹)">
+                                        <span class="mobile-field-label">Rate (₹)</span>
+                                        <input type="number" class="item-rate" min="0" step="0.01" required>
+                                        <span class="error-message item-error"></span>
+                                    </td>
+                                    <td data-label="Disc (%)">
+                                        <span class="mobile-field-label">Disc %</span>
+                                        <input type="number" class="item-discount" min="0" max="100" step="0.1" placeholder="0">
+                                    </td>
+                                    <td class="col-gst-pct" data-label="GST %">
+                                        <span class="mobile-field-label">GST %</span>
+                                        <select class="item-gst">
+                                            <option value="0">0%</option>
+                                            <option value="5">5%</option>
+                                            <option value="12">12%</option>
+                                            <option value="18" selected>18%</option>
+                                            <option value="28">28%</option>
+                                        </select>
+                                    </td>
+                                    <td class="item-amount" data-label="Amount (₹)">
+                                        <span class="mobile-field-label">Amount (₹)</span>
+                                        <span class="item-amount-value">0.00</span>
+                                    </td>
+                                    <td data-label="Action"><button type="button" class="btn-remove" onclick="removeItem(1)">✕</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="items-foot">
+                        <button type="button" class="btn-add-item" onclick="addItem()">+ Add Item</button>
+                        <span class="items-running-total">₹<span id="itemsRunningTotal">0.00</span></span>
+                    </div>
+                    <span class="error-message" id="itemsError"></span>
+                </div><!-- /items block -->
+
+                <!-- Notes / Terms Block -->
+                <div class="inv-block">
+                    <div class="inv-block-title">
+                        <span class="material-icons">notes</span> Notes / Terms
+                    </div>
+                    <textarea id="quotationNotes" rows="4" maxlength="1000" placeholder="Optional: add any notes, terms or conditions for this quotation…" style="width:100%; box-sizing:border-box; border:1.5px solid #dde1e7; border-radius:8px; padding:10px; font-size:13px; resize:vertical;"></textarea>
+                    <small class="format-hint" style="display:block; margin-top:6px;">📋 Optional. Maximum 1000 characters.</small>
+                </div>
+
+            </div><!-- /inv-main -->
+        </form>
+
+
+        <!-- Success Modal -->
+        <div id="successModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h2>✅ Quotation Saved!</h2>
+                <p>Quotation <strong id="modalQuoteNo"></strong> has been created successfully.</p>
+                <div class="modal-actions">
+                    <button class="btn-primary" id="downloadPDFBtn">
+                        <span class="material-icons">picture_as_pdf</span> Download PDF
+                    </button>
+                    <button class="btn-secondary" id="whatsappBtn" style="display:flex;align-items:center;gap:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+                        Send via WhatsApp
+                    </button>
+                    <button class="btn-secondary" onclick="window.location.href='quotations.html'">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="./scripts/invoice-templates.js"></script>
+    <script src="./scripts/dialog.js"></script>
+    <script src="./scripts/toast.js"></script>
+    <script src="./scripts/pwa.js"></script>
+    <script src="./scripts/indexed-db.js"></script>
+    <script src="./scripts/offline-sync.js"></script>
+    <script src="./scripts/inventory-sync.js"></script>
+    <script src="./scripts/validation.js"></script>
+    <script src="./scripts/supabase.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/backup.js"></script>
+    <script src="./scripts/notifications.js"></script>
+    <script src="./scripts/create-quotation.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const overlay = document.getElementById('sidebarOverlay');
+
+            if (toggleBtn) toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            });
+            if (mobileToggle) mobileToggle.addEventListener('click', () => {
+                sidebar.classList.add('show');
+                if (overlay) overlay.classList.add('show');
+            });
+            if (mobileMenuBtn) mobileMenuBtn.addEventListener('click', () => {
+                sidebar.classList.add('show');
+                if (overlay) overlay.classList.add('show');
+            });
+            if (overlay) overlay.addEventListener('click', () => {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+            });
+            if (window.innerWidth > 768 && localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapsed');
+            }
+        });
+    </script>
+</body>
+</html>

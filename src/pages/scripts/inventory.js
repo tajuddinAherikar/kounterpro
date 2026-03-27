@@ -82,6 +82,7 @@ async function loadInventory() {
                 purchasePrice: parseFloat(item.purchase_price || 0),
                 salePrice: parseFloat(item.sale_price || 0),
                 lowStockThreshold: item.low_stock_threshold,
+                purchaseDate: item.purchase_date || null,
                 createdAt: item.created_at
             }));
             displayInventory();
@@ -293,6 +294,7 @@ function showAddItemModal() {
     document.getElementById('modalTitle').textContent = 'Add New Item';
     document.getElementById('itemForm').reset();
     document.getElementById('editItemId').value = '';
+    document.getElementById('itemPurchaseDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('itemModal').style.display = 'flex';
 }
 
@@ -306,12 +308,13 @@ function editItem(itemId) {
     document.getElementById('editItemId').value = itemId;
     document.getElementById('itemName').value = item.name;
     document.getElementById('itemDescription').value = item.description || '';
-    document.getElementById('itemBarcode').value = item.barcode || '';
+    document.getElementById('itemBarcode')?.setAttribute('value', item.barcode || '');
     document.getElementById('itemOpeningStock').value = item.openingStock || 0;
     document.getElementById('itemStock').value = item.stock;
     document.getElementById('itemPurchasePrice').value = parseFloat(item.purchasePrice || 0).toFixed(2);
     document.getElementById('itemSalePrice').value = parseFloat(item.salePrice || 0).toFixed(2);
     document.getElementById('itemLowStockThreshold').value = item.lowStockThreshold || DEFAULT_LOW_STOCK_THRESHOLD;
+    document.getElementById('itemPurchaseDate').value = item.purchaseDate || '';
     updateStockConsumed();
     updateProfitMargin();
     document.getElementById('itemModal').style.display = 'flex';
@@ -586,7 +589,8 @@ async function handleFormSubmit(e) {
     
     const name = document.getElementById('itemName').value.trim();
     const description = document.getElementById('itemDescription').value.trim();
-    const barcode = document.getElementById('itemBarcode').value.trim();
+    const barcode = document.getElementById('itemBarcode')?.value?.trim() || '';
+    const purchaseDateInput = document.getElementById('itemPurchaseDate').value;
     const stockInput = document.getElementById('itemStock').value;
     const purchasePriceInput = document.getElementById('itemPurchasePrice').value;
     const salePriceInput = document.getElementById('itemSalePrice').value;
@@ -685,6 +689,7 @@ async function handleFormSubmit(e) {
         name,
         description,
         barcode: barcode || null,
+        purchaseDate: purchaseDateInput || null,
         openingStock,
         stock,
         purchasePrice,
@@ -851,8 +856,9 @@ function onBarcodeSuccess(decodedText, decodedResult) {
     // Stop scanner
     stopBarcodeScanner();
     
-    // Populate barcode field
-    document.getElementById('itemBarcode').value = decodedText;
+    // Populate barcode field (if visible)
+    const barcodeEl = document.getElementById('itemBarcode');
+    if (barcodeEl) barcodeEl.value = decodedText;
     
     // Look up product by barcode in existing inventory
     const existingProduct = inventory.find(item => 

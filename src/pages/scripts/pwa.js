@@ -33,13 +33,6 @@ async function registerServiceWorker() {
             showNotification('App updated', 'The app has been updated to the latest version');
         });
         
-        // Check for updates periodically
-        setInterval(() => {
-            if (isOnline) {
-                registration.update();
-            }
-        }, 60000); // Check every minute
-        
         return registration;
     } catch (error) {
         console.error('❌ Service Worker registration failed:', error);
