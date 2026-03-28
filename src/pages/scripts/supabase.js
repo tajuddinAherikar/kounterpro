@@ -32,6 +32,7 @@ function setActiveShopId(shopId) {
 if (typeof window !== 'undefined' && typeof window.supabase !== 'undefined') {
     try {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = supabaseClient; // expose globally for offline-sync / inventory-sync
         console.log('✅ Supabase initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing Supabase:', error);
@@ -50,6 +51,7 @@ function initSupabase() {
     
     try {
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.supabaseClient = supabaseClient; // expose globally for offline-sync / inventory-sync
         console.log('✅ Supabase initialized successfully');
         return supabaseClient;
     } catch (error) {
@@ -409,6 +411,9 @@ async function supabaseUpdateUserProfile(userId, profileData) {
         }
         if (profileData.dashboard_pin !== undefined) {
             updateData.dashboard_pin = profileData.dashboard_pin; // null = remove PIN
+        }
+        if (profileData.quick_bill_enabled !== undefined) {
+            updateData.quick_bill_enabled = profileData.quick_bill_enabled;
         }
         
         const { data, error } = await supabaseClient

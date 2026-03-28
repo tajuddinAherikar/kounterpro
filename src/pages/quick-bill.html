@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quick Bill - KounterPro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" href="./styles/styles.css">
+    <link rel="stylesheet" href="./styles/styles-new.css">
+    <link rel="stylesheet" href="./styles/dark-mode.css">
+    <script src="./scripts/dark-mode.js"></script>
+    <style>
+        /* ── Invoice mode tab switcher ───────────────── */
+        .inv-mode-switcher {
+            display: inline-flex; align-items: center;
+            background: #f0f3ff; border: 1.5px solid #e0e4f8;
+            border-radius: 28px; padding: 4px; gap: 2px;
+            margin-bottom: 14px; align-self: flex-start;
+        }
+        .inv-mode-tab {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: 22px;
+            font-size: 13px; font-weight: 600; color: #6b7280;
+            text-decoration: none; white-space: nowrap;
+            transition: all .15s; cursor: default;
+        }
+        .inv-mode-tab--active {
+            background: #2845D6; color: #fff;
+            box-shadow: 0 2px 6px rgba(40,69,214,.25);
+        }
+        a.inv-mode-tab:not(.inv-mode-tab--active) { cursor: pointer; }
+        a.inv-mode-tab:not(.inv-mode-tab--active):hover { background: rgba(40,69,214,.1); color: #2845D6; }
+        body.dark-mode .inv-mode-switcher { background: #1a2030; border-color: #2d3748; }
+        body.dark-mode .inv-mode-tab { color: #94a3b8; }
+        body.dark-mode .inv-mode-tab--active { background: #2845D6; color: #fff; }
+        /* ── Quick Bill specific styles ───────────────── */
+        .qb-form { display: flex; flex-direction: column; gap: 14px; }
+        .qb-card { background: #fff; border: 1px solid #e8ecf0; border-radius: 10px; padding: 18px 20px; margin-bottom: 0; box-shadow: 0 1px 3px rgba(0,0,0,.04); min-width: 0; box-sizing: border-box; }
+        .qb-card-title { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #7f8c8d; margin-bottom: 12px; }
+        .qb-card-title .material-icons { font-size: 16px; color: #2845D6; }
+        .qb-header-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+        .qb-header-row > .qb-field { flex: 1 1 140px; }
+        .qb-header-row > .qb-field:last-child { flex: 0 0 auto; }
+        .qb-field { display: flex; flex-direction: column; gap: 4px; }
+        .qb-field label { font-size: 12px; font-weight: 600; color: #7f8c8d; }
+        .qb-field input, .qb-field select { height: 40px; border-radius: 8px; border: 1.5px solid #dde1e7; padding: 0 12px; font-size: 14px; background: #fff; color: #111; font-family: 'DM Sans', sans-serif; transition: border-color .2s; box-sizing: border-box; }
+        .qb-field input:focus, .qb-field select:focus { outline: none; border-color: #2845D6; box-shadow: 0 0 0 3px rgba(40,69,214,.1); }
+
+        /* GST toggle small */
+        .gst-toggle-row { display: flex; align-items: center; gap: 10px; height: 40px; }
+        .gst-onoff-switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .gst-onoff-switch input { opacity: 0; width: 0; height: 0; }
+        .gst-onoff-slider { position: absolute; cursor: pointer; inset: 0; background: #ccc; border-radius: 24px; transition: .2s; }
+        .gst-onoff-slider:before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; }
+        .gst-onoff-switch input:checked + .gst-onoff-slider { background: #2845D6; }
+        .gst-onoff-switch input:checked + .gst-onoff-slider:before { transform: translateX(20px); }
+        .gst-label { font-size: 13px; font-weight: 600; }
+
+        /* Items table */
+        .qb-table-wrap { overflow-x: auto; }
+        .qb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .qb-table th { background: #f8f9fa; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; padding: 10px 10px; text-align: left; color: #7f8c8d; border-bottom: 2px solid #ecf0f1; }
+        .qb-table td { padding: 8px 6px; border-bottom: 1px solid #ecf0f1; vertical-align: middle; }
+        .qb-table tbody tr:last-child td { border-bottom: none; }
+        .qb-table tbody tr:hover { background: #f8f9fa; }
+        .qb-table input[type="text"], .qb-table input[type="number"] { width: 100%; border: 1.5px solid transparent; border-radius: 6px; padding: 6px 8px; font-size: 13px; background: transparent; color: #2c3e50; transition: border-color .15s; font-family: 'DM Sans', sans-serif; }
+        .qb-table input:focus { outline: none; border-color: #2845D6; background: #fff; box-shadow: 0 0 0 3px rgba(40,69,214,.08); }
+        .qb-table .col-desc { min-width: 130px; }
+        .qb-table .col-qty  { width: 66px; }
+        .qb-table .col-rate { width: 90px; }
+        .qb-table .col-gst  { width: 80px; }
+        .qb-table .col-disc { width: 70px; }
+        .qb-table .col-amt  { width: 90px; text-align: right; font-weight: 600; padding-right: 10px; }
+        .qb-table .col-del  { width: 36px; text-align: center; }
+        .btn-del-row { border: none; background: none; color: #e74c3c; cursor: pointer; padding: 4px; border-radius: 4px; font-size: 16px; line-height: 1; }
+        .btn-del-row:hover { background: #fef2f2; }
+        .btn-add-row { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #2845D6; border: none; background: none; cursor: pointer; padding: 8px 4px; }
+        .btn-add-row:hover { color: #1a33b8; }
+
+        /* Totals */
+        .qb-totals { margin-left: auto; min-width: 260px; }
+        .qb-total-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; font-size: 13px; color: #7f8c8d; }
+        .qb-total-row.grand { font-size: 16px; font-weight: 700; color: #0d1a63; border-top: 2px solid #e8ecf0; padding-top: 8px; margin-top: 6px; }
+
+        /* Customer optional */
+        .qb-customer-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media(max-width:600px){ .qb-customer-row { grid-template-columns: 1fr; } }
+
+        /* Payment pills */
+        .qb-payment-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+        .qb-pill { cursor: pointer; }
+        .qb-pill input { display: none; }
+        .qb-pill span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; border: 1.5px solid #e5e7eb; font-size: 13px; font-weight: 600; transition: all .15s; }
+        .qb-pill input:checked + span { background: #2845D6; color: #fff; border-color: #2845D6; }
+
+        /* Action buttons */
+        .qb-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+        .btn-print { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 600; background: #2845D6; color: #fff; font-family: 'DM Sans', sans-serif; transition: background .2s; }
+        .btn-print:hover { background: #1a33b8; }
+        .btn-save-only { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 8px; border: 1.5px solid #dde1e7; cursor: pointer; font-size: 14px; font-weight: 600; background: #fff; color: #374151; font-family: 'DM Sans', sans-serif; transition: border-color .2s, color .2s; }
+        .btn-save-only:hover { border-color: #2845D6; color: #2845D6; }
+
+        /* ── Thermal Print Styles (only active in print) ─ */
+        @media print {
+            body * { visibility: hidden !important; }
+            #thermalPrintArea, #thermalPrintArea * { visibility: visible !important; }
+            #thermalPrintArea { position: fixed; top: 0; left: 0; width: 80mm; padding: 4mm 3mm; background: #fff; color: #000; font-family: 'Courier New', monospace; font-size: 11px; }
+        }
+        #thermalPrintArea { display: none; }
+
+        /* ── Dark mode ──────────────────────────────────── */
+        body.dark-mode .qb-card,
+        [data-theme="dark"] .qb-card {
+            background: #1e2836;
+            border-color: #2d3748;
+        }
+        body.dark-mode .qb-card-title,
+        [data-theme="dark"] .qb-card-title { color: #9ca3af; }
+        body.dark-mode .qb-field label,
+        [data-theme="dark"] .qb-field label { color: #9ca3af; }
+        body.dark-mode .qb-field input,
+        body.dark-mode .qb-field select,
+        [data-theme="dark"] .qb-field input,
+        [data-theme="dark"] .qb-field select {
+            background: #253040;
+            border-color: #3a4a5c;
+            color: #e2e8f0;
+        }
+        body.dark-mode .qb-table th,
+        [data-theme="dark"] .qb-table th { background: #253040; color: #9ca3af; border-color: #3a4a5c; }
+        body.dark-mode .qb-table td,
+        [data-theme="dark"] .qb-table td { border-color: #2d3748; }
+        body.dark-mode .qb-table tbody tr:hover,
+        [data-theme="dark"] .qb-table tbody tr:hover { background: #253040; }
+        body.dark-mode .qb-table input,
+        [data-theme="dark"] .qb-table input { color: #e2e8f0; }
+        body.dark-mode .qb-total-row,
+        [data-theme="dark"] .qb-total-row { color: #9ca3af; }
+        body.dark-mode .qb-total-row.grand,
+        [data-theme="dark"] .qb-total-row.grand { color: #e2e8f0; border-color: #3a4a5c; }
+        body.dark-mode .gst-label,
+        [data-theme="dark"] .gst-label { color: #e2e8f0; }
+        body.dark-mode .btn-save-only,
+        [data-theme="dark"] .btn-save-only { background: #253040; border-color: #3a4a5c; color: #e2e8f0; }
+        body.dark-mode .btn-add-row,
+        [data-theme="dark"] .btn-add-row { color: #7b9ef0; }
+    </style>
+</head>
+<body class="modern-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons logo-icon">store</span>
+                <span class="logo-text">KounterPro</span>
+            </div>
+            <button class="sidebar-toggle" id="sidebarToggle" title="Toggle Sidebar">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="index.html" class="nav-item" title="Dashboard">
+                <span class="material-icons">dashboard</span>
+                <span class="nav-text">Dashboard</span>
+            </a>
+            <div class="nav-group open active-group" id="navGroupInvoices">
+                <button class="nav-group-toggle" title="Invoices" onclick="toggleNavGroup('navGroupInvoices')">
+                    <span class="material-icons">receipt_long</span>
+                    <span class="nav-text">Invoices</span>
+                    <span class="material-icons nav-chevron">expand_more</span>
+                </button>
+                <div class="nav-submenu">
+                    <a href="invoices.html" class="nav-item nav-sub-item" title="All Invoices">
+                        <span class="material-icons">receipt_long</span>
+                        <span class="nav-text">All Invoices</span>
+                    </a>
+                    <a href="quotations.html" class="nav-item nav-sub-item" title="Quotations">
+                        <span class="material-icons">request_quote</span>
+                        <span class="nav-text">Quotations</span>
+                    </a>
+                </div>
+            </div>
+            <a href="inventory.html" class="nav-item" title="Inventory">
+                <span class="material-icons">inventory_2</span>
+                <span class="nav-text">Inventory</span>
+            </a>
+            <a href="customers.html" class="nav-item" title="Customers">
+                <span class="material-icons">people</span>
+                <span class="nav-text">Customers</span>
+            </a>
+            <a href="expenses.html" class="nav-item" title="Expenses">
+                <span class="material-icons">receipt</span>
+                <span class="nav-text">Expenses</span>
+            </a>
+            <a href="reports.html" class="nav-item" title="Reports">
+                <span class="material-icons">bar_chart</span>
+                <span class="nav-text">Reports</span>
+            </a>
+            <a href="profile.html" class="nav-item" title="Business Profile">
+                <span class="material-icons">business</span>
+                <span class="nav-text">Profile</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" id="installAppBtn" onclick="window.PWA ? window.PWA.promptToInstall() : alert('Installation not available in this browser'); return false;" title="Install App">
+                <span class="material-icons">download</span>
+                <span class="nav-text">Install App</span>
+            </a>
+            <a href="#" class="nav-item" onclick="exportBackup(); return false;" title="Backup Data">
+                <span class="material-icons">cloud_download</span>
+                <span class="nav-text">Backup</span>
+            </a>
+            <a href="#" class="nav-item" onclick="document.getElementById('restoreFileInput').click(); return false;" title="Restore Data">
+                <span class="material-icons">cloud_upload</span>
+                <span class="nav-text">Restore</span>
+            </a>
+            <a href="#" class="nav-item nav-logout" onclick="logout(); return false;" title="Logout">
+                <span class="material-icons">logout</span>
+                <span class="nav-text">Logout</span>
+            </a>
+        </nav>
+        <div class="app-version sidebar-version"></div>
+    </aside>
+
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <div class="mobile-header-left">
+            <button class="mobile-menu-btn" id="mobileMenuBtn">
+                <span class="material-icons">menu</span>
+            </button>
+        </div>
+        <h1 class="mobile-header-title">Quick Bill</h1>
+        <div class="mobile-header-right">
+            <button class="mobile-dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                <span class="material-icons">dark_mode</span>
+            </button>
+            <button class="mobile-notification-btn" id="mobileNotificationBtn">
+                <span class="material-icons">notifications</span>
+                <span class="notification-badge" id="mobileNotificationBadge" style="display: none;">0</span>
+            </button>
+            <button class="mobile-profile-btn" onclick="window.location.href='profile.html'">
+                <span class="material-icons">account_circle</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="top-header">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span class="material-icons">menu</span> Menu
+                </button>
+                <h1 class="page-title">Quick Bill</h1>
+                <p class="page-subtitle">Fast invoice for walk-in customers — no customer details required</p>
+            </div>
+            <div class="header-right">
+                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle dark mode">
+                    <span class="material-icons">dark_mode</span>
+                </button>
+                <button class="notification-btn" id="notificationBtn" title="Notifications">
+                    <span class="material-icons">notifications</span>
+                    <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                </button>
+            </div>
+        </header>
+
+        <div class="notification-dropdown" id="notificationDropdown">
+            <div class="notification-header">
+                <h3>Notifications</h3>
+                <button class="btn-text" onclick="markAllAsRead()">Mark all as read</button>
+            </div>
+            <div class="notification-list" id="notificationList">
+                <div class="notification-empty">
+                    <span class="material-icons">notifications_none</span>
+                    <p>No notifications</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="qb-form">
+
+            <!-- ── Invoice Mode Switcher ── -->
+            <div class="inv-mode-switcher">
+                <a href="create-bill.html" class="inv-mode-tab" style="text-decoration:none;">
+                    <span class="material-icons" style="font-size:16px;">receipt_long</span>
+                    Full Invoice
+                </a>
+                <span class="inv-mode-tab inv-mode-tab--active">
+                    <span class="material-icons" style="font-size:16px;">bolt</span>
+                    Quick Invoice
+                </span>
+            </div>
+
+            <!-- Header: Invoice No / Date / GST -->
+            <div class="qb-card">
+                <div class="qb-card-title"><span class="material-icons" style="font-size:16px;">receipt</span> Bill Info</div>
+                <div class="qb-header-row">
+                    <div class="qb-field">
+                        <label>Bill No</label>
+                        <input type="text" id="qbBillNo" placeholder="Generating…" readonly>
+                    </div>
+                    <div class="qb-field">
+                        <label>Date</label>
+                        <input type="date" id="qbDate">
+                    </div>
+                    <div class="qb-field">
+                        <label>GST</label>
+                        <div class="gst-toggle-row">
+                            <label class="gst-onoff-switch">
+                                <input type="checkbox" id="qbGstToggle" checked onchange="qbHandleGstToggle(this)">
+                                <span class="gst-onoff-slider"></span>
+                            </label>
+                            <span class="gst-label" id="qbGstLabel">ON</span>
+                            <select id="qbGstRate" style="height:32px;border-radius:6px;border:1.5px solid #e5e7eb;padding:0 8px;font-size:13px;">
+                                <option value="5">5%</option>
+                                <option value="12">12%</option>
+                                <option value="18" selected>18%</option>
+                                <option value="28">28%</option>
+                            </select>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Optional Customer -->
+            <div class="qb-card">
+                <div class="qb-card-title"><span class="material-icons" style="font-size:16px;">person_outline</span> Customer <span style="font-weight:400;text-transform:none;margin-left:6px;font-size:12px;">(optional)</span></div>
+                <div class="qb-customer-row">
+                    <div class="qb-field">
+                        <label>Customer Name</label>
+                        <input type="text" id="qbCustomerName" placeholder="Walk-in Customer">
+                    </div>
+                    <div class="qb-field">
+                        <label>Mobile</label>
+                        <input type="tel" id="qbCustomerMobile" placeholder="Phone number" maxlength="12">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="qb-card">
+                <div class="qb-card-title"><span class="material-icons" style="font-size:16px;">list</span> Items</div>
+                <div class="qb-table-wrap">
+                    <table class="qb-table">
+                        <thead>
+                            <tr>
+                                <th class="col-desc">Description</th>
+                                <th class="col-qty">Qty</th>
+                                <th class="col-rate">Rate (₹)</th>
+                                <th class="col-disc">Disc %</th>
+                                <th class="col-gst qb-gst-col">GST %</th>
+                                <th class="col-amt">Amount</th>
+                                <th class="col-del"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="qbItemsBody">
+                            <!-- rows injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+                <button type="button" class="btn-add-row" onclick="qbAddRow()">
+                    <span class="material-icons" style="font-size:16px;">add_circle_outline</span> Add Item
+                </button>
+
+                <!-- Totals -->
+                <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+                    <div class="qb-totals">
+                        <div class="qb-total-row qb-gst-rows" id="qbSubtotalRow">
+                            <span>Subtotal (excl. GST)</span>
+                            <span id="qbSubtotal">₹0.00</span>
+                        </div>
+                        <div class="qb-total-row qb-gst-rows" id="qbCgstRow">
+                            <span>CGST (<span id="qbDisplayCgstRate">9</span>%)</span>
+                            <span id="qbCgstAmt">₹0.00</span>
+                        </div>
+                        <div class="qb-total-row qb-gst-rows" id="qbSgstRow">
+                            <span>SGST (<span id="qbDisplaySgstRate">9</span>%)</span>
+                            <span id="qbSgstAmt">₹0.00</span>
+                        </div>
+                        <div class="qb-total-row grand">
+                            <span>TOTAL</span>
+                            <span id="qbGrandTotal">₹0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment -->
+            <div class="qb-card">
+                <div class="qb-card-title"><span class="material-icons" style="font-size:16px;">payments</span> Payment Method</div>
+                <div class="qb-payment-pills">
+                    <label class="qb-pill">
+                        <input type="radio" name="qbPayment" value="cash" checked>
+                        <span><span class="material-icons" style="font-size:16px;">payments</span> Cash</span>
+                    </label>
+                    <label class="qb-pill">
+                        <input type="radio" name="qbPayment" value="upi">
+                        <span><span class="material-icons" style="font-size:16px;">qr_code</span> UPI</span>
+                    </label>
+                    <label class="qb-pill">
+                        <input type="radio" name="qbPayment" value="card">
+                        <span><span class="material-icons" style="font-size:16px;">credit_card</span> Card</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="qb-actions">
+                <button type="button" class="btn-save-only" id="qbSaveBtn" onclick="qbSave(false)">
+                    <span class="material-icons">save</span> Save Bill
+                </button>
+                <button type="button" class="btn-print" id="qbPrintBtn" onclick="qbSave(true)">
+                    <span class="material-icons">print</span> Save &amp; Print
+                </button>
+            </div>
+
+        </div><!-- /qb-form -->
+    </div><!-- /main-content -->
+
+    <!-- ── Thermal Print Area (hidden on screen, visible during print) ── -->
+    <div id="thermalPrintArea"></div>
+
+    <!-- Hidden file input for restore -->
+    <input type="file" id="restoreFileInput" accept=".json" style="display: none;">
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./scripts/dialog.js"></script>
+    <script src="./scripts/toast.js"></script>
+    <script src="./scripts/pwa.js"></script>
+    <script src="./scripts/indexed-db.js"></script>
+    <script src="./scripts/offline-sync.js"></script>
+    <script src="./scripts/supabase.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/backup.js"></script>
+    <script src="./scripts/notifications.js"></script>
+    <script src="./scripts/quick-bill.js"></script>
+    <script>
+        // Sidebar toggle
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.querySelector('.sidebar');
+            const toggleBtn = document.getElementById('sidebarToggle');
+            const mobileToggle = document.getElementById('mobileMenuToggle');
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (toggleBtn) toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+            });
+            [mobileToggle, mobileMenuBtn].forEach(btn => {
+                if (btn) btn.addEventListener('click', () => {
+                    sidebar.classList.add('show');
+                    if (overlay) overlay.classList.add('show');
+                });
+            });
+            if (overlay) overlay.addEventListener('click', () => {
+                sidebar.classList.remove('show');
+                overlay.classList.remove('show');
+            });
+            if (window.innerWidth > 768 && localStorage.getItem('sidebarCollapsed') === 'true') {
+                sidebar.classList.add('collapsed');
+            }
+        });
+    </script>
+</body>
+</html>

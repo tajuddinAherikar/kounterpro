@@ -664,6 +664,8 @@ function setupAutocomplete(input, rateInput, quantityInput) {
     // Input event - show suggestions
     input.addEventListener('input', function() {
         const val = this.value.toLowerCase();
+        // Clear saved inventory_id when user types freely
+        delete this.dataset.inventoryId;
         closeAllLists();
         
         if (!val || val.length < 1) return;
@@ -712,6 +714,7 @@ function setupAutocomplete(input, rateInput, quantityInput) {
                 }
                 
                 input.value = item.name;
+                input.dataset.inventoryId = item.id; // store for offline deduction
                 rateInput.value = item.rate.toFixed(2);
                 quantityInput.value = Math.min(1, item.stock); // Default to 1 or max stock
                 
@@ -792,7 +795,7 @@ function setupAutocomplete(input, rateInput, quantityInput) {
 async function generateInvoiceNumber() {
     try {
         // CHECK IF OFFLINE - if so, use temporary local number
-        if (!navigator.onLine || (typeof window.PWA !== 'undefined' && !window.PWA.isOnline())) {
+        if (!navigator.onLine) {
             console.log('⚠️ Offline - generating temporary invoice number');
             
             // Generate temporary offline invoice number
@@ -1035,11 +1038,13 @@ async function collectFormData() {
             hsnCode: hsnCode || '',
             serialNo: serialNo || '',
             quantity,
+            qty: quantity, // alias used by offline inventory deduction
             rate: rateExclGST,
             rateInclGST: rateInclGST,
             discount_percent: parseFloat(row.querySelector('.item-discount')?.value) || 0,
             gstRate: taxMode === 'with-tax' ? itemGstRate : 0,
-            amount: amountExclGST
+            amount: amountExclGST,
+            inventory_id: row.querySelector('.item-description')?.dataset?.inventoryId || null
         });
         
         subtotal += amountExclGST;
@@ -1943,6 +1948,21 @@ async function initForm() {
             invoiceNumberField.value = 'Generating...';
             const generatedNumber = await generateInvoiceNumber();
             invoiceNumberField.value = generatedNumber;
+
+            // If we got a DRAFT number (offline at load time), upgrade it once we come online
+            if (generatedNumber.startsWith('DRAFT-')) {
+                const upgradeOnOnline = async () => {
+                    window.removeEventListener('online', upgradeOnOnline);
+                    // Give auth session a moment to restore
+                    await new Promise(r => setTimeout(r, 1500));
+                    const realNumber = await generateInvoiceNumber();
+                    if (!realNumber.startsWith('DRAFT-')) {
+                        invoiceNumberField.value = realNumber;
+                        showToast('✅ Invoice number updated: ' + realNumber, 'success');
+                    }
+                };
+                window.addEventListener('online', upgradeOnOnline);
+            }
         }
         
         // Set default date to today

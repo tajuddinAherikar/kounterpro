@@ -5598,11 +5598,9 @@ body.dark-mode .pin-status-set  { color: #34d399; }
 
 /* ── Top row: (header strip + customer) | summary panel ── */
 .inv-top-row {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 280px;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
     gap: 16px;
-    align-items: start;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 14px;
@@ -5620,13 +5618,6 @@ body.dark-mode .pin-status-set  { color: #34d399; }
     grid-column: 1;
     grid-row: 2;
     margin-bottom: 0;
-}
-
-/* summary panel: col 2, spans both rows */
-.inv-top-row > .inv-summary-panel {
-    grid-column: 2;
-    grid-row: 1 / 3;
-    align-self: stretch;
 }
 
 /* ── Full-width main area below the top row ───────────── */
@@ -5832,6 +5823,7 @@ body.dark-mode .pin-status-set  { color: #34d399; }
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
+    margin-bottom: 14px;
 }
 
 .summary-card {
@@ -5875,7 +5867,7 @@ body.dark-mode .pin-status-set  { color: #34d399; }
 
 .summary-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8px;
     margin-top: 18px;
     padding-top: 16px;
@@ -5883,7 +5875,7 @@ body.dark-mode .pin-status-set  { color: #34d399; }
 }
 .summary-actions .btn-primary,
 .summary-actions .btn-secondary {
-    width: 100%;
+    flex: 1;
     justify-content: center;
 }
 
@@ -5949,25 +5941,8 @@ body.dark-mode .inv-header-field .edit-invoice-number-btn {
 
 /* ── Responsive: collapse top row on mobile ─────────── */
 @media (max-width: 900px) {
-    .inv-top-row {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto;
-    }
-    .inv-top-row > .inv-header-strip,
-    .inv-top-row > .inv-block,
-    .inv-top-row > .inv-summary-panel {
-        grid-column: 1;
-        grid-row: auto;
-    }
     .inv-header-strip {
         gap: 12px;
-    }
-    .summary-actions {
-        flex-direction: row;
-    }
-    .summary-actions .btn-primary,
-    .summary-actions .btn-secondary {
-        flex: 1;
     }
     .customer-secondary-fields {
         grid-template-columns: 1fr;
@@ -6248,3 +6223,9 @@ body.dark-mode .item-gst,
 
 /* ── Hide GST% column when tax is OFF ────────────────── */
 #itemsTable.hide-gst-col .col-gst-pct { display: none; }
+
+
+/* utility-classes  */
+    .margin-bottom-1 {
+        margin-bottom: 14px !important;
+    }

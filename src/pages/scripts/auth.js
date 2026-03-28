@@ -303,6 +303,12 @@ async function addUserProfileDropdown() {
 
             // Apply logo to mobile-profile-btn if it has just the default icon
             applyLogoToMobileAvatar(logoUrl);
+
+            // Show Quick Bill switcher pill on create-bill.html if enabled in profile
+            const quickBillSwitcher = document.getElementById('quickBillSwitcher');
+            if (quickBillSwitcher && profileData?.quick_bill_enabled === true) {
+                quickBillSwitcher.style.display = '';
+            }
         }
     }
 }

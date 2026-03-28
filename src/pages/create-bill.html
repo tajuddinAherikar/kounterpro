@@ -12,6 +12,30 @@
     <link rel="stylesheet" href="./styles/styles-new.css">
     <link rel="stylesheet" href="./styles/dark-mode.css">
     <script src="./scripts/dark-mode.js"></script>
+    <style>
+        .inv-mode-switcher {
+            display: inline-flex; align-items: center;
+            background: #f0f3ff; border: 1.5px solid #e0e4f8;
+            border-radius: 28px; padding: 4px; gap: 2px;
+            margin-bottom: 14px; align-self: flex-start;
+        }
+        .inv-mode-tab {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: 22px;
+            font-size: 13px; font-weight: 600; color: #6b7280;
+            text-decoration: none; white-space: nowrap;
+            transition: all .15s; cursor: default;
+        }
+        .inv-mode-tab--active {
+            background: #2845D6; color: #fff;
+            box-shadow: 0 2px 6px rgba(40,69,214,.25);
+        }
+        a.inv-mode-tab:not(.inv-mode-tab--active) { cursor: pointer; }
+        a.inv-mode-tab:not(.inv-mode-tab--active):hover { background: rgba(40,69,214,.1); color: #2845D6; }
+        body.dark-mode .inv-mode-switcher { background: #1a2030; border-color: #2d3748; }
+        body.dark-mode .inv-mode-tab { color: #94a3b8; }
+        body.dark-mode .inv-mode-tab--active { background: #2845D6; color: #fff; }
+    </style>
 </head>
 <body class="modern-layout">
     <!-- Sidebar Navigation -->
@@ -148,6 +172,18 @@
 
         <form id="invoiceForm" class="invoice-form">
 
+            <!-- ── Invoice Mode Switcher (shown when quick_bill_enabled = true) ── -->
+            <div class="inv-mode-switcher" id="quickBillSwitcher" style="display:none;">
+                <span class="inv-mode-tab inv-mode-tab--active">
+                    <span class="material-icons" style="font-size:16px;">receipt_long</span>
+                    Full Invoice
+                </span>
+                <a href="quick-bill.html" class="inv-mode-tab" style="text-decoration:none;">
+                    <span class="material-icons" style="font-size:16px;">bolt</span>
+                    Quick Invoice
+                </a>
+            </div>
+
             <!-- ── Top Row: header-strip + customer (left) | summary (right, row-span) ── -->
             <div class="inv-top-row">
             <div class="inv-header-strip">
@@ -180,6 +216,7 @@
                 <input type="hidden" id="sgstRate" value="9">
                 <input type="hidden" id="cgstRate" value="9">
                 <span style="display:none;" id="totalGstRate">18</span>
+
             </div><!-- /inv-header-strip -->
 
                 <!-- Customer Block (in top-left, below header strip) -->
@@ -227,38 +264,6 @@
                     </div>
                 </div><!-- /customer block -->
 
-                <!-- RIGHT: Summary Panel -->
-                <div class="inv-summary-panel">
-                    <div class="summary-card">
-                        <div class="summary-title">Summary</div>
-                        <div class="totals-section" id="totalsSection">
-                            <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
-                                <span>Discount Saved:</span>
-                                <span id="discountSaving">-₹0.00</span>
-                            </div>
-                            <div class="total-row" id="subtotalRow">
-                                <span>Subtotal (excl. GST):</span>
-                                <span id="subtotal">₹0.00</span>
-                            </div>
-                            <div class="total-row" id="sgstRow">
-                                <span>GST:</span>
-                                <span id="sgstAmount">₹0.00</span>
-                            </div>
-                            <!-- hidden for backward compat -->
-                            <div id="cgstRow" style="display:none;"><span id="cgstAmount"></span><span id="displaySgstRate"></span><span id="displayCgstRate"></span></div>
-                            <div class="total-row grand-total">
-                                <span>Grand Total:</span>
-                                <span id="grandTotal">₹0.00</span>
-                            </div>
-                        </div>
-                        <div class="summary-actions">
-                            <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
-                            <button type="submit" class="btn-primary" id="submitBtn">
-                                <span class="material-icons">save</span> Save Invoice
-                            </button>
-                        </div>
-                    </div>
-                </div><!-- /inv-summary-panel -->
 
             </div><!-- /inv-top-row -->
 
@@ -346,6 +351,39 @@
                         </div>
                         <span class="error-message" id="itemsError"></span>
                     </div>
+
+                    <!-- Summary Panel -->
+                    <div class="inv-summary-panel">
+                        <div class="summary-card">
+                            <div class="summary-title">Summary</div>
+                            <div class="totals-section" id="totalsSection">
+                                <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
+                                    <span>Discount Saved:</span>
+                                    <span id="discountSaving">-₹0.00</span>
+                                </div>
+                                <div class="total-row" id="subtotalRow">
+                                    <span>Subtotal (excl. GST):</span>
+                                    <span id="subtotal">₹0.00</span>
+                                </div>
+                                <div class="total-row" id="sgstRow">
+                                    <span>GST:</span>
+                                    <span id="sgstAmount">₹0.00</span>
+                                </div>
+                                <!-- hidden for backward compat -->
+                                <div id="cgstRow" style="display:none;"><span id="cgstAmount"></span><span id="displaySgstRate"></span><span id="displayCgstRate"></span></div>
+                                <div class="total-row grand-total">
+                                    <span>Grand Total:</span>
+                                    <span id="grandTotal">₹0.00</span>
+                                </div>
+                            </div>
+                            <div class="summary-actions">
+                                <button type="button" class="btn-secondary" onclick="window.location.href='index.html'">Cancel</button>
+                                <button type="submit" class="btn-primary" id="submitBtn">
+                                    <span class="material-icons">save</span> Save Invoice
+                                </button>
+                            </div>
+                        </div>
+                    </div><!-- /inv-summary-panel -->
 
                     <!-- Payment Block -->
                     <div class="inv-block">

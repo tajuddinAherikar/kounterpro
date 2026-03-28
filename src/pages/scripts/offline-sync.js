@@ -29,7 +29,14 @@ const SyncState = {
 
 /** Start sync when device comes online */
 window.addEventListener('online', async () => {
-    console.log('🔗 Device is online - starting sync...');
+    console.log('🔗 Device is online - waiting for Supabase auth...');
+    // Wait for Supabase to initialize and restore the session from storage
+    if (typeof ensureSupabaseReady === 'function') {
+        await ensureSupabaseReady();
+    }
+    // Give the auth session a moment to restore from localStorage
+    await new Promise(r => setTimeout(r, 1500));
+    console.log('🔗 Auth ready - starting sync...');
     await syncOfflineChanges();
     // Also sync inventory if inventory-sync module is loaded
     if (typeof syncInventoryChanges !== 'undefined') {
@@ -198,7 +205,10 @@ async function syncItem(queueItem) {
 
 /** Sync invoice to Supabase */
 async function syncInvoice(localInvoiceId, invoiceData, action) {
-    // Check if user is authenticated
+    // Ensure Supabase is initialized before proceeding
+    if (typeof ensureSupabaseReady === 'function') {
+        await ensureSupabaseReady();
+    }
     if (!window.supabaseClient) {
         throw new Error('Supabase not initialized');
     }
@@ -208,16 +218,47 @@ async function syncInvoice(localInvoiceId, invoiceData, action) {
         throw new Error('User not authenticated');
     }
 
-    // Prepare invoice for upload
+    // Prepare invoice for upload — only include real Supabase column names.
+    // invoiceData comes from collectFormData() which has camelCase aliases that
+    // don't exist as DB columns (e.g. `address`, `mobile`, `gstNumber`).
+    // Mirror the exact mapping used in supabaseAddInvoice().
+    let paymentStatus = 'paid';
+    let amountPaid = invoiceData.totalAmount ?? invoiceData.grandTotal ?? 0;
+    let amountDue = 0;
+    if (invoiceData.paymentType === 'credit') {
+        if (invoiceData.amountPaid && invoiceData.amountPaid > 0) {
+            amountPaid = invoiceData.amountPaid;
+            amountDue = (invoiceData.totalAmount ?? invoiceData.grandTotal ?? 0) - amountPaid;
+            paymentStatus = amountDue > 0 ? 'partial' : 'paid';
+        } else {
+            amountPaid = 0;
+            amountDue = invoiceData.totalAmount ?? invoiceData.grandTotal ?? 0;
+            paymentStatus = 'unpaid';
+        }
+    }
+
     const invoiceToUpload = {
-        ...invoiceData,
-        user_id: user.id,
-        // Remove local-only fields
-        sync_status: undefined,
-        synced_at: undefined,
-        local_modified_at: undefined,
-        offline_created: undefined,
-        synced_to_server: undefined
+        user_id:          user.id,
+        shop_id:          invoiceData.shop_id          || null,
+        invoice_number:   invoiceData.invoiceNumber    || invoiceData.invoiceNo,
+        date:             invoiceData.date,
+        customer_id:      invoiceData.customerId       || null,
+        customer_name:    invoiceData.customerName,
+        customer_mobile:  invoiceData.mobile           || invoiceData.customerMobile || null,
+        customer_gst:     invoiceData.gstNumber        || invoiceData.customerGST   || null,
+        customer_address: invoiceData.address          || invoiceData.customerAddress || null,
+        items:            invoiceData.items            || [],
+        subtotal:         invoiceData.subtotal         ?? 0,
+        gst_amount:       invoiceData.gstAmount        ?? 0,
+        gst_rate:         invoiceData.gstRate          ?? 0,
+        total_amount:     invoiceData.totalAmount      ?? invoiceData.grandTotal ?? 0,
+        total_units:      invoiceData.totalUnits       ?? 0,
+        payment_type:     invoiceData.paymentType      || 'cash',
+        payment_status:   paymentStatus,
+        amount_paid:      amountPaid,
+        amount_due:       amountDue,
+        tax_mode:         invoiceData.taxMode          || 'with-tax',
+        discount_amount:  invoiceData.discountAmount   ?? 0,
     };
 
     try {
@@ -242,24 +283,10 @@ async function syncInvoice(localInvoiceId, invoiceData, action) {
 
             if (error) throw error;
 
-            // Also sync invoice items if present
-            if (invoiceData.items && invoiceData.items.length > 0) {
-                const items = invoiceData.items.map(item => ({
-                    ...item,
-                    invoice_id: data[0].id,
-                    user_id: user.id,
-                    // Remove local fields
-                    offline_created: undefined
-                }));
-
-                const { error: itemsError } = await window.supabaseClient
-                    .from('invoice_items')
-                    .insert(items);
-
-                if (itemsError) {
-                    console.error('Warning: Invoice items sync failed:', itemsError);
-                    // Don't throw - invoice was created successfully
-                }
+            // items are stored as a JSON column on invoices — no separate insert needed
+            // Update customer balance if credit
+            if (invoiceToUpload.customer_id && amountDue > 0 && typeof supabaseUpdateCustomerBalance === 'function') {
+                supabaseUpdateCustomerBalance(invoiceToUpload.customer_id).catch(() => {});
             }
 
             return data[0];
@@ -395,9 +422,16 @@ function showSyncUI(status) {
 
 /** Get current authenticated user */
 async function getCurrentUser() {
-    if (!window.supabaseClient) return null;
-
     try {
+        // Use supabase.js helper if available (handles caching + lock-stolen retry)
+        if (typeof supabaseGetCurrentUser === 'function') {
+            return await supabaseGetCurrentUser();
+        }
+        // Fallback: ensure client is ready then call getUser directly
+        if (typeof ensureSupabaseReady === 'function') {
+            await ensureSupabaseReady();
+        }
+        if (!window.supabaseClient) return null;
         const { data } = await window.supabaseClient.auth.getUser();
         return data?.user || null;
     } catch (error) {

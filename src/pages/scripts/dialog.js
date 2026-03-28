@@ -188,6 +188,88 @@ function getDefaultIcon(type) {
 }
 
 /**
+ * Show a status picker dialog for quotation status changes.
+ * @param {string} currentStatus - The current status key ('draft','sent','accepted','rejected')
+ * @returns {Promise<string|null>} - Resolves to new status key, or null on cancel
+ */
+function showStatusPickerDialog(currentStatus) {
+    return new Promise((resolve) => {
+        const statuses = [
+            { key: 'draft',    label: 'Draft',    icon: 'edit_note',    css: 'status-draft' },
+            { key: 'sent',     label: 'Sent',     icon: 'send',         css: 'status-sent' },
+            { key: 'accepted', label: 'Accepted', icon: 'check_circle', css: 'status-accepted' },
+            { key: 'rejected', label: 'Rejected', icon: 'cancel',       css: 'status-rejected' },
+        ];
+        const options = statuses.filter(s => s.key !== currentStatus);
+        const current = statuses.find(s => s.key === currentStatus) || statuses[0];
+
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay show';
+
+        const dialog = document.createElement('div');
+        dialog.className = 'confirmation-dialog';
+        dialog.style.maxWidth = '340px';
+
+        const header = document.createElement('div');
+        header.className = 'dialog-header info';
+        header.innerHTML = `<h2><span class="material-icons icon">swap_horiz</span> Change Status</h2>`;
+
+        const content = document.createElement('div');
+        content.className = 'dialog-content';
+        content.innerHTML = `
+            <p style="margin:0 0 14px;color:var(--text-secondary,#64748b);font-size:13px;">
+                Current:
+                <span class="status-badge ${current.css}" style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;vertical-align:middle;">
+                    <span class="material-icons" style="font-size:13px;">${current.icon}</span>${current.label}
+                </span>
+            </p>
+            <p style="margin:0 0 12px;font-weight:500;font-size:14px;color:var(--text-primary,#1e293b);">Select new status:</p>
+        `;
+
+        const optionsContainer = document.createElement('div');
+        optionsContainer.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+
+        options.forEach(s => {
+            const btn = document.createElement('button');
+            btn.className = `status-badge ${s.css}`;
+            btn.style.cssText = 'display:flex;align-items:center;gap:10px;padding:13px 16px;border-radius:10px;border:1.5px solid transparent;cursor:pointer;font-size:15px;font-weight:500;width:100%;text-align:left;transition:opacity .15s,transform .1s;';
+            btn.innerHTML = `<span class="material-icons" style="font-size:20px;">${s.icon}</span>${s.label}`;
+            btn.onmouseenter = () => { btn.style.opacity = '0.85'; btn.style.transform = 'translateY(-1px)'; };
+            btn.onmouseleave = () => { btn.style.opacity = '1'; btn.style.transform = ''; };
+            btn.onclick = () => { closeDialog(); resolve(s.key); };
+            optionsContainer.appendChild(btn);
+        });
+
+        content.appendChild(optionsContainer);
+
+        const footer = document.createElement('div');
+        footer.className = 'dialog-footer';
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'dialog-btn dialog-btn-cancel';
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.onclick = () => { closeDialog(); resolve(null); };
+        footer.appendChild(cancelBtn);
+
+        dialog.appendChild(header);
+        dialog.appendChild(content);
+        dialog.appendChild(footer);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+
+        const handleKeydown = (e) => {
+            if (e.key === 'Escape') { closeDialog(); resolve(null); }
+        };
+        document.addEventListener('keydown', handleKeydown);
+
+        function closeDialog() {
+            document.removeEventListener('keydown', handleKeydown);
+            overlay.classList.remove('show');
+            setTimeout(() => { if (overlay.parentElement) overlay.parentElement.removeChild(overlay); }, 200);
+        }
+    });
+}
+
+/**
  * Close all open dialogs
  */
 function closeAllDialogs() {

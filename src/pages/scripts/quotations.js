@@ -288,20 +288,10 @@ function editQuote(quoteId) {
 }
 
 async function changeStatus(quoteId, currentStatus) {
-    const statuses = ['draft', 'sent', 'accepted', 'rejected'];
     const labels = { draft: 'Draft', sent: 'Sent', accepted: 'Accepted', rejected: 'Rejected' };
+    const newStatus = await showStatusPickerDialog(currentStatus);
+    if (!newStatus) return;
 
-    // Build a small inline prompt using dialog
-    const options = statuses.filter(s => s !== currentStatus);
-    const msg = `Change status from "${labels[currentStatus]}" to:\n\n` +
-        options.map((s, i) => `${i + 1}. ${labels[s]}`).join('\n');
-
-    const choice = window.prompt(msg + '\n\nEnter number (1-' + options.length + '):');
-    if (!choice) return;
-    const idx = parseInt(choice) - 1;
-    if (idx < 0 || idx >= options.length) return;
-
-    const newStatus = options[idx];
     const result = await supabaseUpdateQuotation(quoteId, { status: newStatus });
     if (result.success) {
         showSuccess(`Quotation marked as ${labels[newStatus]}`);

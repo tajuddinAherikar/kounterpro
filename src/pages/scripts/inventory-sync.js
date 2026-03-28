@@ -299,7 +299,13 @@ async function handleInventoryDeductionOffline(invoiceItems) {
 
 /** Trigger inventory download when coming online */
 window.addEventListener('online', async () => {
-    console.log('🔗 Device online - checking for inventory sync...');
+    console.log('🔗 Device online - waiting for Supabase auth...');
+    // Wait for Supabase to initialize and restore the session from storage
+    if (typeof ensureSupabaseReady === 'function') {
+        await ensureSupabaseReady();
+    }
+    // offline-sync.js also adds its own delay; if loaded, let it lead and avoid double-waiting
+    await new Promise(r => setTimeout(r, 1800));
 
     // Auto-download inventory if not recently downloaded
     const lastDownload = await getMetadata('last_inventory_download');

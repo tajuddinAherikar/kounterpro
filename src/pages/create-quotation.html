@@ -179,45 +179,12 @@
                     <textarea id="customerAddress" rows="2" placeholder="Address (optional)" maxlength="255"></textarea>
                 </div><!-- /customer block -->
 
-                <!-- summary panel: col 2, spans both rows -->
-                <div class="inv-summary-panel">
-                    <div class="summary-card">
-                        <div class="summary-title">Summary</div>
-                        <div class="totals-section" id="totalsSection">
-                            <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
-                                <span>Discount Saved:</span>
-                                <span id="discountSaving">-₹0.00</span>
-                            </div>
-                            <div class="total-row" id="subtotalRow">
-                                <span>Subtotal (excl. GST):</span>
-                                <span id="subtotal">₹0.00</span>
-                            </div>
-                            <div class="total-row" id="sgstRow">
-                                <span>SGST (<span id="displaySgstRate">9</span>%):</span>
-                                <span id="sgstAmount">₹0.00</span>
-                            </div>
-                            <div class="total-row" id="cgstRow">
-                                <span>CGST (<span id="displayCgstRate">9</span>%):</span>
-                                <span id="cgstAmount">₹0.00</span>
-                            </div>
-                            <div class="total-row grand-total">
-                                <span>Total Amount:</span>
-                                <span id="grandTotal">₹0.00</span>
-                            </div>
-                        </div>
-                        <div class="summary-actions">
-                            <button type="button" class="btn-secondary" onclick="window.location.href='quotations.html'">Cancel</button>
-                            <button type="submit" class="btn-primary" id="submitBtn">
-                                <span class="material-icons">save</span> Save Quotation
-                            </button>
-                        </div>
-                    </div>
-                </div><!-- /inv-summary-panel -->
+                
 
             </div><!-- /inv-top-row -->
 
             <!-- ── Full-width: Items + Notes ────────────────────────────── -->
-            <div class="inv-main">
+            <div class="inv-main margin-bottom-1">
 
                 <!-- Items Block -->
                 <div class="inv-block inv-items-block">
@@ -295,7 +262,45 @@
                     <span class="error-message" id="itemsError"></span>
                 </div><!-- /items block -->
 
-                <!-- Notes / Terms Block -->
+            </div><!-- /inv-main -->
+
+            <!-- summary panel: col 2, spans both rows -->
+                <div class="inv-summary-panel">
+                    <div class="summary-card">
+                        <div class="summary-title">Summary</div>
+                        <div class="totals-section" id="totalsSection">
+                            <div class="total-row" id="discountRow" style="display: none; color: #e67e22;">
+                                <span>Discount Saved:</span>
+                                <span id="discountSaving">-₹0.00</span>
+                            </div>
+                            <div class="total-row" id="subtotalRow">
+                                <span>Subtotal (excl. GST):</span>
+                                <span id="subtotal">₹0.00</span>
+                            </div>
+                            <div class="total-row" id="sgstRow">
+                                <span>SGST (<span id="displaySgstRate">9</span>%):</span>
+                                <span id="sgstAmount">₹0.00</span>
+                            </div>
+                            <div class="total-row" id="cgstRow">
+                                <span>CGST (<span id="displayCgstRate">9</span>%):</span>
+                                <span id="cgstAmount">₹0.00</span>
+                            </div>
+                            <div class="total-row grand-total">
+                                <span>Total Amount:</span>
+                                <span id="grandTotal">₹0.00</span>
+                            </div>
+                        </div>
+                        <div class="summary-actions">
+                            <button type="button" class="btn-secondary" onclick="window.location.href='quotations.html'">Cancel</button>
+                            <button type="submit" class="btn-primary" id="submitBtn">
+                                <span class="material-icons">save</span> Save Quotation
+                            </button>
+                        </div>
+                    </div>
+                </div><!-- /inv-summary-panel -->
+
+
+                                <!-- Notes / Terms Block -->
                 <div class="inv-block">
                     <div class="inv-block-title">
                         <span class="material-icons">notes</span> Notes / Terms
@@ -304,7 +309,6 @@
                     <small class="format-hint" style="display:block; margin-top:6px;">📋 Optional. Maximum 1000 characters.</small>
                 </div>
 
-            </div><!-- /inv-main -->
         </form>
 
 

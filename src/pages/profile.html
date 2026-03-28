@@ -343,6 +343,25 @@
                     </div>
                 </div>
 
+                <div class="form-section">
+                    <h3 class="section-title"><span class="material-icons">bolt</span> Quick Bill Mode</h3>
+
+                    <div class="form-row">
+                        <label class="form-label-with-icon">
+                            <span class="material-icons label-icon">flash_on</span>
+                            <span>Enable Quick Bill</span>
+                        </label>
+                        <div style="display: flex; align-items: center; gap: 12px; height: 42px;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="quickBillEnabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span id="quickBillEnabledLabel" style="font-size: 14px; color: #7f8c8d; font-weight: 500;">Disabled</span>
+                        </div>
+                        <small class="form-hint">When enabled, a Quick Bill option appears in the menu. Lets you create invoices without entering customer details — ideal for walk-in customers and thermal printer use.</small>
+                    </div>
+                </div>
+
                 <div class="form-actions">
                     <button type="button" class="btn-secondary" onclick="window.location.href='index.html'"><span class="material-icons">cancel</span> Cancel</button>
                     <button type="submit" class="btn-primary"><span class="material-icons">save</span> Save Profile</button>
@@ -719,6 +738,17 @@
                     document.getElementById('startingInvoiceNumber').value = profile.starting_invoice_number || 1;
                     document.getElementById('termsConditions').value = profile.terms_conditions || '';
                     
+                    // Quick Bill toggle
+                    const qbEl = document.getElementById('quickBillEnabled');
+                    const qbLabel = document.getElementById('quickBillEnabledLabel');
+                    if (qbEl) {
+                        qbEl.checked = profile.quick_bill_enabled === true;
+                        if (qbLabel) {
+                            qbLabel.textContent = qbEl.checked ? 'Enabled' : 'Disabled';
+                            qbLabel.style.color = qbEl.checked ? '#2845D6' : '#7f8c8d';
+                        }
+                    }
+                    
                     // Update invoice number preview
                     updateInvoiceNumberPreview();
                     // Update PIN status display
@@ -804,7 +834,8 @@
                     starting_invoice_number: startingInvoiceNumber,
                     terms_conditions: termsConditions,
                     logo_position: document.getElementById('logoPosition').value,
-                    show_logo: document.getElementById('showLogo').checked
+                    show_logo: document.getElementById('showLogo').checked,
+                    quick_bill_enabled: document.getElementById('quickBillEnabled').checked
                 };
 
                 const result = await supabaseUpdateUserProfile(currentUser.id, profileData);
@@ -1484,6 +1515,15 @@
 
         // Handle show logo toggle
         document.getElementById('showLogo').addEventListener('change', updateShowLogoLabel);
+
+        // Handle quick bill toggle
+        document.getElementById('quickBillEnabled').addEventListener('change', function() {
+            const label = document.getElementById('quickBillEnabledLabel');
+            if (label) {
+                label.textContent = this.checked ? 'Enabled' : 'Disabled';
+                label.style.color = this.checked ? '#2845D6' : '#7f8c8d';
+            }
+        });
 
         // Initialize
         // ===== MY SHOPS TAB =====

@@ -138,16 +138,56 @@ async function initializeDashboard() {
             updateUserDisplay(userProfile);
         }
 
-        // Fetch invoices, expenses, and inventory in parallel
-        const [invoiceResult, expenseResult, inventoryResult] = await Promise.all([
-            supabaseGetInvoices(),
-            supabaseGetExpenses(),
-            supabaseGetInventory()
-        ]);
+        // Fetch invoices, expenses, and inventory
+        // When offline, fall back to IndexedDB for invoices
+        let invoices = [], expenses = [], inventory = [];
 
-        const invoices = invoiceResult.success ? invoiceResult.data : [];
-        const expenses = expenseResult.success ? expenseResult.data : [];
-        const inventory = inventoryResult.success ? inventoryResult.data : [];
+        if (!navigator.onLine) {
+            // Offline path
+            if (typeof getAllOfflineInvoices === 'function') {
+                const offlineRaw = await getAllOfflineInvoices(user.id);
+                invoices = offlineRaw.map(inv => ({
+                    ...inv,
+                    invoice_number: inv.invoiceNumber || inv.invoice_number || inv.invoiceNo,
+                    customer_name: inv.customerName || inv.customer_name,
+                    customer_mobile: inv.customerMobile || inv.mobile || inv.customer_mobile,
+                    customer_address: inv.customerAddress || inv.address || inv.customer_address,
+                    total_amount: inv.totalAmount || inv.grandTotal || inv.total_amount || 0,
+                    total_units: inv.totalUnits || inv.total_units || 0,
+                    gst_amount: inv.gstAmount || inv.gst_amount || 0,
+                    gst_rate: inv.gstRate || inv.gst_rate || 0,
+                    _offline: true
+                }));
+            }
+        } else {
+            const [invoiceResult, expenseResult, inventoryResult] = await Promise.all([
+                supabaseGetInvoices(),
+                supabaseGetExpenses(),
+                supabaseGetInventory()
+            ]);
+            invoices = invoiceResult.success ? invoiceResult.data : [];
+            expenses = expenseResult.success ? expenseResult.data : [];
+            inventory = inventoryResult.success ? inventoryResult.data : [];
+
+            // Also prepend any pending offline invoices not yet synced
+            if (typeof getAllOfflineInvoices === 'function') {
+                const offlineRaw = await getAllOfflineInvoices(user.id);
+                const pendingOffline = offlineRaw
+                    .filter(inv => inv.sync_status === 'pending')
+                    .map(inv => ({
+                        ...inv,
+                        invoice_number: inv.invoiceNumber || inv.invoice_number || inv.invoiceNo,
+                        customer_name: inv.customerName || inv.customer_name,
+                        total_amount: inv.totalAmount || inv.grandTotal || inv.total_amount || 0,
+                        total_units: inv.totalUnits || inv.total_units || 0,
+                        gst_amount: inv.gstAmount || inv.gst_amount || 0,
+                        _offline: true
+                    }));
+                if (pendingOffline.length > 0) {
+                    invoices = [...pendingOffline, ...invoices];
+                }
+            }
+        }
 
         // Cache data for filter/search
         allInvoicesCache = invoices;
@@ -701,23 +741,102 @@ function generatePDFPreview(invoiceData) {
     displayPDFInModal(pdfDataUrl);
 }
 
-// Display PDF in modal
+// Display PDF in modal — use HTML preview on Android (WebView blocks data: URI iframes)
 function displayPDFInModal(pdfDataUrl) {
     const modal = document.getElementById('pdfModal');
-    
-    // Create an iframe to display the PDF
-    const pdfFrame = document.createElement('iframe');
-    pdfFrame.style.width = '100%';
-    pdfFrame.style.height = '600px';
-    pdfFrame.style.border = 'none';
-    pdfFrame.src = pdfDataUrl;
-    
-    // Replace modal body content with iframe
     const modalBody = document.querySelector('.pdf-modal-body');
     modalBody.innerHTML = '';
-    modalBody.appendChild(pdfFrame);
-    
+
+    const isNative = !!(window.Capacitor &&
+        typeof window.Capacitor.isNativePlatform === 'function' &&
+        window.Capacitor.isNativePlatform());
+
+    if (isNative) {
+        modalBody.innerHTML = _renderDashboardInvoicePreview(currentInvoiceForPDF);
+    } else {
+        const pdfFrame = document.createElement('iframe');
+        pdfFrame.style.cssText = 'width:100%;height:600px;border:none;';
+        pdfFrame.src = pdfDataUrl;
+        modalBody.appendChild(pdfFrame);
+    }
+
     modal.classList.add('show');
+}
+
+function _renderDashboardInvoicePreview(invoice) {
+    if (!invoice) return '<p style="padding:20px;">Invoice not found.</p>';
+    const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []);
+    const taxMode = invoice.tax_mode || 'with-tax';
+    const gstRate = parseFloat(invoice.gst_rate) || 0;
+    const totalAmount = parseFloat(invoice.total_amount) || 0;
+    const storedSubtotal = invoice.subtotal ? parseFloat(invoice.subtotal) : null;
+    const storedGstAmount = invoice.gst_amount ? parseFloat(invoice.gst_amount) : null;
+    const gstAmount = storedGstAmount !== null ? storedGstAmount
+        : (taxMode === 'with-tax' && gstRate > 0 ? (totalAmount * gstRate) / (100 + gstRate) : 0);
+    const subtotal = storedSubtotal !== null ? storedSubtotal : (totalAmount - gstAmount);
+    const dateStr = invoice.date ? new Date(invoice.date).toLocaleDateString('en-IN') : '';
+    const fmt = n => formatIndianCurrency(parseFloat(n) || 0);
+
+    const itemRows = items.map((item, idx) => `
+        <tr>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;">${idx + 1}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;">${item.description || item.name || ''}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:center;">${item.serial_no || '-'}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right;">₹${fmt(item.rate)}</td>
+            <td style="padding:6px 4px;border-bottom:1px solid #eee;text-align:right;">₹${fmt(item.quantity * parseFloat(item.rate))}</td>
+        </tr>`).join('');
+
+    const gstRows = (taxMode === 'with-tax' && gstRate > 0) ? `
+        <tr><td colspan="5" style="text-align:right;padding:4px;">SGST (${gstRate/2}%):</td><td style="text-align:right;padding:4px;">₹${fmt(gstAmount/2)}</td></tr>
+        <tr><td colspan="5" style="text-align:right;padding:4px;">CGST (${gstRate/2}%):</td><td style="text-align:right;padding:4px;">₹${fmt(gstAmount/2)}</td></tr>` : '';
+
+    return `
+    <div style="font-family:sans-serif;font-size:13px;color:#222;padding:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+            <div>
+                <div style="font-size:18px;font-weight:700;color:#2845D6;">${(userProfile?.business_name || 'BUSINESS NAME').toUpperCase()}</div>
+                <div style="color:#555;">${userProfile?.business_address || ''}</div>
+                <div style="color:#555;">Contact: ${userProfile?.contact_number_1 || ''}</div>
+                ${userProfile?.gst_number ? `<div style="color:#555;">GST: ${userProfile.gst_number}</div>` : ''}
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:15px;font-weight:700;">TAX INVOICE</div>
+                <div>Invoice No: <strong>${invoice.invoice_number}</strong></div>
+                <div>Date: ${dateStr}</div>
+            </div>
+        </div>
+        <div style="background:#f3f4f8;border-radius:6px;padding:8px 12px;margin-bottom:12px;">
+            <div style="font-weight:600;margin-bottom:4px;">Bill To:</div>
+            <div style="font-weight:500;">${invoice.customer_name || ''}</div>
+            ${invoice.customer_address ? `<div style="color:#555;">${invoice.customer_address}</div>` : ''}
+            ${invoice.customer_mobile ? `<div style="color:#555;">Mobile: ${invoice.customer_mobile}</div>` : ''}
+            ${invoice.customer_gst ? `<div style="color:#555;">GST: ${invoice.customer_gst}</div>` : ''}
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+                <tr style="background:#2845D6;color:#fff;">
+                    <th style="padding:6px 4px;text-align:left;">S.No</th>
+                    <th style="padding:6px 4px;text-align:left;">Description</th>
+                    <th style="padding:6px 4px;text-align:center;">Serial No</th>
+                    <th style="padding:6px 4px;text-align:center;">Qty</th>
+                    <th style="padding:6px 4px;text-align:right;">Rate</th>
+                    <th style="padding:6px 4px;text-align:right;">Amount</th>
+                </tr>
+            </thead>
+            <tbody>${itemRows}</tbody>
+            <tfoot>
+                <tr><td colspan="5" style="text-align:right;padding:6px 4px;border-top:1px solid #ccc;">Subtotal:</td>
+                    <td style="text-align:right;padding:6px 4px;border-top:1px solid #ccc;">₹${fmt(subtotal)}</td></tr>
+                ${gstRows}
+                <tr style="font-weight:700;font-size:14px;background:#f3f4f8;">
+                    <td colspan="5" style="text-align:right;padding:8px 4px;border-top:2px solid #2845D6;">Grand Total:</td>
+                    <td style="text-align:right;padding:8px 4px;border-top:2px solid #2845D6;color:#2845D6;">₹${fmt(totalAmount)}</td>
+                </tr>
+            </tfoot>
+        </table>
+        <div style="text-align:center;color:#888;font-style:italic;margin-top:16px;font-size:11px;">Thank you for your business!</div>
+    </div>`;
 }
 
 // Close PDF modal
