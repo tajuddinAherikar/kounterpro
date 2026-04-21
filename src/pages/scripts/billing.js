@@ -792,7 +792,7 @@ function setupAutocomplete(input, rateInput, quantityInput) {
 
 // Generate invoice number
 // Generate unique invoice number from Supabase data with custom prefix support
-async function generateInvoiceNumber() {
+async function generateInvoiceNumber(isGstInvoice = true) {
     try {
         // CHECK IF OFFLINE - if so, use temporary local number
         if (!navigator.onLine) {
@@ -819,7 +819,8 @@ async function generateInvoiceNumber() {
         let invoicePrefix = 'K'; // Default prefix
         let useCustomPrefix = false;
         let startingNumber = 1;
-        let currentCounter = 0;
+        let gstCounter = 0;
+        let nonGstCounter = 0;
         
         if (profileResult.success && profileResult.data) {
             const profile = profileResult.data;
@@ -827,19 +828,54 @@ async function generateInvoiceNumber() {
                 invoicePrefix = profile.invoice_prefix;
                 useCustomPrefix = true;
                 startingNumber = profile.starting_invoice_number || 1;
-                currentCounter = profile.current_invoice_counter || 0;
+                // Get separate counters for GST and non-GST
+                gstCounter = profile.gst_invoice_counter || 0;
+                nonGstCounter = profile.non_gst_invoice_counter || 0;
             }
         }
         
-        // If using custom prefix, use the simple format: PREFIX-0001
+        // Fetch invoices regardless of format to check history
+        const result = await supabaseGetInvoices();
+        const invoices = result.success ? (result.data || []) : [];
+        
+        // If using custom prefix, use the format: PREFIX-0001 for GST, PREFIX-NT-0001 for non-GST
         if (useCustomPrefix) {
-            const nextNumber = startingNumber + currentCounter;
-            const paddedNumber = String(nextNumber).padStart(4, '0');
-            return `${invoicePrefix}-${paddedNumber}`;
+            // Filter invoices by GST mode
+            let relevantInvoices = invoices;
+            if (!isGstInvoice) {
+                relevantInvoices = invoices.filter(inv => inv.tax_mode === 'without-tax');
+            } else {
+                relevantInvoices = invoices.filter(inv => !inv.tax_mode || inv.tax_mode === 'with-tax');
+            }
+            
+            // Find the highest number already used in this series
+            let maxNumber = 0;
+            relevantInvoices.forEach(invoice => {
+                const invoiceNum = invoice.invoice_number || '';
+                // Match custom prefix format: KP-001, KPNT-001, etc.
+                const pattern = isGstInvoice 
+                    ? new RegExp(`^${invoicePrefix}-0*(\\d+)`) 
+                    : new RegExp(`^${invoicePrefix}NT-0*(\\d+)`);
+                const match = invoiceNum.match(pattern);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    if (num > maxNumber) {
+                        maxNumber = num;
+                    }
+                }
+            });
+            
+            // Use the higher value: last from DB or counter from profile
+            const profileCounter = isGstInvoice ? gstCounter : nonGstCounter;
+            const nextNumber = Math.max(maxNumber + 1, startingNumber + profileCounter);
+            const paddedNumber = String(nextNumber).padStart(3, '0');
+            
+            // Use NT suffix for non-GST invoices (e.g., KPNT-001)
+            const suffix = isGstInvoice ? '' : 'NT';
+            return `${invoicePrefix}${suffix}-${paddedNumber}`;
         }
         
-        // Otherwise, use the legacy format: K0001/MM/YY/YY
-        const result = await supabaseGetInvoices();
+        // Otherwise, use the legacy format: K0001/MM/YY/YY or KNT0001/MM/YY/YY for non-GST
         
         // Calculate financial year
         const now = new Date();
@@ -861,20 +897,33 @@ async function generateInvoiceNumber() {
         if (!result.success) {
             console.error('Error fetching invoices:', result.error);
             // Fallback to default if error
-            return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
+            const prefix = isGstInvoice ? 'K' : 'KNT';
+            return `${prefix}0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         }
         
-        const invoices = result.data || [];
+        const invoicesForLegacy = result.data || [];
         
-        if (invoices.length === 0) {
-            return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
+        // Filter by GST mode if using legacy format
+        let relevantInvoices = invoicesForLegacy;
+        if (!isGstInvoice) {
+            // For non-GST, look for invoices with tax_mode = 'without-tax'
+            relevantInvoices = invoicesForLegacy.filter(inv => inv.tax_mode === 'without-tax');
+        } else {
+            // For GST, look for invoices with tax_mode = 'with-tax' or undefined
+            relevantInvoices = invoicesForLegacy.filter(inv => !inv.tax_mode || inv.tax_mode === 'with-tax');
+        }
+        
+        if (relevantInvoices.length === 0) {
+            const prefix = isGstInvoice ? 'K' : 'KNT';
+            return `${prefix}0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         }
         
         // Extract all invoice numbers and find the highest
         let maxNumber = 0;
-        invoices.forEach(invoice => {
+        relevantInvoices.forEach(invoice => {
             const invoiceNum = invoice.invoice_number || '';
-            const match = invoiceNum.match(/K(\d+)\//); // Extract number from K0001/... format
+            // Match both K0001 and KNT0001 formats
+            const match = invoiceNum.match(/K(?:NT)?(\d+)\//);
             if (match) {
                 const num = parseInt(match[1]);
                 if (num > maxNumber) {
@@ -885,7 +934,8 @@ async function generateInvoiceNumber() {
         
         // Generate next number
         const nextNumber = maxNumber + 1;
-        return `K${String(nextNumber).padStart(4, '0')}/${currentMonth}/${fyStartYear}/${fyEndYear}`;
+        const prefix = isGstInvoice ? 'K' : 'KNT';
+        return `${prefix}${String(nextNumber).padStart(4, '0')}/${currentMonth}/${fyStartYear}/${fyEndYear}`;
         
     } catch (error) {
         console.error('Error generating invoice number:', error);
@@ -894,7 +944,8 @@ async function generateInvoiceNumber() {
         const currentYear = now.getFullYear();
         const fyStartYear = currentMonth >= 4 ? currentYear.toString().slice(-2) : (currentYear - 1).toString().slice(-2);
         const fyEndYear = currentMonth >= 4 ? (currentYear + 1).toString().slice(-2) : currentYear.toString().slice(-2);
-        return `K0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
+        const prefix = isGstInvoice ? 'K' : 'KNT';
+        return `${prefix}0001/${currentMonth}/${fyStartYear}/${fyEndYear}`;
     }
 }
 
@@ -1058,7 +1109,7 @@ async function collectFormData() {
     
     // Get invoice number from field (may have been manually edited)
     const invoiceNumberField = document.getElementById('invoiceNumber');
-    const invoiceNumber = invoiceNumberField ? invoiceNumberField.value.trim() : await generateInvoiceNumber();
+    const invoiceNumber = invoiceNumberField ? invoiceNumberField.value.trim() : await generateInvoiceNumber(taxMode === 'with-tax');
     
     if (!invoiceNumber) {
         throw new Error('Invoice number is required');
@@ -1322,8 +1373,8 @@ async function saveInvoice(invoiceData) {
             // Deduct stock from inventory for new invoices
             await deductStock(invoiceData.items);
             
-            // Increment invoice counter for custom prefix users
-            await incrementInvoiceCounter();
+            // Increment invoice counter for custom prefix users (pass GST status)
+            await incrementInvoiceCounter(invoiceData.taxMode === 'with-tax');
             
             return true;
         } else {
@@ -1391,7 +1442,7 @@ async function saveInvoiceOffline(invoiceData) {
 }
 
 // Increment invoice counter after successful invoice creation
-async function incrementInvoiceCounter() {
+async function incrementInvoiceCounter(isGstInvoice = true) {
     try {
         const user = await supabaseGetCurrentUser();
         if (!user) return;
@@ -1401,9 +1452,13 @@ async function incrementInvoiceCounter() {
             const profile = profileResult.data;
             // Only increment if user has a custom prefix
             if (profile.invoice_prefix) {
-                const newCounter = (profile.current_invoice_counter || 0) + 1;
+                // Increment the appropriate counter based on GST status
+                const gstCounter = (profile.gst_invoice_counter || 0) + (isGstInvoice ? 1 : 0);
+                const nonGstCounter = (profile.non_gst_invoice_counter || 0) + (!isGstInvoice ? 1 : 0);
+                
                 await supabaseUpdateUserProfile(user.id, {
-                    current_invoice_counter: newCounter
+                    gst_invoice_counter: gstCounter,
+                    non_gst_invoice_counter: nonGstCounter
                 });
                 console.log('✅ Invoice counter incremented to:', newCounter);
             }
@@ -2063,6 +2118,23 @@ function handleGstToggle(checkbox) {
     if (statusEl) statusEl.textContent = checkbox.checked ? 'ON' : 'OFF';
     updateTaxModeDisplay();
     calculateAmounts();
+    
+    // Regenerate invoice number based on GST mode (unless it's a DRAFT/offline number)
+    const invoiceNumberField = document.getElementById('invoiceNumber');
+    if (invoiceNumberField) {
+        const currentValue = invoiceNumberField.value.trim();
+        // Regenerate if it looks like an auto-generated number (not just a DRAFT number)
+        if (currentValue && !currentValue.startsWith('DRAFT-')) {
+            invoiceNumberField.value = 'Updating...';
+            generateInvoiceNumber(checkbox.checked).then(newNumber => {
+                invoiceNumberField.value = newNumber;
+                showToast('✅ Invoice number updated: ' + newNumber, 'success');
+            }).catch(error => {
+                console.error('Error regenerating invoice number:', error);
+                invoiceNumberField.value = currentValue; // Revert on error
+            });
+        }
+    }
 }
 
 /** Show customer info card after selection */
