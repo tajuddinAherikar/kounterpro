@@ -411,22 +411,19 @@ function generateAndShowPDF(invoice) {
 function renderInvoiceHTMLPreview(invoice) {
     const items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []);
     const taxMode = invoice.tax_mode || 'with-tax';
-    const gstRate = parseFloat(invoice.gst_rate) || 0;
     const totalAmount = parseFloat(invoice.total_amount) || 0;
     const storedSubtotal = invoice.subtotal ? parseFloat(invoice.subtotal) : null;
     const storedGstAmount = invoice.gst_amount ? parseFloat(invoice.gst_amount) : null;
-    const gstAmount = storedGstAmount !== null ? storedGstAmount
-        : (taxMode === 'with-tax' && gstRate > 0 ? (totalAmount * gstRate) / (100 + gstRate) : 0);
-    const subtotal = storedSubtotal !== null ? storedSubtotal : (totalAmount - gstAmount);
+    const subtotal = storedSubtotal || 0;
+    const gstAmount = storedGstAmount || 0;
     
-    // Calculate effective GST rate from items if not stored at invoice level
-    let effectiveGstRate = gstRate;
-    if (taxMode === 'with-tax' && gstAmount > 0 && gstRate === 0) {
-        // Calculate rate from items
-        const itemsWithGst = items.filter(i => i.gstRate && i.gstRate > 0);
-        if (itemsWithGst.length > 0) {
-            effectiveGstRate = itemsWithGst[0].gstRate; // Use first item's rate as representative
-        }
+    // Calculate GST rate from subtotal and gstAmount, rounded to 2 decimals
+    let gstRate = 0;
+    if (taxMode === 'with-tax' && gstAmount > 0 && subtotal > 0) {
+        // GST is calculated as: gst = subtotal * rate / 100
+        // So: rate = (gst * 100) / subtotal
+        // Round to 2 decimal places per Indian standards
+        gstRate = Math.round((gstAmount * 100) / subtotal * 100) / 100;
     }
 
     const dateStr = invoice.date ? new Date(invoice.date).toLocaleDateString('en-IN') : '';
@@ -443,11 +440,11 @@ function renderInvoiceHTMLPreview(invoice) {
 
     const gstRows = (taxMode === 'with-tax' && gstAmount > 0) ? `
         <tr>
-            <td colspan="5" style="text-align:right;padding:4px;">SGST (${effectiveGstRate / 2}%):</td>
+            <td colspan="5" style="text-align:right;padding:4px;">SGST (${(gstRate / 2).toFixed(2)}%):</td>
             <td style="text-align:right;padding:4px;">₹${formatIndianCurrency(gstAmount / 2)}</td>
         </tr>
         <tr>
-            <td colspan="5" style="text-align:right;padding:4px;">CGST (${effectiveGstRate / 2}%):</td>
+            <td colspan="5" style="text-align:right;padding:4px;">CGST (${(gstRate / 2).toFixed(2)}%):</td>
             <td style="text-align:right;padding:4px;">₹${formatIndianCurrency(gstAmount / 2)}</td>
         </tr>` : '';
 
@@ -506,7 +503,7 @@ function closePDFModal() {
     currentInvoiceForPDF = null;
 }
 
-function downloadCurrentPDF() {
+async function downloadCurrentPDF() {
     if (!currentInvoiceForPDF) return;
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF();
@@ -567,34 +564,34 @@ function generatePDFContent(pdf, invoiceData) {
     });
 
     const taxMode = invoiceData.tax_mode || 'with-tax';
-    const gstRate = parseFloat(invoiceData.gst_rate) || 0;
     const totalAmount = parseFloat(invoiceData.total_amount) || 0;
     const storedSubtotal = invoiceData.subtotal ? parseFloat(invoiceData.subtotal) : null;
     const storedGstAmount = invoiceData.gst_amount ? parseFloat(invoiceData.gst_amount) : null;
-    const gstAmount = storedGstAmount !== null ? storedGstAmount
-        : (taxMode === 'with-tax' && gstRate > 0 ? (totalAmount * gstRate) / (100 + gstRate) : 0);
-    const subtotal = storedSubtotal !== null ? storedSubtotal : (totalAmount - gstAmount);
+    const subtotal = storedSubtotal || 0;
+    const gstAmount = storedGstAmount || 0;
+    
+    // Calculate GST rate from stored subtotal and gstAmount, rounded to 2 decimals
+    let gstRate = 0;
+    if (taxMode === 'with-tax' && gstAmount > 0 && subtotal > 0) {
+        // GST is calculated as: gst = subtotal * rate / 100
+        // So: rate = (gst * 100) / subtotal
+        // Round to 2 decimal places per Indian standards
+        gstRate = Math.round((gstAmount * 100) / subtotal * 100) / 100;
+    }
 
     y += 5; pdf.line(15, y, 200, y); y += 6;
     pdf.setFont(undefined, 'bold'); pdf.text('Subtotal:', 155, y, { align: 'right' });
     pdf.setFont(undefined, 'normal'); pdf.text(`Rs.${formatIndianCurrency(subtotal)}`, 195, y, { align: 'right' });
     
-    // Show GST if gstAmount > 0 (items have GST even if invoice-level gst_rate is 0)
+    // Show GST if in with-tax mode and amount > 0
     if (taxMode === 'with-tax' && gstAmount > 0) {
-        // Calculate effective rate from items if invoice-level rate is 0
-        let effectiveRate = gstRate || 0;
-        if (effectiveRate === 0) {
-            const itemsWithGst = items.filter(i => i.gstRate && i.gstRate > 0);
-            if (itemsWithGst.length > 0) {
-                effectiveRate = itemsWithGst[0].gstRate;
-            }
-        }
-        
         y += 6;
-        pdf.setFont(undefined, 'bold'); pdf.text(`SGST (${effectiveRate / 2}%):`, 155, y, { align: 'right' });
+        const cgstRate = gstRate / 2;
+        const sgstRate = gstRate / 2;
+        pdf.setFont(undefined, 'bold'); pdf.text(`SGST (${sgstRate.toFixed(2)}%):`, 155, y, { align: 'right' });
         pdf.setFont(undefined, 'normal'); pdf.text(`Rs.${formatIndianCurrency(gstAmount / 2)}`, 195, y, { align: 'right' });
         y += 6;
-        pdf.setFont(undefined, 'bold'); pdf.text(`CGST (${effectiveRate / 2}%):`, 155, y, { align: 'right' });
+        pdf.setFont(undefined, 'bold'); pdf.text(`CGST (${cgstRate.toFixed(2)}%):`, 155, y, { align: 'right' });
         pdf.setFont(undefined, 'normal'); pdf.text(`Rs.${formatIndianCurrency(gstAmount / 2)}`, 195, y, { align: 'right' });
     }
     y += 6; pdf.line(155, y, 200, y); y += 6;

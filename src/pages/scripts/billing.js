@@ -1116,9 +1116,9 @@ async function collectFormData() {
         gstNumber: customerGST, // Add alias for Supabase
         items,
         taxMode: taxMode, // Store tax mode
-        gstRate: 0,       // Per-item now; kept for schema compat
-        sgstRate: 0,
-        cgstRate: 0,
+        gstRate: taxMode === 'with-tax' && subtotal > 0 ? Math.round((gstAmount * 100) / subtotal * 100) / 100 : 0,
+        sgstRate: taxMode === 'with-tax' && subtotal > 0 ? Math.round((sgstAmount * 100) / subtotal * 100) / 100 : 0,
+        cgstRate: taxMode === 'with-tax' && subtotal > 0 ? Math.round((cgstAmount * 100) / subtotal * 100) / 100 : 0,
         subtotal: taxMode === 'with-tax' ? subtotal : 0,
         gstAmount: taxMode === 'with-tax' ? gstAmount : 0,
         sgstAmount: taxMode === 'with-tax' ? sgstAmount : 0,
