@@ -113,7 +113,7 @@ function loadInvoiceForEditing() {
                 </td>
                 <td data-label="Serial No(s) (Optional, one per line)">
                     <span class="mobile-field-label">Serial No(s)</span>
-                    <textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || '')}</textarea>
+                    <textarea class="item-serial" rows="1" placeholder="Optional">${escapeHtml(item.serial_no || item.serialNo || '')}</textarea>
                 </td>
                 <td data-label="Quantity">
                     <span class="mobile-field-label">Quantity</span>
@@ -1087,7 +1087,9 @@ async function collectFormData() {
             slNo: index + 1,
             description,
             hsnCode: hsnCode || '',
-            serialNo: serialNo || '',
+            hsn_code: hsnCode || '',  // snake_case alias for database
+            serial_no: serialNo || '',  // snake_case to match PDF and edit loading
+            serialNo: serialNo || '',   // camelCase alias for compatibility
             quantity,
             qty: quantity, // alias used by offline inventory deduction
             rate: rateExclGST,
@@ -1154,7 +1156,7 @@ async function collectFormData() {
     const discountAmount = rawTotal - (taxMode === 'with-tax' ? grandTotal : subtotal); // effectively 0; items already applied
     const netTotal = taxMode === 'with-tax' ? grandTotal : subtotal;
 
-    return {
+    const invoiceData = {
         invoiceNo: invoiceNumber,
         invoiceNumber: invoiceNumber, // For Supabase compatibility
         date: dateString,
@@ -1186,6 +1188,16 @@ async function collectFormData() {
             ? (parseFloat(document.getElementById('amountPaid')?.value) || 0)
             : undefined
     };
+    
+    console.log('📋 [collectFormData] Returning invoice data:', {
+        invoiceNumber: invoiceData.invoiceNumber,
+        customerName: invoiceData.customerName,
+        itemsCount: invoiceData.items?.length,
+        totalAmount: invoiceData.totalAmount,
+        taxMode: invoiceData.taxMode
+    });
+    
+    return invoiceData;
 }
 
 // Generate PDF using jsPDF with customizable templates
@@ -1342,6 +1354,13 @@ async function saveInvoice(invoiceData) {
     // Check offline status
     const isOffline = !navigator.onLine || (typeof window.PWA !== 'undefined' && !window.PWA.isOnline());
 
+    console.log('🔍 [saveInvoice] Starting save:', {
+        invoiceNumber: invoiceData.invoiceNumber,
+        invoiceNo: invoiceData.invoiceNo,
+        customerName: invoiceData.customerName,
+        offline: isOffline
+    });
+
     if (isOffline) {
         // OFFLINE MODE: Save to IndexedDB
         console.log('📵 Offline mode - saving invoice locally...');
@@ -1351,6 +1370,7 @@ async function saveInvoice(invoiceData) {
     // ONLINE MODE: Normal save to Supabase
     if (editingInvoiceId) {
         // Update existing invoice
+        console.log('📝 [saveInvoice] Updating existing invoice:', editingInvoiceId);
         const result = await supabaseUpdateInvoice(editingInvoiceId, invoiceData);
         
         if (result.success) {
@@ -1367,7 +1387,22 @@ async function saveInvoice(invoiceData) {
             console.log('💾 New customer automatically saved to database');
         }
         
+        console.log('📧 [saveInvoice] About to save new invoice:', {
+            invoiceNumber: invoiceData.invoiceNumber,
+            invoiceNo: invoiceData.invoiceNo,
+            customerName: invoiceData.customerName,
+            itemsCount: invoiceData.items?.length,
+            firstItemSerial: invoiceData.items?.[0]?.serialNo
+        });
+        
         const result = await supabaseAddInvoice(invoiceData);
+        
+        console.log('📧 [saveInvoice] Save result:', {
+            success: result.success,
+            error: result.error,
+            invoiceId: result.data?.id,
+            invoiceNumber: result.data?.invoice_number
+        });
         
         if (result.success) {
             // Deduct stock from inventory for new invoices
@@ -1456,15 +1491,16 @@ async function incrementInvoiceCounter(isGstInvoice = true) {
                 const gstCounter = (profile.gst_invoice_counter || 0) + (isGstInvoice ? 1 : 0);
                 const nonGstCounter = (profile.non_gst_invoice_counter || 0) + (!isGstInvoice ? 1 : 0);
                 
-                await supabaseUpdateUserProfile(user.id, {
+                const updateResult = await supabaseUpdateUserProfile(user.id, {
                     gst_invoice_counter: gstCounter,
                     non_gst_invoice_counter: nonGstCounter
                 });
-                console.log('✅ Invoice counter incremented to:', newCounter);
+                console.log(`✅ Invoice counter incremented - GST: ${gstCounter}, Non-GST: ${nonGstCounter}`);
+                return updateResult;
             }
         }
     } catch (error) {
-        console.error('Error incrementing invoice counter:', error);
+        console.error('⚠️ Error incrementing invoice counter:', error);
         // Don't throw error - this shouldn't block invoice creation
     }
 }
@@ -1484,11 +1520,16 @@ let savedInvoiceData = null;
 async function handleFormSubmit(e) {
     e.preventDefault();
     
+    console.log('🚀 [handleFormSubmit] Form submitted');
+    
     // Check if already saved and now generating PDF
     if (savedInvoiceData) {
+        console.log('📄 [handleFormSubmit] Already saved, generating PDF for:', savedInvoiceData.invoiceNumber);
         await generateAndShowPDF(savedInvoiceData);
         return;
     }
+    
+    console.log('💾 [handleFormSubmit] First time save, collecting form data...');
     
     // Create loading overlay if it doesn't exist
     let loadingOverlay = document.getElementById('loadingOverlay');
@@ -1514,6 +1555,13 @@ async function handleFormSubmit(e) {
     
     try {
         const invoiceData = await collectFormData();
+        
+        console.log('🎯 [Save handler] Collected invoice data:', {
+            invoiceNumber: invoiceData.invoiceNumber,
+            invoiceNo: invoiceData.invoiceNo,
+            customerName: invoiceData.customerName,
+            itemsCount: invoiceData.items?.length
+        });
         
         // Validate items
         if (invoiceData.items.length === 0) {
